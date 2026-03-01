@@ -7,7 +7,7 @@ export default defineConfig({
         port: 3000,
         host: true
     },
-    base: './',
+    base: '/pjbl-climate-statistics/',
     build: {
         chunkSizeWarningLimit: 600,
         rollupOptions: {

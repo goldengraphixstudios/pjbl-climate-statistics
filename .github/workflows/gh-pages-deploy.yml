@@ -19,12 +19,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (allow legacy peer deps)
+        run: |
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Build (Vite)
-        # ensure the build uses the correct base for GitHub Pages (repo name)
-        run: npm run build -- --base /pjbl-climate-statistics/
+        # run tsc then vite build with explicit base to ensure correct asset paths
+        run: |
+          npx tsc -b
+          npx vite build --base /pjbl-climate-statistics/
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
