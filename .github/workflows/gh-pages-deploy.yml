@@ -22,11 +22,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Build (Vite)
+        # ensure the build uses the correct base for GitHub Pages (repo name)
+        run: npm run build -- --base /pjbl-climate-statistics/
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          # ensure the action creates/uses the gh-pages branch
+          publish_branch: gh-pages
