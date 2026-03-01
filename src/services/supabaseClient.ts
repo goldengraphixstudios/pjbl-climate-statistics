@@ -5,7 +5,10 @@ const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set. Supabase client may fail.');
+  console.error(
+    'Supabase environment variables are missing. ' +
+    'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are defined in the build environment.'
+  );
 }
 
 export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '');

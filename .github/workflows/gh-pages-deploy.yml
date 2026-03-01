@@ -25,6 +25,9 @@ jobs:
 
       - name: Build (Vite)
         # run tsc then vite build with explicit base to ensure correct asset paths
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           npx tsc -b
           npx vite build --base /pjbl-climate-statistics/
