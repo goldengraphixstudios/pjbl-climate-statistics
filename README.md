@@ -1,4 +1,4 @@
-# Statistics Meets Climate Action - Learning Platform
+# Statistics Meets Climate Action - Learning Platform.
 
 Interactive, role-based digital learning material with dashboards for students, teachers, and administrators. Built with React, TypeScript, and Vite.
 
