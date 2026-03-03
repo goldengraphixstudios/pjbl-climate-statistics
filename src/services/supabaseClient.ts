@@ -9,6 +9,9 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     'Supabase environment variables are missing. ' +
     'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are defined in the build environment.'
   );
+} else {
+  // provide a tiny bit of visibility when the app initializes
+  console.info('Supabase client configured for', SUPABASE_URL);
 }
 
 export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '');

@@ -4,6 +4,9 @@ import { useMemo, useState, useEffect } from 'react';
 import ProgressBar from '../../components/ProgressBar';
 import { setUserProgress, saveLesson2Phase1Activity1, getLesson2Phase1Activity1All, saveLesson2Phase1Activity1b, getLesson2Phase1Activity1bAll, saveLesson2Phase1Activity2Checkpoint, getLesson2Phase1Activity2All, saveLesson2Phase1Activity2b, getLesson2Phase1Activity2bAll, saveLesson2Phase1Activity3, getLesson2Phase1Activity3All, saveLesson2Phase1Activity4, getLesson2Phase1Activity4All, saveLesson2Phase2Activity1, getLesson2Phase2Activity1All, saveLesson2Phase2Activity2, getLesson2Phase2Activity2All, saveLesson2Phase2Activity3, getLesson2Phase2Activity3All, saveLesson2Phase2Activity4, getLesson2Phase2Activity4All, saveLesson2Phase2Activity4Interpret, getLesson2Phase2Activity4InterpAll, saveLesson2Phase3Activity1, getLesson2Phase3Activity1All, savePhase3FinishAnalysis, saveLesson2Phase3Activity2, getLesson2Phase3Activity2All, savePhase3SubmitWorksheet, saveLesson2Phase4Activity1, getLesson2Phase4Activity1All } from '../../services/progressService';
 import { activity2bAnswerKey, lesson2Phase2Activity1Validators, lesson2Phase2Activity1Questions } from '../../services/activity2Questions';
+import { ActivityType, upsertResponse } from '../../services/responsesService';
+import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
   username: string;
@@ -33,8 +36,26 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [completedPhases, setCompletedPhases] = useState<number[]>([]);
   const progressPct = useMemo(() => Math.round((completedPhases.length / 4) * 100), [completedPhases]);
   const [displayProgress, setDisplayProgress] = useState<number>(progressPct);
+  const [serverFeedback, setServerFeedback] = useState<any>(null);
+  
   useEffect(() => { setDisplayProgress(progressPct); }, [progressPct]);
   useEffect(() => { setUserProgress(user.username, 3, displayProgress); }, [displayProgress, user.username]);
+  
+  // Load server feedback for lesson2
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (!studentId) return;
+        const fb = await getFeedbackForStudentActivity(studentId, 'lesson2');
+        if (fb) setServerFeedback(fb);
+      } catch (e) {
+        console.error('load lesson2 feedback', e);
+      }
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     setOpen({ overview: false, p1: false, p2: false, p3: false, p4: false });
@@ -497,6 +518,26 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         </div>
       </header>
       <main className="portal-content">
+        {/* show teacher feedback and acknowledge button if available */}
+        {serverFeedback && (
+          <div style={{ padding: '12px 24px', background: '#f9f9f9', margin: '12px 0' }}>
+            <strong>Teacher Feedback:</strong>
+            <p>{serverFeedback.feedback_text}</p>
+            {!serverFeedback.acknowledged && (
+              <button onClick={async () => {
+                const prof = await getMyProfile();
+                const sid = prof?.id;
+                if (sid) {
+                  const fb = await acknowledgeFeedback(sid, 'lesson2');
+                  setServerFeedback(fb);
+                }
+              }}>Acknowledge</button>
+            )}
+            {serverFeedback.acknowledged && serverFeedback.acknowledged_at && (
+              <div style={{ fontSize: '0.9rem', color: '#555' }}>Acknowledged at {new Date(serverFeedback.acknowledged_at).toLocaleString()}</div>
+            )}
+          </div>
+        )}
         <div className="lesson-container">
           <ProgressBar progress={displayProgress} />
           <div className="accordion">
@@ -1906,6 +1947,22 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                       <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || submitDisabledP4} onClick={() => {
                         if (submitDisabledP4) return;
                         const f = uploadedFileP4;
+                        const finalize = async (uploadUrl?: string) => {
+                          try {
+                            const prof = await getMyProfile();
+                            const studentId = prof?.id;
+                            if (studentId) {
+                              await upsertResponse({
+                                student_id: studentId,
+                                activity_type: 'lesson2',
+                                answers: { phase4_upload: uploadUrl || previewURLP4 }
+                              });
+                            }
+                          } catch (e) {
+                            console.error('upsert lesson2 response', e);
+                          }
+                        };
+                        
                         if (f) {
                           const reader = new FileReader();
                           reader.onload = (ev) => {
@@ -1916,6 +1973,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               setSubmitDisabledP4(true);
                               setPreviewURLP4(data);
                               setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
+                              finalize(data);
                             } catch (e) { /* ignore */ }
                           };
                           reader.readAsDataURL(f);
@@ -1928,6 +1986,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           setSubmissionMessageP4('Submitted — saved.');
                           setSubmitDisabledP4(true);
                           setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
+                          finalize();
                         }
                       }}>{submitDisabledP4 ? 'Submitted' : 'Submit Output'}</button>
                     </div>

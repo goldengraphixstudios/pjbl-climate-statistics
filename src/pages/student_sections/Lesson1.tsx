@@ -1,6 +1,9 @@
 ﻿import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import ProgressBar from '../../components/ProgressBar';
 import { getLesson1State, saveLesson1State, awaitSaveLesson1State, flushLesson1StateSync, getTeacherFeedback, setUserProgress, setPhase1ActivityFlag, getPhase1Progress, saveActivity2Checkpoint, saveActivity3Choice, saveActivity4aQuestion, saveActivity4bFinal, savePhase2Activity1, savePhase2Activity2, savePhase2Activity2Answer, savePhase2Activity2Steps, getPhase2Activity2AnswersAll, getPhase2Activity2All, savePhase2FinalizeScatter, savePhase2SelfAssessment, savePhase2Activity4Check, savePhase2Activity4Interpret, savePhase2Activity3Upload, getPhase2Activity3All, getPhase2SelfAssessAll, savePhase3FinishAnalysis, savePhase3SubmitWorksheet, savePhase3FinalizeRecommendation, savePhase4SubmitReview, savePhase4MissionComplete, savePhase4PeerReview, savePhase4Reflection, getPhase4ReviewAll, getPhase4CompleteAll, getPhase2Activity4CheckAll, getPhase2Activity4InterpAllDetailed, Lesson1State } from '../../services/progressService';
+import { ActivityType, upsertResponse } from '../../services/responsesService';
+import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 import BarDualChart from '../../components/BarDualChart';
 import { climateLabels, societalLabels, getMonthlySeriesForClimate, getMonthlySeriesForSocietal, Year } from '../../services/lesson1Phase1Data';
 import { activity2Questions, activity2Validators } from '../../services/activity2Questions';
@@ -67,6 +70,22 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   const getLabelDef = (label: string): string => labelDefinitions[label] || 'Monthly value for the selected metric.';
   const [state, setState] = useState(getLesson1State(user.username));
   const [open, setOpen] = useState<{ overview: boolean; p1: boolean; p2: boolean; p3: boolean; p4: boolean }>({ overview: false, p1: false, p2: false, p3: false, p4: false });
+  const [serverFeedback, setServerFeedback] = useState<any>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (!studentId) return;
+        const fb = await getFeedbackForStudentActivity(studentId, 'lesson1');
+        if (fb) setServerFeedback(fb);
+      } catch (e) {
+        console.error('load lesson1 feedback', e);
+      }
+    };
+    load();
+  }, []);
   const [subOpen, setSubOpen] = useState<{ a1: boolean; a2: boolean; a3: boolean; a4: boolean }>({ a1:false, a2:false, a3:false, a4:false });
   const [p3SubOpen, setP3SubOpen] = useState<{ p3a: boolean; p3b: boolean; p3c: boolean }>({ p3a: false, p3b: false, p3c: false });
   const [p2SubOpen, setP2SubOpen] = useState<{ a1: boolean; a2: boolean; a3: boolean; a4: boolean }>({ a1:false, a2:false, a3:false, a4:false });
@@ -1591,6 +1610,26 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
         </div>
       </header>
       <main className="portal-content">
+        {/* show teacher feedback and acknowledge button if available */}
+        {serverFeedback && (
+          <div style={{ padding: '12px 24px', background: '#f9f9f9', margin: '12px 0' }}>
+            <strong>Teacher Feedback:</strong>
+            <p>{serverFeedback.feedback_text}</p>
+            {!serverFeedback.acknowledged && (
+              <button onClick={async () => {
+                const prof = await getMyProfile();
+                const sid = prof?.id;
+                if (sid) {
+                  const fb = await acknowledgeFeedback(sid, 'lesson1');
+                  setServerFeedback(fb);
+                }
+              }}>Acknowledge</button>
+            )}
+            {serverFeedback.acknowledged && serverFeedback.acknowledged_at && (
+              <div style={{ fontSize: '0.9rem', color: '#555' }}>Acknowledged at {new Date(serverFeedback.acknowledged_at).toLocaleString()}</div>
+            )}
+          </div>
+        )}
         <div className="lesson-container">
           <ProgressBar progress={progressPct} />
 
@@ -3820,11 +3859,25 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                     <div className="section-actions">
                     <button className="complete-btn" disabled={!!(state.phaseData as any)[4]?.missionComplete} onClick={() => {
                       // persist reflection fields and uploaded file, then mark mission complete
-                      const finalize = (uploadUrl?: string, mime?: string) => {
+                      const finalize = async (uploadUrl?: string, mime?: string) => {
                         try { savePhase4Reflection(user.username, reflectionFields || {}, uploadUrl, mime); } catch (e) {}
                         const next = savePhase4MissionComplete(user.username);
                         setState(next);
                         markCompleted(4);
+                        // upsert lesson1 response record
+                        try {
+                          const prof = await getMyProfile();
+                          const studentId = prof?.id;
+                          if (studentId) {
+                            await upsertResponse({
+                              student_id: studentId,
+                              activity_type: 'lesson1',
+                              answers: { lesson1State: next }
+                            });
+                          }
+                        } catch (e) {
+                          console.error('upsert lesson1 response', e);
+                        }
                         alert('Mission Complete! Returning to Home.');
                         onBack();
                       };

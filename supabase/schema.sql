@@ -11,6 +11,7 @@ create table if not exists users (
   email text unique not null,
   role text not null check (role in ('admin','teacher','student')),
   hashed_password text,
+  username text,
   created_at timestamptz default now()
 );
 
@@ -61,6 +62,7 @@ create table if not exists responses (
   question_id text not null,
   choice text,
   is_correct boolean,
+  response_json jsonb,
   created_at timestamptz default now()
 );
 
@@ -75,3 +77,33 @@ create table if not exists student_state (
   updated_at timestamptz default now(),
   unique (student_id, lesson_slug)
 );
+
+-- Extended profile and LMS support
+alter table users add column if not exists section text;
+create unique index if not exists idx_users_username on users (username);
+
+-- Responses enhancements
+alter table responses add column if not exists activity_type text;
+alter table responses add column if not exists answers jsonb;
+alter table responses add column if not exists correctness jsonb;
+alter table responses add column if not exists teacher_score numeric;
+alter table responses add column if not exists teacher_scored_by uuid references users(id);
+alter table responses add column if not exists teacher_scored_at timestamptz;
+create index if not exists idx_responses_activity_type on responses (activity_type);
+
+-- Feedback table for teacher comments, acknowledgements, and scores
+create table if not exists feedback (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references users(id) on delete cascade,
+  activity_type text not null,
+  feedback_text text not null default '',
+  created_by uuid references users(id) on delete set null,
+  acknowledged boolean not null default false,
+  acknowledged_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (student_id, activity_type)
+);
+
+create index if not exists idx_feedback_student on feedback(student_id);
+create index if not exists idx_feedback_activity on feedback(activity_type);

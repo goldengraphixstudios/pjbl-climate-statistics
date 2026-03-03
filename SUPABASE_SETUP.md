@@ -7,9 +7,13 @@ Supabase integration — quick setup
    - Open the SQL editor in Supabase and run the contents of `supabase/schema.sql` in this repo.
 
 3) Environment variables (frontend)
-   - Add to your local `.env` (Vite) file at project root:
+   - Add to your local `.env` (Vite) file at project root.
+     Make sure the URL matches the *current* project ref you are viewing in
+     the Supabase dashboard; in this repo the working project is
+     `rvucxfhufdgbkgwyodff` (not the old empty one).
 
-```
+```dotenv
+# DO NOT commit actual credentials!
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```

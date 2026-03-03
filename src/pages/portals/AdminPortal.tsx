@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HeaderAdminIcon } from '../../components/RoleIcons';
 import AnalyticsChart from '../../components/admin/AnalyticsChart';
+import FeedbackPanel from '../../components/teacher/FeedbackPanel';
 import { getPreAssessmentSummary, getInitialSurveySummary, getAssessmentScores, getPostAssessmentSummary, getEndOfLessonSurveySummary } from '../../services/progressService';
 import '../../styles/AdminPortal.css';
 
@@ -25,6 +26,7 @@ interface AdminPortalProps {
 const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) => {
   const [activeTab, setActiveTab] = useState<string>('pre-assessment');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
+  const [feedbackStudent, setFeedbackStudent] = useState<{id: string, name: string, activity: any} | null>(null);
 
   const tabs = [
     { id: 'pre-assessment', label: 'Pre-Assessment Results', icon: '📋' },
@@ -924,6 +926,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
                                 <th>Name</th>
                                 {Array.from({length:15}, (_,i)=> <th key={i}>Q{i+1}</th>)}
                                 <th>Score</th>
+                                <th style={{textAlign: 'center'}}>Action</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -932,6 +935,23 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
                                   <td style={{whiteSpace: 'nowrap', textAlign: 'left'}}>{fmt(r.name)}</td>
                                   {r.answers.map((a:any, i:number) => <td key={i}>{a}</td>)}
                                   <td style={{textAlign: 'center'}}>{r.score}</td>
+                                  <td style={{textAlign: 'center'}}>
+                                    <button
+                                      onClick={() => setFeedbackStudent({ id: r.username, name: r.name, activity: 'pre' })}
+                                      style={{
+                                        padding: '6px 12px',
+                                        backgroundColor: '#1976D2',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      💬 Feedback
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1240,6 +1260,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
                               <th>Name</th>
                               {Array.from({length:15}, (_,i)=> <th key={i}>Q{i+1}</th>)}
                               <th>Score</th>
+                              <th style={{textAlign: 'center'}}>Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1248,6 +1269,23 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
                                 <td style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>{fmt(r.name)}</td>
                                 {r.responses.map((ans:any, i:number) => <td key={i}>{ans}</td>)}
                                 <td style={{ textAlign: 'center' }}>{r.score}</td>
+                                <td style={{textAlign: 'center'}}>
+                                  <button
+                                    onClick={() => setFeedbackStudent({ id: r.username, name: r.name, activity: 'post' })}
+                                    style={{
+                                      padding: '6px 12px',
+                                      backgroundColor: '#1976D2',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '12px',
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    💬 Feedback
+                                  </button>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -1385,6 +1423,15 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
 
           {/* Class Breakdown removed per requirements */}
         </div>
+        {feedbackStudent && (
+          <FeedbackPanel
+            studentId={feedbackStudent.id}
+            studentName={feedbackStudent.name}
+            activityType={feedbackStudent.activity}
+            onClose={() => setFeedbackStudent(null)}
+            onSubmitSuccess={() => {}}
+          />
+        )}
       </main>
     </div>
   );

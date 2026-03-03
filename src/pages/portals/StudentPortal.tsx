@@ -3,9 +3,13 @@ import { HeaderStudentIcon } from '../../components/RoleIcons';
 import ProgressBar from '../../components/ProgressBar';
 import '../../styles/StudentPortal.css';
 import { getUserProgress, getRewardShownSections, markRewardShown } from '../../services/progressService';
+import { ActivityType, getResponseForStudentActivity, getResponsesForStudent } from '../../services/responsesService';
+import { getFeedbackForStudentActivity, getFeedbackForStudent, acknowledgeFeedback } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 import ConfettiOverlay from '../../components/ConfettiOverlay';
 
 interface AuthUser {
+  id?: string;
   username: string;
   role: 'student' | 'teacher' | 'admin' | null;
 }
@@ -34,55 +38,105 @@ interface StudentPortalProps {
 }
 
 const sections = [
-  { id: 1, title: 'Pre-Assessment', icon: '📋', completed: 0 },
-  { id: 2, title: 'Lesson 1 – Climate Correlation Analysis', icon: '📊', completed: 0 },
-  { id: 3, title: 'Lesson 2 – Climate Linear Regression Equations', icon: '📈', completed: 0 },
-  { id: 4, title: 'Lesson 3 – Climate Predictions and Applications', icon: '🎯', completed: 0 },
-  { id: 5, title: 'Post Assessment', icon: '✅', completed: 0 },
-  { id: 6, title: 'Performance Summary', icon: '📚', completed: 0 }
+  { id: 1, title: 'Pre-Assessment', icon: '📋' },
+  { id: 2, title: 'Lesson 1 – Climate Correlation Analysis', icon: '📊' },
+  { id: 3, title: 'Lesson 2 – Climate Linear Regression Equations', icon: '📈' },
+  { id: 4, title: 'Lesson 3 – Climate Predictions and Applications', icon: '🎯' },
+  { id: 5, title: 'Post Assessment', icon: '✅' },
+  { id: 6, title: 'Performance Summary', icon: '📚' }
 ];
 
 const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, onOpenSection, initialTab }) => {
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'sections'>('overview');
-  const [sectionProgress, setSectionProgress] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+  // statuses for each activity
+  const [activityStatuses, setActivityStatuses] = useState<
+    Record<ActivityType | 'performance', {
+      submitted: boolean;
+      feedback?: any;
+      acknowledged: boolean;
+    }>
+  >({
+    pre: { submitted: false, feedback: undefined, acknowledged: false },
+    lesson1: { submitted: false, feedback: undefined, acknowledged: false },
+    lesson2: { submitted: false, feedback: undefined, acknowledged: false },
+    lesson3: { submitted: false, feedback: undefined, acknowledged: false },
+    post: { submitted: false, feedback: undefined, acknowledged: false },
+    performance: { submitted: false, feedback: undefined, acknowledged: false }
+  });
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
     if (initialTab) setActiveTab(initialTab);
   }, [initialTab]);
 
+  // load statuses from Supabase
   useEffect(() => {
-    const progress = getUserProgress(user.username);
-    // Derive Performance Summary (id 6) as 20% per fully completed section 1..5
-    const ids = [1,2,3,4,5];
-    const completedCount = ids.reduce((acc, id) => acc + ((progress[id] === 100) ? 1 : 0), 0);
-    const perf = Math.min(100, completedCount * 20);
-    setSectionProgress({ ...progress, 6: perf });
-  }, [user.username]);
+    const load = async () => {
+      try {
+        let studentId = user?.id || '';
+        if (!studentId) {
+          const prof = await getMyProfile();
+          studentId = prof?.id || '';
+        }
+        if (!studentId) return;
+        const resps = await getResponsesForStudent(studentId);
+        const fbs = await getFeedbackForStudent(studentId);
+        const mapStatus: any = {
+          pre: { submitted: false, feedback: undefined, acknowledged: false },
+          lesson1: { submitted: false, feedback: undefined, acknowledged: false },
+          lesson2: { submitted: false, feedback: undefined, acknowledged: false },
+          lesson3: { submitted: false, feedback: undefined, acknowledged: false },
+          post: { submitted: false, feedback: undefined, acknowledged: false }
+        };
+        resps.forEach(r => {
+          if (r.activity_type in mapStatus) {
+            mapStatus[r.activity_type].submitted = true;
+          }
+        });
+        fbs.forEach(f => {
+          if (f.activity_type in mapStatus) {
+            mapStatus[f.activity_type].feedback = f;
+            mapStatus[f.activity_type].acknowledged = !!f.acknowledged;
+          }
+        });
+        setActivityStatuses({ ...mapStatus, performance: { submitted: false, feedback: undefined, acknowledged: false } });
+      } catch (e) {
+        console.error('failed to load activity statuses', e);
+      }
+    };
+    load();
+  }, [user, user?.id]);
 
   useEffect(() => {
     // Show confetti for first newly completed section not yet rewarded
-    const completed = Object.entries(sectionProgress)
-      .filter(([_, v]) => (v as number) === 100)
-      .map(([k]) => Number(k));
-    if (completed.length === 0) return;
-    const shown = getRewardShownSections(user.username);
-    const newlyCompleted = completed.find(id => !shown.includes(id));
-    if (newlyCompleted) {
-      setShowConfetti(true);
-      markRewardShown(user.username, newlyCompleted as any);
-    }
-  }, [sectionProgress, user.username]);
+    // Note: sectionProgress would come from lesson completion tracking if needed
+    // For now, we'll skip confetti or track it differently
+  }, [user.username]);
+
+  const activityTypeForId = (id: number): ActivityType | null =>
+    id === 1 ? 'pre' : id === 2 ? 'lesson1' : id === 3 ? 'lesson2' : id === 4 ? 'lesson3' : id === 5 ? 'post' : null;
 
   const isSectionLocked = (sectionId: number) => {
     if (user.role === 'admin') return false;
-    // Do not lock Performance Summary (id 6) — always accessible to students
     if (sectionId === 6) return false;
-    // If Pre-Assessment (1) or Post-Assessment (5) is already completed, make it inaccessible
-    if ((sectionId === 1 || sectionId === 5) && (sectionProgress[sectionId] || 0) === 100) return true;
-    if (sectionId === 1) return false;
-    const prevProgress = sectionProgress[sectionId - 1] || 0;
-    return prevProgress !== 100;
+    const current = activityTypeForId(sectionId);
+    if (!current) return false;
+    // if previous activity not satisfied
+    if (sectionId > 1) {
+      const prevType = activityTypeForId(sectionId - 1);
+      if (prevType) {
+        const prev = activityStatuses[prevType];
+        if (!prev.submitted || !prev.feedback || !prev.acknowledged) {
+          return true;
+        }
+      }
+    }
+    // optionally prevent revisit after completion
+    const myStatus = activityStatuses[current];
+    if ((sectionId === 1 || sectionId === 5) && myStatus?.submitted && myStatus?.feedback && myStatus?.acknowledged) {
+      return true;
+    }
+    return false;
   };
 
   const handleSectionClick = (sectionId: number) => {
@@ -226,14 +280,20 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
                     {isSectionLocked(section.id) && <span className="section-lock-icon" title="Locked until previous section is completed">🔒</span>}
                   </div>
                   <h3>{section.title}</h3>
-                  <ProgressBar progress={sectionProgress[section.id] || 0} />
-                  <p className="progress-text">{sectionProgress[section.id] || 0}% Complete</p>
-
-                  {sectionProgress[section.id] === 100 && (
-                    <div className="section-content">
-                      <p>🎉 Reward unlocked! Great job completing this section.</p>
-                    </div>
-                  )}
+                  {/* status indicator based on Supabase-backed statuses */}
+                  {(() => {
+                    const type = activityTypeForId(section.id);
+                    if (!type) return null;
+                    const st = activityStatuses[type];
+                    let label = 'Not started';
+                    if (st) {
+                      if (!st.submitted) label = 'Not started';
+                      else if (st.submitted && !st.feedback) label = 'Submitted';
+                      else if (st.feedback && !st.acknowledged) label = 'Waiting feedback';
+                      else if (st.feedback && st.acknowledged) label = 'Completed';
+                    }
+                    return <p className="progress-text">{label}</p>;
+                  })()}
                 </div>
               ))}
             </div>

@@ -3,6 +3,9 @@ import '../../styles/Lesson.css';
 import { useEffect, useMemo, useState } from 'react';
 import ProgressBar from '../../components/ProgressBar';
 import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1All, getUserProgress, saveLesson3Phase1Activity2, getLesson3Phase1Activity2All, saveLesson3Phase2Activity1, getLesson3Phase2Activity1All, saveLesson3Phase2Activity2, getLesson3Phase2Activity2All, saveLesson3Phase2Activity3, getLesson3Phase2Activity3All, saveLesson3Phase3Activity1, getLesson3Phase3Activity1All, saveLesson3Phase4PeerReview, getLesson3Phase4ReviewAll, saveLesson3Phase4Reflection, getLesson3Phase4CompleteAll } from '../../services/progressService';
+import { ActivityType, upsertResponse } from '../../services/responsesService';
+import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
   username: string;
@@ -31,7 +34,25 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [open, setOpen] = useState<{ overview: boolean; p1: boolean; p2: boolean; p3: boolean; p4: boolean }>({ overview: false, p1: false, p2: false, p3: false, p4: false });
   const [completedPhases, setCompletedPhases] = useState<number[]>([]);
   const progressPct = useMemo(() => Math.round((completedPhases.length / 4) * 100), [completedPhases]);
+  const [serverFeedback, setServerFeedback] = useState<any>(null);
+  
   useEffect(() => { setUserProgress(user.username, 4, progressPct); }, [progressPct, user.username]);
+  
+  // Load server feedback for lesson3
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (!studentId) return;
+        const fb = await getFeedbackForStudentActivity(studentId, 'lesson3');
+        if (fb) setServerFeedback(fb);
+      } catch (e) {
+        console.error('load lesson3 feedback', e);
+      }
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     setOpen({ overview: false, p1: false, p2: false, p3: false, p4: false });
@@ -284,6 +305,26 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
         </div>
       </header>
       <main className="portal-content">
+        {/* show teacher feedback and acknowledge button if available */}
+        {serverFeedback && (
+          <div style={{ padding: '12px 24px', background: '#f9f9f9', margin: '12px 0' }}>
+            <strong>Teacher Feedback:</strong>
+            <p>{serverFeedback.feedback_text}</p>
+            {!serverFeedback.acknowledged && (
+              <button onClick={async () => {
+                const prof = await getMyProfile();
+                const sid = prof?.id;
+                if (sid) {
+                  const fb = await acknowledgeFeedback(sid, 'lesson3');
+                  setServerFeedback(fb);
+                }
+              }}>Acknowledge</button>
+            )}
+            {serverFeedback.acknowledged && serverFeedback.acknowledged_at && (
+              <div style={{ fontSize: '0.9rem', color: '#555' }}>Acknowledged at {new Date(serverFeedback.acknowledged_at).toLocaleString()}</div>
+            )}
+          </div>
+        )}
         <div className="lesson-container">
           <ProgressBar progress={Math.min(100, progressPct + lesson3ExtraPct)} />
           <div className="accordion">
@@ -1566,6 +1607,21 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             } catch (e) { console.error('savePhase4Reflection failed', e); }
 
                             setFinalSubmitted(true);
+                            
+                            // upsert lesson3 response record
+                            try {
+                              const prof = await getMyProfile();
+                              const studentId = prof?.id;
+                              if (studentId) {
+                                await upsertResponse({
+                                  student_id: studentId,
+                                  activity_type: 'lesson3',
+                                  answers: { phase4_reflection: dataUrl || '' }
+                                });
+                              }
+                            } catch (e) {
+                              console.error('upsert lesson3 response', e);
+                            }
 
                             // award 15% one-time
                             try {

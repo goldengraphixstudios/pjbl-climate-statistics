@@ -28,6 +28,11 @@ const TeacherLogin: React.FC<TeacherLoginProps> = ({ onLogin, onBack }) => {
     password: 'cbnhs'
   };
 
+  const ADMIN_TEACHER_CREDENTIALS = {
+    username: 'sirmarco',
+    password: '101997'
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -58,7 +63,8 @@ const TeacherLogin: React.FC<TeacherLoginProps> = ({ onLogin, onBack }) => {
             } else {
               // fallback to local static credentials for teachers
               await new Promise(r => setTimeout(r, 500));
-              if (username === TEACHER_CREDENTIALS.username && password === TEACHER_CREDENTIALS.password) {
+              if ((username === TEACHER_CREDENTIALS.username && password === TEACHER_CREDENTIALS.password) ||
+                  (username === ADMIN_TEACHER_CREDENTIALS.username && password === ADMIN_TEACHER_CREDENTIALS.password)) {
                 onLogin(username, 'teacher');
               } else {
                 setError('Invalid credentials. Please try again.');

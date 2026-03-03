@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../styles/StudentPortal.css';
 import '../../styles/PreAssessment.css';
 import { setUserProgress, savePostAssessmentPart1Score, savePostAssessmentPart1Responses, savePostAssessmentPart2Responses } from '../../services/progressService';
+import { ActivityType, upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
+import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
   username: string;
@@ -66,6 +69,32 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [responses, setResponses] = useState<(Option|null)[]>(Array(totalQuestions).fill(null));
   const [part2Responses, setPart2Responses] = useState<number[]>(Array(17).fill(0));
   const [part2Submitted, setPart2Submitted] = useState(false);
+  const [serverFeedback, setServerFeedback] = useState<any>(null);
+  const [existingResponse, setExistingResponse] = useState<any>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (!studentId) return;
+        const resp = await getResponseForStudentActivity(studentId, 'post');
+        if (resp) {
+          setExistingResponse(resp);
+          if (resp.answers?.part1) setResponses(resp.answers.part1);
+          if (resp.answers?.part2) {
+            setPart2Responses(resp.answers.part2);
+            setPart2Submitted(true);
+          }
+        }
+        const fb = await getFeedbackForStudentActivity(studentId, 'post');
+        if (fb) setServerFeedback(fb);
+      } catch (e) {
+        console.error('load existing post data', e);
+      }
+    };
+    load();
+  }, []);
 
   const globalIndexStartForSet = (setIdx: number) => setQuestionCounts.slice(0, setIdx).reduce((a,b)=>a+b, 0);
   const isSetComplete = (setIdx: number) => {
@@ -81,7 +110,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     setResponses(prev => { const next = [...prev]; next[globalIndex] = opt; return next; });
   };
 
-  const nextSet = () => {
+  const nextSet = async () => {
     if (user.role !== 'admin' && !isSetComplete(currentSet)) return;
     const isLast = currentSet === setQuestionCounts.length - 1;
     if (isLast) {
@@ -92,16 +121,56 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       savePostAssessmentPart1Score(user.username, correct, itemCorrect);
       setPhase('part2');
       setUserProgress(user.username, 5, 50);
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (studentId) {
+          await upsertResponse({
+            student_id: studentId,
+            activity_type: 'post',
+            answers: { part1: responses },
+            correctness: { part1: itemCorrect }
+          });
+        }
+      } catch (e) {
+        console.error('upsert post response part1', e);
+      }
       return;
     }
     setCurrentSet(s => s + 1);
   };
 
-  const submitPart2 = () => {
+  const submitPart2 = async () => {
     if (user.role !== 'admin' && part2Responses.some(v => v === 0)) return;
     savePostAssessmentPart2Responses(user.username, part2Responses);
     setUserProgress(user.username, 5, 100);
     setPart2Submitted(true);
+    try {
+      const prof = await getMyProfile();
+      const studentId = prof?.id;
+      if (studentId) {
+        await upsertResponse({
+          student_id: studentId,
+          activity_type: 'post',
+          answers: { part1: responses, part2: part2Responses }
+        });
+      }
+    } catch (e) {
+      console.error('upsert post response final', e);
+    }
+  };
+
+  const handleAcknowledge = async () => {
+    try {
+      const prof = await getMyProfile();
+      const studentId = prof?.id;
+      if (studentId) {
+        const fb = await acknowledgeFeedback(studentId, 'post');
+        setServerFeedback(fb);
+      }
+    } catch (e) {
+      console.error('ackpost', e);
+    }
   };
 
   const renderPart1 = () => {
@@ -676,6 +745,19 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
               </div>
             </section>
           ) : renderPart2()
+        )}
+
+        {serverFeedback && (
+          <section className="teacher-feedback" style={{ padding: '12px 24px', background: '#f9f9f9', marginTop: 16 }}>
+            <h3>Teacher Feedback</h3>
+            <p>{serverFeedback.feedback_text}</p>
+            {!serverFeedback.acknowledged && (
+              <button onClick={handleAcknowledge}>Acknowledge</button>
+            )}
+            {serverFeedback.acknowledged && serverFeedback.acknowledged_at && (
+              <div style={{ fontSize: '0.9rem', color: '#555' }}>Acknowledged at {new Date(serverFeedback.acknowledged_at).toLocaleString()}</div>
+            )}
+          </section>
         )}
       </main>
     </div>

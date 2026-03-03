@@ -5,20 +5,19 @@ import LandingPage from './pages/LandingPage';
 import StudentLogin from './pages/auth/StudentLogin';
 import TeacherLogin from './pages/auth/TeacherLogin';
 import AdminLogin from './pages/auth/AdminLogin';
-import StudentPortal from './pages/portals/StudentPortal';
+import CombinedPortal from './pages/portals/CombinedPortal';
 import PreAssessment from './pages/student_sections/PreAssessment';
 import Lesson1 from './pages/student_sections/Lesson1';
 import Lesson2 from './pages/student_sections/Lesson2';
 import Lesson3 from './pages/student_sections/Lesson3';
 import PostAssessment from './pages/student_sections/PostAssessment';
 import PerformanceSummary from './pages/student_sections/PerformanceSummary';
-import TeacherPortal from './pages/portals/TeacherPortal';
-import AdminPortal from './pages/portals/AdminPortal';
 import { deleteClassAndStudents } from './services/classService';
 import ErrorBoundary from './components/ErrorBoundary';
 
 type UserRole = 'student' | 'teacher' | 'admin' | null;
 interface AuthUser {
+  id?: string; // supabase user id when available
   username: string;
   role: UserRole;
 }
@@ -60,8 +59,8 @@ function App() {
           // lookup profile for role/name
           const profile = await getUserProfileByIdentifier(user.email || user.id);
           const role = (profile && (profile.role as UserRole)) || 'student';
-          setAuthUser({ username: profile?.email || profile?.name || user.id, role });
-          setCurrentPage(`${role}-portal`);
+          setAuthUser({ id: user.id, username: profile?.email || profile?.name || user.id, role });
+          setCurrentPage(`portal`); // all roles use unified portal
         }
       } catch (e) {}
     })();
@@ -104,9 +103,11 @@ function App() {
     setCurrentPage(`${role}-login`);
   };
 
-  const handleLogin = (username: string, role: UserRole) => {
-    setAuthUser({ username, role });
-    setCurrentPage(`${role}-portal`);
+  const handleLogin = (username: string, role: UserRole, id?: string) => {
+    const userObj: AuthUser = { username, role };
+    if (id) userObj.id = id;
+    setAuthUser(userObj);
+    setCurrentPage(`portal`);
   };
 
   const handleLogout = () => {
@@ -180,51 +181,57 @@ function App() {
       {currentPage === 'admin-login' && (
         <AdminLogin onLogin={handleLogin} onBack={() => setCurrentPage('landing')} />
       )}
-      {currentPage === 'student-portal' && authUser && (
-          <StudentPortal user={authUser} onLogout={handleLogout} classes={classes} onOpenSection={openStudentSection} initialTab={portalTab} />
-      )}
-      {currentPage === 'student-section-1' && authUser && (
-        <PreAssessment user={authUser} onBack={() => setCurrentPage('student-portal')} />
-      )}
-      {currentPage === 'student-section-6' && authUser && (
-        <PerformanceSummary user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('student-portal'); }} />
-      )}
-      {currentPage === 'student-section-2' && authUser && (
-        <ErrorBoundary fallback={<div style={{padding:24}}><h2>Unable to load Lesson 1.</h2><p>Please go back and try again.</p><button className="back-btn" onClick={() => { setPortalTab('sections'); setCurrentPage('student-portal'); }}>Back to Dashboard</button></div>}>
-          <Lesson1 user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('student-portal'); }} />
-        </ErrorBoundary>
-      )}
-      {currentPage === 'student-section-3' && authUser && (
-        <Lesson2 user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('student-portal'); }} />
-      )}
-      {currentPage === 'student-section-4' && authUser && (
-        <Lesson3 user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('student-portal'); }} />
-      )}
-      {currentPage === 'student-section-5' && authUser && (
-        <PostAssessment user={authUser} onBack={() => setCurrentPage('student-portal')} />
-      )}
-      {currentPage === 'teacher-portal' && authUser && (
-        <TeacherPortal 
-          user={authUser} 
+      {/* Unified Portal for all authenticated users */}
+      {currentPage === 'portal' && authUser && (
+        <CombinedPortal 
+          user={authUser}
           onLogout={handleLogout}
           classes={classes}
           onCreateClass={handleCreateClass}
           onUpdateStudents={handleUpdateStudents}
           onDeleteClass={handleDeleteClass}
+          onOpenSection={openStudentSection}
+          initialTab={portalTab}
         />
       )}
-      {currentPage === 'admin-portal' && authUser && (
-        <AdminPortal user={authUser} onLogout={handleLogout} classes={classes} />
+      {currentPage === 'student-section-1' && authUser && (
+        <PreAssessment user={authUser} onBack={() => setCurrentPage('portal')} />
       )}
-      {/* Fallback: if an unknown page string is set, show Student Portal to avoid blanks */}
+      {currentPage === 'student-section-6' && authUser && (
+        <PerformanceSummary user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('portal'); }} />
+      )}
+      {currentPage === 'student-section-2' && authUser && (
+        <ErrorBoundary fallback={<div style={{padding:24}}><h2>Unable to load Lesson 1.</h2><p>Please go back and try again.</p><button className="back-btn" onClick={() => { setPortalTab('sections'); setCurrentPage('portal'); }}>Back to Dashboard</button></div>}>
+          <Lesson1 user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('portal'); }} />
+        </ErrorBoundary>
+      )}
+      {currentPage === 'student-section-3' && authUser && (
+        <Lesson2 user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('portal'); }} />
+      )}
+      {currentPage === 'student-section-4' && authUser && (
+        <Lesson3 user={authUser} onBack={() => { setPortalTab('sections'); setCurrentPage('portal'); }} />
+      )}
+      {currentPage === 'student-section-5' && authUser && (
+        <PostAssessment user={authUser} onBack={() => setCurrentPage('portal')} />
+      )}
+      {/* Fallback: if an unknown page string is set, show portal */}
       {authUser && !(
         [
           'landing','student-login','teacher-login','admin-login',
-          'student-portal','student-section-1','student-section-2','student-section-3','student-section-4','student-section-5','student-section-6',
-          'teacher-portal','admin-portal'
+          'portal',
+          'student-section-1','student-section-2','student-section-3','student-section-4','student-section-5','student-section-6'
         ] as string[]
       ).includes(currentPage) && (
-        <StudentPortal user={authUser} onLogout={handleLogout} classes={classes} onOpenSection={openStudentSection} initialTab={portalTab} />
+        <CombinedPortal 
+          user={authUser}
+          onLogout={handleLogout}
+          classes={classes}
+          onCreateClass={handleCreateClass}
+          onUpdateStudents={handleUpdateStudents}
+          onDeleteClass={handleDeleteClass}
+          onOpenSection={openStudentSection}
+          initialTab={portalTab}
+        />
       )}
     </div>
   );

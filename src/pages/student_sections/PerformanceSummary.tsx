@@ -1,8 +1,11 @@
 import '../../styles/StudentPortal.css';
 import '../../styles/Lesson.css';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { getAssessmentScores, getLesson1State } from '../../services/progressService';
 import { getUserProgress } from '../../services/progressService';
+import { ActivityType, getResponsesForStudent } from '../../services/responsesService';
+import { getFeedbackForStudent } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
   username: string;
@@ -29,7 +32,44 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
     return user.username;
   })();
 
-  const sectionProgress = getUserProgress(user.username);
+  const [sectionProgress, setSectionProgress] = useState<Record<number, number>>({});
+  const [responseRows, setResponseRows] = useState<any[]>([]);
+  const [feedbackRows, setFeedbackRows] = useState<any[]>([]);
+
+  const loadData = async () => {
+    try {
+      let studentId = '';
+      const prof = await getMyProfile();
+      if (prof?.id) studentId = prof.id;
+      // fallback: nothing
+      if (!studentId) return;
+      const resps = await getResponsesForStudent(studentId);
+      setResponseRows(resps);
+      const fbs = await getFeedbackForStudent(studentId);
+      setFeedbackRows(fbs);
+      // compute sectionProgress similar to before using resps + fbs
+      const progress: Record<number, number> = {};
+      ['pre','lesson1','lesson2','lesson3','post'].forEach((act, idx) => {
+        const type = act as ActivityType;
+        const resp = resps.find(r=>r.activity_type===type);
+        const fb = fbs.find(f=>f.activity_type===type);
+        if (resp && fb && fb.acknowledged) progress[idx+1] = 100;
+        else if (resp) progress[idx+1] = 50;
+        else progress[idx+1] = 0;
+      });
+      const compCount = [1,2,3,4,5].reduce((acc,id)=>(progress[id]===100?acc+1:acc),0);
+      progress[6] = Math.min(100, compCount * 20);
+      setSectionProgress(progress);
+    } catch (e) {
+      console.error('loadData failed', e);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const iv = setInterval(loadData, 15000);
+    return () => clearInterval(iv);
+  }, [user.username]);
 
   return (
     <div className="portal-container">
@@ -82,79 +122,50 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
                   </div>
                   {
                     (() => {
-                      const all = getAssessmentScores();
-                      const entry = all[user.username];
+                      const resp = responseRows.find((r: any) => r.activity_type === (item.id===1 ? 'pre' : item.id===2 ? 'lesson1' : item.id===3 ? 'lesson2' : item.id===4 ? 'lesson3' : item.id===5 ? 'post' : ''));
+                      const fb = feedbackRows.find((f: any) => f.activity_type === (item.id===1 ? 'pre' : item.id===2 ? 'lesson1' : item.id===3 ? 'lesson2' : item.id===4 ? 'lesson3' : item.id===5 ? 'post' : ''));
                       if (item.id === 1) {
-                        const hasScore = !!(entry && typeof entry.prePart1Correct === 'number');
+                        const score = resp?.answers?.part1Score || resp?.teacher_score;
+                        const hasScore = typeof score === 'number';
                         return (
                           <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${entry!.prePart1Correct} out of 15` : <em>pending</em>}
+                            {hasScore ? `${score} out of 15` : <em>pending</em>}
                           </div>
                         );
                       }
                       if (item.id === 2) {
-                        // Show teacher-recorded Phase 4 Activity 3 total score if available
-                        let score: number | undefined;
-                        try {
-                          const tfRaw = localStorage.getItem('teacherFeedback');
-                          if (tfRaw) {
-                            const tf = JSON.parse(tfRaw || '{}');
-                            const s = tf?.[user.username]?.lesson1?.phaseScores?.[4];
-                            if (typeof s === 'number') score = s;
-                          }
-                        } catch (e) {}
-                        if (typeof score !== 'number') {
-                          try {
-                            const stateObj = getLesson1State(user.username);
-                            const v = stateObj?.phaseData?.[4] as any;
-                            if (v && typeof v.teacherScore === 'number') score = v.teacherScore;
-                          } catch (e) {}
-                        }
+                        const score = resp?.teacher_score;
+                        const hasScore = typeof score === 'number';
                         return (
-                          <div style={{ marginRight: 10, fontWeight: 700, color: score ? 'var(--primary-blue)' : 'inherit' }}>
-                            {typeof score === 'number' ? `${score} out of 32` : <em>pending</em>}
+                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
+                            {hasScore ? `${score} out of 32` : <em>pending</em>}
                           </div>
                         );
                       }
-                        if (item.id === 3) {
-                          // Lesson 2: check teacherFeedback for lesson2 recorded score (phase 4)
-                          let score2: number | undefined;
-                          try {
-                            const tfRaw = localStorage.getItem('teacherFeedback');
-                            if (tfRaw) {
-                              const tf = JSON.parse(tfRaw || '{}');
-                              const s = tf?.[user.username]?.lesson2?.phaseScores?.[4];
-                              if (typeof s === 'number') score2 = s;
-                            }
-                          } catch (e) {}
-                          return (
-                            <div style={{ marginRight: 10, fontWeight: 700, color: score2 ? 'var(--primary-blue)' : 'inherit' }}>
-                              {typeof score2 === 'number' ? `${score2} out of 32` : <em>pending</em>}
-                            </div>
-                          );
-                        }
-                        if (item.id === 4) {
-                          // Lesson 3: check teacherFeedback for lesson3 recorded score (phase 3)
-                          let score3: number | undefined;
-                          try {
-                            const tfRaw = localStorage.getItem('teacherFeedback');
-                            if (tfRaw) {
-                              const tf = JSON.parse(tfRaw || '{}');
-                              const s = tf?.[user.username]?.lesson3?.phaseScores?.[3];
-                              if (typeof s === 'number') score3 = s;
-                            }
-                          } catch (e) {}
-                          return (
-                            <div style={{ marginRight: 10, fontWeight: 700, color: score3 ? 'var(--primary-blue)' : 'inherit' }}>
-                              {typeof score3 === 'number' ? `${score3} out of 32` : <em>pending</em>}
-                            </div>
-                          );
-                        }
-                      if (item.id === 5) {
-                        const hasScore = !!(entry && typeof entry.postPart1Correct === 'number');
+                      if (item.id === 3) {
+                        const score = resp?.teacher_score;
+                        const hasScore = typeof score === 'number';
                         return (
                           <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${entry!.postPart1Correct} out of 15` : <em>pending</em>}
+                            {hasScore ? `${score} out of 32` : <em>pending</em>}
+                          </div>
+                        );
+                      }
+                      if (item.id === 4) {
+                        const score = resp?.teacher_score;
+                        const hasScore = typeof score === 'number';
+                        return (
+                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
+                            {hasScore ? `${score} out of 32` : <em>pending</em>}
+                          </div>
+                        );
+                      }
+                      if (item.id === 5) {
+                        const score = resp?.answers?.part1Score || resp?.teacher_score;
+                        const hasScore = typeof score === 'number';
+                        return (
+                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
+                            {hasScore ? `${score} out of 15` : <em>pending</em>}
                           </div>
                         );
                       }

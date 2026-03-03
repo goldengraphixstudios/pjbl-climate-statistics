@@ -23,14 +23,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onRoleSelect }) => {
           <p>Access learning materials and projects</p>
         </div>
         <div className="role-card" onClick={() => onRoleSelect('teacher')}>
-          <div className="role-icon"><TeacherCalendarIcon /></div>
-          <h3>Teacher</h3>
-          <p>Manage classes and track progress</p>
-        </div>
-        <div className="role-card" onClick={() => onRoleSelect('admin')}>
           <div className="role-icon"><AdminShieldIcon /></div>
-          <h3>Administrator</h3>
-          <p>Oversee system and user management</p>
+          <h3>Teacher / Administrator</h3>
+          <p>Manage classes, track progress, and oversee system</p>
         </div>
       </section>
 

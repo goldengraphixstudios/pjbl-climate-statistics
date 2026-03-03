@@ -1713,18 +1713,92 @@ export const savePreAssessmentPart1Score = (username: string, correctCount: numb
   localStorage.setItem(SCORES_KEY, JSON.stringify(all));
 };
 
-export const savePreAssessmentPart1Responses = (username: string, responses: string[]) => {
+export const savePreAssessmentPart1Responses = async (username: string, responses: string[]) => {
   const raw = localStorage.getItem(SCORES_KEY);
   const all: AssessmentScores = raw ? JSON.parse(raw) : {};
   all[username] = { ...(all[username] || {}), prePart1Responses: responses } as AssessmentScores[string];
   localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+  
+  // Also save to Supabase
+  try {
+    let userRecord = (await supabase.from('users').select('id').eq('username', username).maybeSingle()).data;
+    const userErr = (await supabase.from('users').select('id').eq('username', username).maybeSingle()).error;
+    if (userErr) {
+      // if fetch itself fails, log and continue
+      console.error('error fetching user for responses', userErr);
+    }
+    if (!userRecord) {
+      console.warn('no user found when saving responses for', username);
+      // create a minimal profile row so we can associate responses
+      const dummyEmail = `${username}@example.invalid`;
+      const { data: newUser, error: createErr } = await supabase
+        .from('users')
+        .insert({ username, role: 'student', email: dummyEmail })
+        .select('id')
+        .maybeSingle();
+      if (createErr) {
+        console.error('failed to create missing user', createErr);
+      } else {
+        userRecord = newUser;
+        if (userRecord?.id) {
+          console.log('created new user id', userRecord.id);
+        }
+      }
+    }
+    if (userRecord && userRecord.id) {
+      console.log('inserting responses row for user id', userRecord.id);
+      const { error: insertErr } = await supabase.from('responses').insert({
+        student_id: userRecord.id as string,
+        question_id: 'pre_assessment_part1',
+        response_json: JSON.stringify({ responses, submitted_at: new Date().toISOString() })
+      });
+      if (insertErr) console.error('insert error', insertErr);
+    }
+  } catch (e) {
+    console.error('Failed to save responses to Supabase:', e);
+  }
 };
 
-export const savePreAssessmentPart2Responses = (username: string, responses: number[]) => {
+export const savePreAssessmentPart2Responses = async (username: string, responses: number[]) => {
   const raw = localStorage.getItem(SCORES_KEY);
   const all: AssessmentScores = raw ? JSON.parse(raw) : {};
   all[username] = { ...(all[username] || {}), prePart2Responses: responses };
   localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+  
+  // Also save to Supabase
+  try {
+    let userRecord = (await supabase.from('users').select('id').eq('username', username).maybeSingle()).data;
+    const userErr = (await supabase.from('users').select('id').eq('username', username).maybeSingle()).error;
+    if (userErr) console.error('error fetching user for responses', userErr);
+    if (!userRecord) {
+      console.warn('no user found when saving responses for', username);
+      const dummyEmail = `${username}@example.invalid`;
+      const { data: newUser, error: createErr } = await supabase
+        .from('users')
+        .insert({ username, role: 'student', email: dummyEmail })
+        .select('id')
+        .maybeSingle();
+      if (createErr) {
+        console.error('failed to create missing user', createErr);
+      } else {
+        userRecord = newUser;
+        if (userRecord?.id) {
+          console.log('created new user id', userRecord.id);
+        }
+      }
+    }
+    if (userRecord && userRecord.id) {
+      console.log('inserting responses row for user id', userRecord.id);
+      const { error: insertErr } = await supabase.from('responses').insert({
+        student_id: userRecord.id as string,
+        question_id: 'pre_assessment_part2',
+        response_json: JSON.stringify({ responses, submitted_at: new Date().toISOString() })
+      });
+      if (insertErr) console.error('insert error', insertErr);
+    }
+  } catch (e) {
+    console.error('Failed to save responses to Supabase:', e);
+  }
 };
 
 export const savePostAssessmentPart1Score = (username: string, correctCount: number, itemCorrect?: boolean[]) => {
@@ -1742,18 +1816,46 @@ export const savePostAssessmentPart1Score = (username: string, correctCount: num
   localStorage.setItem(SCORES_KEY, JSON.stringify(all));
 };
 
-export const savePostAssessmentPart1Responses = (username: string, responses: string[]) => {
+export const savePostAssessmentPart1Responses = async (username: string, responses: string[]) => {
   const raw = localStorage.getItem(SCORES_KEY);
   const all: AssessmentScores = raw ? JSON.parse(raw) : {};
   all[username] = { ...(all[username] || {}), postPart1Responses: responses } as AssessmentScores[string];
   localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+  
+  // Also save to Supabase
+  try {
+    const { data: user } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
+    if (user?.id) {
+      await supabase.from('responses').insert({
+        student_id: user.id,
+        question_id: 'post_assessment_part1',
+        response_json: JSON.stringify({ responses, submitted_at: new Date().toISOString() })
+      });
+    }
+  } catch (e) {
+    console.error('Failed to save responses to Supabase:', e);
+  }
 };
 
-export const savePostAssessmentPart2Responses = (username: string, responses: number[]) => {
+export const savePostAssessmentPart2Responses = async (username: string, responses: number[]) => {
   const raw = localStorage.getItem(SCORES_KEY);
   const all: AssessmentScores = raw ? JSON.parse(raw) : {};
   all[username] = { ...(all[username] || {}), postPart2Responses: responses };
   localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+  
+  // Also save to Supabase
+  try {
+    const { data: user } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
+    if (user?.id) {
+      await supabase.from('responses').insert({
+        student_id: user.id,
+        question_id: 'post_assessment_part2',
+        response_json: JSON.stringify({ responses, submitted_at: new Date().toISOString() })
+      });
+    }
+  } catch (e) {
+    console.error('Failed to save responses to Supabase:', e);
+  }
 };
 
 export const getAssessmentScores = (): AssessmentScores => {

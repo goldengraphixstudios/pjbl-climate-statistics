@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../styles/StudentPortal.css';
 import '../../styles/PreAssessment.css';
 import { setUserProgress, savePreAssessmentPart1Score, savePreAssessmentPart1Responses, savePreAssessmentPart2Responses } from '../../services/progressService';
+import { ActivityType, upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
+import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
+import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
   username: string;
@@ -77,7 +80,36 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const totalQuestions = setQuestionCounts.reduce((a,b)=>a+b,0);
   const [responses, setResponses] = useState<(Option|null)[]>(Array(totalQuestions).fill(null));
   const [part2Responses, setPart2Responses] = useState<number[]>(Array(17).fill(0));
+  const [itemCorrect, setItemCorrect] = useState<boolean[]>([]);
   const [part2Submitted, setPart2Submitted] = useState(false);
+  const [serverFeedback, setServerFeedback] = useState<any>(null);
+  const [existingResponse, setExistingResponse] = useState<any>(null);
+
+  // fetch existing response and feedback once
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (!studentId) return;
+        const resp = await getResponseForStudentActivity(studentId, 'pre');
+        if (resp) {
+          setExistingResponse(resp);
+          // prefill answers
+          if (resp.answers?.part1) setResponses(resp.answers.part1);
+          if (resp.answers?.part2) {
+            setPart2Responses(resp.answers.part2);
+            setPart2Submitted(true);
+          }
+        }
+        const fb = await getFeedbackForStudentActivity(studentId, 'pre');
+        if (fb) setServerFeedback(fb);
+      } catch (e) {
+        console.error('load existing preassessment data', e);
+      }
+    };
+    load();
+  }, []);
 
   const globalIndexStartForSet = (setIdx: number) => setQuestionCounts.slice(0, setIdx).reduce((a,b)=>a+b, 0);
   const isSetComplete = (setIdx: number) => {
@@ -97,31 +129,92 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     });
   };
 
-  const nextSet = () => {
+  const nextSet = async () => {
     if (user.role !== 'admin' && !isSetComplete(currentSet)) return;
     const isLast = currentSet === setQuestionCounts.length - 1;
       if (isLast) {
       // Evaluate silently and proceed to part 2
-      const itemCorrect = responses.map((r, i) => r === answerKey[i]);
-      const correct = itemCorrect.filter(Boolean).length;
-      savePreAssessmentPart1Score(user.username, correct, itemCorrect);
+      const itemCorrectLocal = responses.map((r, i) => r === answerKey[i]);
+      setItemCorrect(itemCorrectLocal);
+      const correct = itemCorrectLocal.filter(Boolean).length;
+      savePreAssessmentPart1Score(user.username, correct, itemCorrectLocal);
       // save raw responses (letters) so teacher can review them
-      savePreAssessmentPart1Responses(user.username, responses.map(r => r || ''));
+      try {
+        console.log('saving part1 responses to supabase', responses);
+        await savePreAssessmentPart1Responses(user.username, responses.map(r => r || ''));
+        console.log('saved part1 responses');
+      } catch (err) {
+        console.error('error saving part1 responses', err);
+      }
       setPhase('part2');
       // mark half-progress for pre-assessment part completion
       setUserProgress(user.username, 1, 50);
+      // also upsert unified response row
+      try {
+        const prof = await getMyProfile();
+        const studentId = prof?.id;
+        if (studentId) {
+          await upsertResponse({
+            student_id: studentId,
+            activity_type: 'pre',
+            answers: { part1: responses }
+          });
+        }
+      } catch (e) {
+        console.error('upsert pre response part1', e);
+      }
       return;
     }
     // save current Part 1 responses incrementally so teacher can view letters as students progress
-    savePreAssessmentPart1Responses(user.username, responses.map(r => r || ''));
+    try {
+      console.log('saving incremental part1 responses', currentSet, responses);
+      await savePreAssessmentPart1Responses(user.username, responses.map(r => r || ''));
+      console.log('incremental save done');
+    } catch (err) {
+      console.error('error saving incremental responses', err);
+    }
     setCurrentSet(s => s + 1);
   };
 
-  const submitPart2 = () => {
+  const submitPart2 = async () => {
     if (user.role !== 'admin' && part2Responses.some(v => v === 0)) return; // must answer all 17 unless admin
-    savePreAssessmentPart2Responses(user.username, part2Responses);
+    try {
+      console.log('saving part2 responses', part2Responses);
+      await savePreAssessmentPart2Responses(user.username, part2Responses);
+      console.log('saved part2 responses');
+    } catch (err) {
+      console.error('error saving part2 responses', err);
+    }
     setUserProgress(user.username, 1, 100);
     setPart2Submitted(true);
+    // persist combined to responses table
+    try {
+      const prof = await getMyProfile();
+      const studentId = prof?.id;
+      if (studentId) {
+        await upsertResponse({
+          student_id: studentId,
+          activity_type: 'pre',
+          answers: { part1: responses, part2: part2Responses },
+          correctness: { part1: itemCorrect }
+        });
+      }
+    } catch (e) {
+      console.error('upsert pre response final', e);
+    }
+  };
+
+  const handleAcknowledge = async () => {
+    try {
+      const prof = await getMyProfile();
+      const studentId = prof?.id;
+      if (studentId) {
+        const fb = await acknowledgeFeedback(studentId, 'pre');
+        setServerFeedback(fb);
+      }
+    } catch (e) {
+      console.error('ackpre', e);
+    }
   };
 
   const renderPart1 = () => {
@@ -730,6 +823,20 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
               </div>
             </section>
           ) : renderPart2()
+        )}
+
+        {/* teacher feedback block */}
+        {serverFeedback && (
+          <section className="teacher-feedback" style={{ padding: '12px 24px', background: '#f9f9f9', marginTop: 16 }}>
+            <h3>Teacher Feedback</h3>
+            <p>{serverFeedback.feedback_text}</p>
+            {!serverFeedback.acknowledged && (
+              <button onClick={handleAcknowledge}>Acknowledge</button>
+            )}
+            {serverFeedback.acknowledged && serverFeedback.acknowledged_at && (
+              <div style={{ fontSize: '0.9rem', color: '#555' }}>Acknowledged at {new Date(serverFeedback.acknowledged_at).toLocaleString()}</div>
+            )}
+          </section>
         )}
       </main>
     </div>
