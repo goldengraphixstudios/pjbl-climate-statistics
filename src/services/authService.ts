@@ -9,24 +9,27 @@ const defaultStudents: Record<string, string> = {
 
 export const validateStudentCredentials = async (username: string, password: string): Promise<boolean> => {
   // Prefer Supabase Auth when an email is provided
-  try {
-    if (username.includes('@')) {
+  if (username.includes('@')) {
+    try {
       const res = await signIn(username, password);
       if (res.error) return false;
       return !!res.data?.session;
+    } catch (e) {
+      return false;
     }
+  }
 
-    // If the user provided a username (not an email), look up the linked email
-    // in the `users` profile table and attempt Supabase sign-in with that email.
-    try {
-      const profile = await supabase.from('users').select('email').eq('username', username).maybeSingle();
-      if (!profile.error && profile.data?.email) {
+  // If the user provided a username (not an email), try to look up the linked email
+  // in the `users` profile table and attempt Supabase sign-in with that email.
+  try {
+    const profile = await supabase.from('users').select('email').eq('username', username).maybeSingle();
+    if (!profile.error && profile.data?.email) {
+      try {
         const res = await signIn(profile.data.email, password);
         if (!res.error && res.data?.session) return true;
-        return false;
+      } catch (e) {
+        // fall through to legacy/local fallback
       }
-    } catch (e) {
-      // fall through to legacy/local fallback
     }
   } catch (e) {
     // fall through to legacy/local fallback

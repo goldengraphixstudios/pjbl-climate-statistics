@@ -22,11 +22,15 @@ Interactive, role-based digital learning material with dashboards for students, 
 - **Password**: 101997
 
 ### Student Login
-Sample credentials (auto-generated from teacher's student list):
+Default student credentials (built-in for testing):
 - **Username**: john_doe
 - **Password**: doe123
+- **Username**: jane_smith
+- **Password**: smith456
+- **Username**: student_001
+- **Password**: pass001
 
-(Additional student credentials can be created through the Teacher Portal)
+Additional student credentials can be created through the Teacher Portal. Students can log out from the Student Dashboard and log back in with their credentials or create new accounts through teacher enrollment.
 
 ## Project Structure
 
