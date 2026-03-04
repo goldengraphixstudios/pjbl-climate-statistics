@@ -29,6 +29,8 @@ Default student credentials (built-in for testing):
 - **Password**: smith456
 - **Username**: student_001
 - **Password**: pass001
+- **Username**: test_user
+- **Password**: testpass123
 
 Additional student credentials can be created through the Teacher Portal. Students can log out from the Student Dashboard and log back in with their credentials or create new accounts through teacher enrollment.
 

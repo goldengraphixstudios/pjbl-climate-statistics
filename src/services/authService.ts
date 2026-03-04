@@ -4,7 +4,8 @@ import { supabase, signIn, signUp, signOut } from './supabaseClient';
 const defaultStudents: Record<string, string> = {
   'john_doe': 'doe123',
   'jane_smith': 'smith456',
-  'student_001': 'pass001'
+  'student_001': 'pass001',
+  'test_user': 'testpass123'
 };
 
 export const validateStudentCredentials = async (username: string, password: string): Promise<boolean> => {
