@@ -32,3 +32,37 @@ Notes
 - `public.lessons` is not the source of lesson submissions or teacher lesson scores.
 - Live lesson output + scoring currently use `public.responses`.
 - If the live website still shows the old behavior after these fixes, the deployed build is stale and needs a new deploy from the updated repo.
+
+[2026-03-10 11:28] Admin analytics stale-data audit
+
+Observed issues
+- The active Admin portal still rendered some survey tables and printable reports from legacy local browser assessment state rather than the live Supabase `responses` rows already loaded for the page.
+- This created a likely mismatch where:
+  - on-screen lesson/pre/post data could look correct in one area
+  - survey tables or print/export views could still appear empty or stale
+
+Diagnosis
+- The active portal had already been partially migrated:
+  - response rows were loaded from Supabase
+  - lesson scoring/results used those rows
+  - CSV exports had been moved to live data
+- But several visible/printable branches still called the old localStorage-driven helpers.
+
+Self-heal actions applied
+- Replaced legacy localStorage-backed survey table rows with `responseRows`-backed data in:
+  - Initial Survey tab
+  - End-of-Lesson Survey tab
+- Replaced printable report data sources for:
+  - Pre-Assessment
+  - Post-Assessment
+  - Initial Survey
+  - End-of-Lesson Survey
+- Added `buildSurveyResponses()` helper so survey summaries also derive from current response rows.
+
+Files touched
+- src/pages/portals/AdminPortal.tsx
+
+Verification
+- repo-local TypeScript build succeeded
+- repo-local Vite build succeeded
+- Full browser-flow verification remains pending a reliable local preview/deploy target

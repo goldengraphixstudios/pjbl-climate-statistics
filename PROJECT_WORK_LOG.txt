@@ -264,3 +264,48 @@ How To Use Going Forward
   - repo-local `tsc` and `vite` binaries executed successfully from the workspace shell
 - Commit: not yet committed
 - Push: not yet pushed
+
+[2026-03-10 02:07] Bugfix: student feedback acknowledgment access and live-data exports
+- Fixed a student dashboard progression bug where already-submitted sections were being card-locked, which could prevent students from reopening a finished activity to view and acknowledge teacher feedback.
+- Student dashboard now:
+  - still blocks future sections until the previous feedback is acknowledged
+  - but allows reopening an already submitted section so acknowledgment can actually happen
+- Fixed Admin portal CSV exports for:
+  - pre-assessment
+  - initial survey
+  - post-assessment
+  - end-of-lesson survey
+  so they now read from live Supabase `responses` rows instead of old local browser score state.
+- Files:
+  - src/pages/portals/StudentPortal.tsx
+  - src/pages/portals/AdminPortal.tsx
+- Local verification:
+  - repo-local `tsc` and `vite` binaries executed successfully from the workspace shell
+- Commit: pending follow-up checkpoint
+- Push: pending follow-up checkpoint
+
+[2026-03-10 11:28] Deep bug sweep: Admin analytics/source-of-truth cleanup
+- Audited active Student portal, student Performance Summary, active Admin portal, and response/feedback services for live-data mismatches and likely runtime bugs.
+- Found that the active Admin portal still mixed live Supabase response rows with legacy localStorage-only assessment data in multiple places:
+  - Initial Survey visible student-response table
+  - End-of-Lesson Survey visible student-response table
+  - printable Pre-Assessment report
+  - printable Post-Assessment report
+  - printable Initial Survey report
+  - printable End-of-Lesson Survey report
+- Fixed those paths so they consistently use the already loaded Supabase-backed `responseRows` state instead of `getAssessmentScores()` / local browser state.
+- Added `buildSurveyResponses()` helper for response-backed survey summaries.
+- Retained existing lesson result/scoring flow and class record behavior.
+- Files:
+  - src/pages/portals/AdminPortal.tsx
+- Local verification:
+  - repo-local `tsc` executed successfully
+  - repo-local `vite build` executed successfully
+  - targeted browser sanity attempt was partially blocked by local tooling setup:
+    - detached `vite` preview/dev server launch was unreliable in this shell
+    - Puppeteer worked only when pointed at local Edge, but static `dist/` serving under plain `http.server` produced expected base-path 404s because the app is built for `/pjbl-climate-statistics/`
+  - result: code-level verification is solid; full authenticated browser-flow QA still needs a proper preview/deploy target
+- Residual note:
+  - legacy inactive teacher portal file `src/pages/portals/PerformanceSummary.tsx` still contains old localStorage-era logic, but it is not the active combined portal path currently being used
+- Commit: not yet committed
+- Push: not yet pushed

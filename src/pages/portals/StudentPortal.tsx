@@ -160,11 +160,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
         }
       }
     }
-    // prevent reopening a section after a final submission exists
-    const myStatus = activityStatuses[current];
-    if (myStatus?.submitted) {
-      return true;
-    }
     return false;
   };
 

@@ -6,8 +6,6 @@ import ClassManagement from '../../components/teacher/ClassManagement';
 import StudentList from '../../components/teacher/StudentList';
 import { FeedbackRow, getFeedbackForStudents } from '../../services/feedbackService';
 import { ActivityType, ResponseRow, getResponsesForStudents, teacherUpdateScore } from '../../services/responsesService';
-import { getPreAssessmentSummary, getInitialSurveySummary, getAssessmentScores, getPostAssessmentSummary, getEndOfLessonSurveySummary } from '../../services/progressService';
-import { getPreAssessmentSummaryFromDB, getInitialSurveySummaryFromDB, getPostAssessmentSummaryFromDB, getEndOfLessonSurveySummaryFromDB, getClassRecordForExport } from '../../services/analyticsService';
 import { getClassRecord } from '../../services/submissionsService';
 import * as XLSX from 'xlsx';
 import '../../styles/AdminPortal.css';
@@ -79,6 +77,12 @@ function buildFrequencyItems(rows: ResponseRow[]) {
     });
   });
   return items;
+}
+
+function buildSurveyResponses(rows: ResponseRow[]) {
+  return rows
+    .map((row) => row.answers?.part2)
+    .filter((answers): answers is number[] => Array.isArray(answers) && answers.length === 17);
 }
 
 function getQuartileStats(values: number[]) {
@@ -307,7 +311,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       .filter((group): group is { lc12: number; lc34: number; lc56: number } => !!group)
   };
   const usernames = filteredStudents.map((s: any) => s.username).filter(Boolean);
-  const initSummary = getInitialSurveySummary(usernames);
+  const initSummary = {
+    responses: buildSurveyResponses(preResponseRows)
+  };
   const postSummary = {
     total: filteredStudents.length,
     tested: postResponseRows.length,
@@ -316,7 +322,38 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       .map((row) => deriveGroupScores(row))
       .filter((group): group is { lc12: number; lc34: number; lc56: number } => !!group)
   };
-  const endSummary = getEndOfLessonSurveySummary(usernames);
+  const endSummary = {
+    responses: buildSurveyResponses(postResponseRows)
+  };
+
+  const getAssessmentRowsForExport = (activityType: 'pre' | 'post') => {
+    return filteredStudents.map((student: any) => {
+      const response = getLatestResponse(student.id, activityType);
+      const answers = Array.isArray(response?.answers?.part1) ? response.answers.part1 : null;
+      const derivedScore = Array.isArray(response?.correctness?.part1)
+        ? response.correctness.part1.filter(Boolean).length
+        : null;
+      const score = response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null;
+      return {
+        name: student.name || '',
+        username: student.username || '',
+        answers,
+        score
+      };
+    }).filter((row) => Array.isArray(row.answers));
+  };
+
+  const getSurveyRowsForExport = (activityType: 'pre' | 'post') => {
+    return filteredStudents.map((student: any) => {
+      const response = getLatestResponse(student.id, activityType);
+      const responses = Array.isArray(response?.answers?.part2) ? response.answers.part2 : null;
+      return {
+        name: student.name || '',
+        username: student.username || '',
+        responses
+      };
+    }).filter((row) => Array.isArray(row.responses));
+  };
 
   const getLessonRowsForActivity = (activityType: 'lesson1' | 'lesson2' | 'lesson3') => {
     return filteredStudents.map((s: any) => {
@@ -525,34 +562,18 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
 
     if (format === 'csv') {
       if (activeTab === 'pre-assessment') {
-        // CSV should contain the "List of Students and their Responses" (Pre Part I)
-        const scores = getAssessmentScores();
         const rows: string[][] = [];
-        // header: Name (Last, First), Username, Q1..Q15, Score
         rows.push(['Name','Username', ...Array.from({length:15}, (_,i)=>`Q${i+1}`), 'Score']);
-        const fmt = (full: string) => {
-          const p = (full || '').trim().split(/\s+/);
-          if (p.length <= 1) return full;
-          const last = p[p.length-1];
-          const first = p.slice(0, p.length-1).join(' ');
-          return `${last}, ${first}`;
-        };
-        filteredStudents.forEach((s: any) => {
-          const entry = scores[s.username] || {} as any;
-          const answers = Array.isArray(entry.prePart1Responses) && entry.prePart1Responses.length === 15 ? entry.prePart1Responses : null;
-          const score = typeof entry.prePart1Correct === 'number' ? entry.prePart1Correct : null;
-          if (!answers) return; // only include actual takers
-          rows.push([fmt(s.name || ''), s.username || '', ...answers.map(a=>String(a)), score != null ? String(score) : '']);
+        getAssessmentRowsForExport('pre').forEach((row) => {
+          rows.push([
+            formatDisplayName(row.name || ''),
+            row.username || '',
+            ...(row.answers || []).map((answer: any) => String(answer)),
+            row.score != null ? String(row.score) : ''
+          ]);
         });
-        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
         const label = sectionFilter === 'ALL' ? 'all' : sectionFilter.replace(/\s+/g,'_').toLowerCase();
-        a.download = `pre_assessment_responses_${label}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadCsvFile(rows, `pre_assessment_responses_${label}.csv`);
       } else if (activeTab === 'initial-survey') {
         // Export both the Indicators & Statements summary and the per-student responses
         const resp = initSummary.responses || [];
@@ -571,57 +592,28 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         rows.push([]);
         // Student responses section header
         rows.push(['Name','Username', ...Array.from({length:17}, (_,i)=>`Q${i+1}`)]);
-        const all = getAssessmentScores();
-        const fmt = (full: string) => {
-          const p = (full || '').trim().split(/\s+/);
-          if (p.length <= 1) return full;
-          const last = p[p.length-1];
-          const first = p.slice(0, p.length-1).join(' ');
-          return `${last}, ${first}`;
-        };
-        filteredStudents.forEach((s:any) => {
-          const entry = all[s.username] || {} as any;
-          const responses = Array.isArray(entry.prePart2Responses) && entry.prePart2Responses.length===17 ? entry.prePart2Responses : null;
-          if (!responses) return;
-          rows.push([fmt(s.name || ''), s.username || '', ...responses.map(r=>String(r))]);
+        getSurveyRowsForExport('pre').forEach((row) => {
+          rows.push([
+            formatDisplayName(row.name || ''),
+            row.username || '',
+            ...(row.responses || []).map((response: any) => String(response))
+          ]);
         });
-        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
         const label = sectionFilter === 'ALL' ? 'all' : sectionFilter.replace(/\s+/g,'_').toLowerCase();
-        a.download = `initial_survey_full_${label}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadCsvFile(rows, `initial_survey_full_${label}.csv`);
       } else if (activeTab === 'post-assessment') {
-        // CSV should contain the "List of Students and their Responses" (Post Part I)
-        const scores = getAssessmentScores();
         const rows: string[][] = [];
         rows.push(['Name','Username', ...Array.from({length:15}, (_,i)=>`Q${i+1}`), 'Score']);
-        const fmt = (full: string) => {
-          const p = (full || '').trim().split(/\s+/);
-          if (p.length <= 1) return full;
-          const last = p[p.length-1];
-          const first = p.slice(0, p.length-1).join(' ');
-          return `${last}, ${first}`;
-        };
-        filteredStudents.forEach((s: any) => {
-          const entry = scores[s.username] || {} as any;
-          const answers = Array.isArray(entry.postPart1Responses) && entry.postPart1Responses.length === 15 ? entry.postPart1Responses : null;
-          const score = typeof entry.postPart1Correct === 'number' ? entry.postPart1Correct : null;
-          if (!answers) return;
-          rows.push([fmt(s.name || ''), s.username || '', ...answers.map(a=>String(a)), score != null ? String(score) : '']);
+        getAssessmentRowsForExport('post').forEach((row) => {
+          rows.push([
+            formatDisplayName(row.name || ''),
+            row.username || '',
+            ...(row.answers || []).map((answer: any) => String(answer)),
+            row.score != null ? String(row.score) : ''
+          ]);
         });
-        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
         const label = sectionFilter === 'ALL' ? 'all' : sectionFilter.replace(/\s+/g,'_').toLowerCase();
-        a.download = `post_assessment_responses_${label}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadCsvFile(rows, `post_assessment_responses_${label}.csv`);
       } else if (activeTab === 'end-survey') {
         // Export Indicators+Description and per-student responses for End-of-Lesson survey
         const resp = endSummary.responses || [];
@@ -639,34 +631,19 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         rows.push([]);
         // Student responses
         rows.push(['Name','Username', ...Array.from({length:17}, (_,i)=>`Q${i+1}`)]);
-        const all = getAssessmentScores();
-        const fmt = (full: string) => {
-          const p = (full || '').trim().split(/\s+/);
-          if (p.length <= 1) return full;
-          const last = p[p.length-1];
-          const first = p.slice(0, p.length-1).join(' ');
-          return `${last}, ${first}`;
-        };
-        filteredStudents.forEach((s:any) => {
-          const entry = all[s.username] || {} as any;
-          const responses = Array.isArray(entry.postPart2Responses) && entry.postPart2Responses.length===17 ? entry.postPart2Responses : null;
-          if (!responses) return;
-          rows.push([fmt(s.name || ''), s.username || '', ...responses.map(r=>String(r))]);
+        getSurveyRowsForExport('post').forEach((row) => {
+          rows.push([
+            formatDisplayName(row.name || ''),
+            row.username || '',
+            ...(row.responses || []).map((response: any) => String(response))
+          ]);
         });
-        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
         const label = sectionFilter === 'ALL' ? 'all' : sectionFilter.replace(/\s+/g,'_').toLowerCase();
-        a.download = `end_lesson_survey_full_${label}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadCsvFile(rows, `end_lesson_survey_full_${label}.csv`);
       }
     } else {
       // Printable / PDF view
       if (activeTab === 'pre-assessment') {
-        const scores = getAssessmentScores();
         const title = 'Pre-Assessment Results';
         const fmt = (full: string) => {
           const p = (full || '').trim().split(/\s+/);
@@ -686,17 +663,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         const counts = bins.map(b => preSummary.scores.filter(s => s === b).length);
         const maxCount = Math.max(1, ...counts);
         // Frequency of responses per item (A/B/C/D)
-        const all = getAssessmentScores();
-        const items = Array.from({ length: 15 }, () => ({ A: 0, B: 0, C: 0, D: 0 } as Record<string, number>));
-        filteredStudents.forEach((s: any) => {
-          const entry = all[s.username] || {} as any;
-          const answers = Array.isArray(entry.prePart1Responses) && entry.prePart1Responses.length === 15 ? entry.prePart1Responses : null;
-          if (!answers) return;
-          answers.forEach((ans: string, idx: number) => {
-            const a = (ans || '').toUpperCase();
-            if (a === 'A' || a === 'B' || a === 'C' || a === 'D') items[idx][a] = (items[idx][a] || 0) + 1;
-          });
-        });
+        const items = buildFrequencyItems(preResponseRows);
         const totals = items.map(it => it.A + it.B + it.C + it.D);
         const maxTotal = Math.max(1, ...totals);
         const answerKey = ['C','A','C','D','A','B','A','B','A','C','B','A','C','D','A'];
@@ -716,12 +683,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         const s12 = qStats(arr12), s34 = qStats(arr34), s56 = qStats(arr56);
 
         // prepare rows for student responses (actual takers)
-        const rows = filteredStudents.map((s:any) => {
-          const entry = scores[s.username] || {} as any;
-          const answers = Array.isArray(entry.prePart1Responses) && entry.prePart1Responses.length===15 ? entry.prePart1Responses : null;
-          const sc = typeof entry.prePart1Correct === 'number' ? entry.prePart1Correct : null;
-          return { name: s.name || '', username: s.username || '', answers, score: sc };
-        }).filter((r:any)=> r.answers !== null);
+        const rows = getAssessmentRowsForExport('pre').map((row) => ({
+          name: row.name || '',
+          username: row.username || '',
+          answers: row.answers,
+          score: row.score
+        }));
         rows.sort((a:any,b:any)=> fmt(a.name).toLowerCase().localeCompare(fmt(b.name).toLowerCase()));
 
         const html = `
@@ -819,7 +786,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         return;
       }
       if (activeTab === 'post-assessment') {
-        const scores = getAssessmentScores();
         const title = 'Post-Assessment Results';
         const fmt = (full: string) => {
           const p = (full || '').trim().split(/\s+/);
@@ -837,17 +803,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         const counts = bins.map(b => postSummary.scores.filter(s => s === b).length);
         const maxCount = Math.max(1, ...counts);
         // Frequency of responses per item (A/B/C/D)
-        const all = getAssessmentScores();
-        const items = Array.from({ length: 15 }, () => ({ A: 0, B: 0, C: 0, D: 0 } as Record<string, number>));
-        filteredStudents.forEach((s: any) => {
-          const entry = all[s.username] || {} as any;
-          const answers = Array.isArray(entry.postPart1Responses) && entry.postPart1Responses.length === 15 ? entry.postPart1Responses : null;
-          if (!answers) return;
-          answers.forEach((ans: string, idx: number) => {
-            const a = (ans || '').toUpperCase();
-            if (a === 'A' || a === 'B' || a === 'C' || a === 'D') items[idx][a] = (items[idx][a] || 0) + 1;
-          });
-        });
+        const items = buildFrequencyItems(postResponseRows);
         const totals = items.map(it => it.A + it.B + it.C + it.D);
         const maxTotal = Math.max(1, ...totals);
         const answerKey = ['C','A','C','D','A','B','A','B','A','C','B','A','C','D','A'];
@@ -864,12 +820,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
           return { min: sorted[0], q1: q(0.25), med: q(0.5), q3: q(0.75), max: sorted[sorted.length-1] };
         };
         const s12 = qStats(arr12), s34 = qStats(arr34), s56 = qStats(arr56);
-        const rows = filteredStudents.map((s:any) => {
-          const entry = scores[s.username] || {} as any;
-          const answers = Array.isArray(entry.postPart1Responses) && entry.postPart1Responses.length===15 ? entry.postPart1Responses : null;
-          const sc = typeof entry.postPart1Correct === 'number' ? entry.postPart1Correct : null;
-          return { name: s.name || '', username: s.username || '', answers, score: sc };
-        }).filter((r:any)=> r.answers !== null);
+        const rows = getAssessmentRowsForExport('post').map((row) => ({
+          name: row.name || '',
+          username: row.username || '',
+          answers: row.answers,
+          score: row.score
+        }));
         rows.sort((a:any,b:any)=> fmt(a.name).toLowerCase().localeCompare(fmt(b.name).toLowerCase()));
 
         const html = `
@@ -998,12 +954,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
           const first = p.slice(0, p.length-1).join(' ');
           return `${last}, ${first}`;
         };
-        const all = getAssessmentScores();
-        const studentRows = filteredStudents.map((s:any) => {
-          const entry = all[s.username] || {} as any;
-          const responses = Array.isArray(entry.prePart2Responses) && entry.prePart2Responses.length===17 ? entry.prePart2Responses : null;
-          return { name: s.name || '', username: s.username || '', responses };
-        }).filter((r:any)=> r.responses !== null);
+        const studentRows = getSurveyRowsForExport('pre').map((row) => ({
+          name: row.name || '',
+          username: row.username || '',
+          responses: row.responses
+        }));
         studentRows.sort((a:any,b:any)=> fmt(a.name).toLowerCase().localeCompare(fmt(b.name).toLowerCase()));
 
         const level = (m:number) => m>=3.26 ? 'Very High' : m>=2.51 ? 'High' : m>=1.76 ? 'Low' : 'Very Low';
@@ -1091,12 +1046,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
           const first = p.slice(0, p.length-1).join(' ');
           return `${last}, ${first}`;
         };
-        const all = getAssessmentScores();
-        const studentRows = filteredStudents.map((s:any) => {
-          const entry = all[s.username] || {} as any;
-          const responses = Array.isArray(entry.postPart2Responses) && entry.postPart2Responses.length===17 ? entry.postPart2Responses : null;
-          return { name: s.name || '', username: s.username || '', responses };
-        }).filter((r:any)=> r.responses !== null);
+        const studentRows = getSurveyRowsForExport('post').map((row) => ({
+          name: row.name || '',
+          username: row.username || '',
+          responses: row.responses
+        }));
         studentRows.sort((a:any,b:any)=> fmt(a.name).toLowerCase().localeCompare(fmt(b.name).toLowerCase()));
 
         const level = (m:number) => m>=3.26 ? 'Very High' : m>=2.51 ? 'High' : m>=1.76 ? 'Low' : 'Very Low';
@@ -1690,12 +1644,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
               <div style={{ marginTop: 8 }}>
                 <h3>List of Students and their Survey Responses</h3>
                 {(() => {
-                  const all = getAssessmentScores();
-                  const rows = filteredStudents.map((s: any) => {
-                    const entry = all[s.username] || {} as any;
-                    const responses = Array.isArray(entry.prePart2Responses) && entry.prePart2Responses.length === 17 ? entry.prePart2Responses : null;
-                    return { name: s.name || '', username: s.username || '', responses };
-                  }).filter((r:any) => r.responses !== null);
+                  const rows = getSurveyRowsForExport('pre').map((row) => ({
+                    name: row.name || '',
+                    username: row.username || '',
+                    responses: row.responses
+                  }));
                   const fmt = (full: string) => {
                     const p = (full || '').trim().split(/\s+/);
                     if (p.length <= 1) return full;
@@ -2046,12 +1999,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
               <div style={{ marginTop: 8 }}>
                 <h3>List of Students and their Survey Responses</h3>
                 {(() => {
-                  const all = getAssessmentScores();
-                  const rows = filteredStudents.map((s: any) => {
-                    const entry = all[s.username] || {} as any;
-                    const responses = Array.isArray(entry.postPart2Responses) && entry.postPart2Responses.length === 17 ? entry.postPart2Responses : null;
-                    return { name: s.name || '', username: s.username || '', responses };
-                  }).filter((r:any) => r.responses !== null);
+                  const rows = getSurveyRowsForExport('post').map((row) => ({
+                    name: row.name || '',
+                    username: row.username || '',
+                    responses: row.responses
+                  }));
                   const fmt = (full: string) => {
                     const p = (full || '').trim().split(/\s+/);
                     if (p.length <= 1) return full;
