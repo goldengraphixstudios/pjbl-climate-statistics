@@ -1,0 +1,52 @@
+FINAL SIGNOFF QA CHECKLIST
+Prepared: 2026-03-10
+
+Run these before final delivery sign-off.
+
+Student Flow
+- Log in as student
+- Submit pre-assessment
+- Confirm pre-assessment response row exists in public.responses
+- Log in as teacher/admin and send pre-assessment feedback
+- Log back in as student and confirm feedback is visible
+- Acknowledge feedback
+- Confirm Lesson 1 unlocks
+- Submit Lesson 1
+- Confirm Lesson 1 response row exists in public.responses
+- Confirm Lesson 1 draft state exists or updates in public.student_state
+- Log in as teacher/admin and score Lesson 1 + send feedback
+- Log back in as student and confirm Lesson 1 score appears in performance summary
+- Acknowledge Lesson 1 feedback
+- Confirm Lesson 2 unlocks
+- Repeat same flow for Lesson 2
+- Repeat same flow for Lesson 3
+- Complete post-assessment
+- Confirm final feedback and performance summary display correctly
+
+Teacher/Admin Flow
+- Log in as teacher
+- Log in as admin
+- Confirm both land in the shared combined portal
+- Confirm masterlist loads
+- Confirm class list loads
+- Confirm pre-assessment results load from live responses
+- Confirm post-assessment results load from live responses
+- Confirm lesson output tabs load submitted lesson rows
+- Save a score for Lesson 1
+- Save a score for Lesson 2
+- Save a score for Lesson 3
+- Send feedback for assessment and lesson entries
+- Confirm class record reflects saved scores
+- Download CSV/report outputs and inspect contents
+
+Data / Sync Checks
+- Confirm responses.teacher_score updates after teacher scoring
+- Confirm feedback.acknowledged updates after student acknowledgment
+- Confirm no stale browser-only state is required for final submitted records
+- Confirm fresh reload still reflects correct live data
+
+Deployment / Handover
+- Confirm latest code is pushed to client GitHub
+- Confirm documentation files are present in repo root
+- Confirm Supabase credentials used by deployed site are correct
+- Confirm final walkthrough notes are ready for client handover

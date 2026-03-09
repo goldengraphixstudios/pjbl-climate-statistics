@@ -339,6 +339,35 @@ How To Use Going Forward
 - Commit: pending
 - Push: pending
 
+[2026-03-10 13:28] Final handover scope/problem/recommendation documents
+- Added a client-facing summary text file:
+  - `CLIENT_SCOPE_AND_RECOMMENDATIONS.txt`
+- Purpose:
+  - clearly separate delivered contract-side work
+  - identify the actual active data sources
+  - document problems caused by the premade mixed frontend/database state
+  - list improvement items that are enhancements or extra scope rather than core backend integration
+- Added a separate sign-off checklist:
+  - `FINAL_SIGNOFF_QA_CHECKLIST.txt`
+- Purpose:
+  - provide a simple role-by-role final acceptance test list before handover
+  - reduce ambiguity on whether the project is ready for final sign-off
+
+[2026-03-10 13:39] Fix password column regression in List of Classes
+- Diagnosed the blank password column issue in the class list/student list flow.
+- Root cause:
+  - class/student loading was only reading plaintext credentials from `studentPasswordCache`
+  - but student registration also stores credentials in the older `studentDatabase` local key
+  - if the first cache is missing or stale, the UI showed blank passwords even though a recoverable credential cache still existed locally
+- Fix:
+  - updated `classService.getPasswordCache()` to merge both local credential stores
+  - kept `studentPasswordCache` as the preferred source
+  - added fallback recovery from legacy `studentDatabase`
+- File:
+  - `src/services/classService.ts`
+- Local verification:
+  - repo-local `tsc` executed successfully
+
 [2026-03-10 13:02] Cleanup pass: lesson source-of-truth hardening
 - Added a new shared `studentStateService` to centralize:
   - username/id resolution

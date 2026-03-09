@@ -27,15 +27,39 @@ export interface ClassRow {
 // ─── Local password cache ─────────────────────────────────────────────────────
 // Supabase doesn't store plaintext passwords; we cache them locally so the
 // teacher can display / copy credentials after enrollment.
+//
+// There are two legacy local stores in circulation:
+// - studentPasswordCache: teacher-side credential display cache
+// - studentDatabase: older login/demo credential cache
+//
+// The class list should recover from either one so existing enrolled accounts
+// do not show a blank password column after refresh/browser changes.
 
 const PW_CACHE_KEY = 'studentPasswordCache';
+const LEGACY_STUDENT_DB_KEY = 'studentDatabase';
+
+const getLegacyStudentDb = (): Record<string, string> => {
+  try {
+    const raw = localStorage.getItem(LEGACY_STUDENT_DB_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
 
 export const getPasswordCache = (): Record<string, string> => {
   try {
     const raw = localStorage.getItem(PW_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const primary = raw ? JSON.parse(raw) : {};
+    const legacy = getLegacyStudentDb();
+    return {
+      ...(legacy && typeof legacy === 'object' ? legacy : {}),
+      ...(primary && typeof primary === 'object' ? primary : {})
+    };
   } catch {
-    return {};
+    return getLegacyStudentDb();
   }
 };
 

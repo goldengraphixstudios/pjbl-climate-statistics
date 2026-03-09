@@ -1,0 +1,135 @@
+PJBL Climate Statistics
+Client Handover Scope, Problems, and Recommendations
+Prepared: 2026-03-10
+
+1. DELIVERED / COMPLETED ON OUR SIDE
+
+The following items are implemented or substantially completed as part of the contracted LMS backend, dashboard, and data-system work:
+
+- Supabase project integration is active.
+- Student, Teacher, and Admin role paths exist.
+- Student portal supports:
+  - pre-assessment submission
+  - Lesson 1 submission
+  - Lesson 2 submission
+  - Lesson 3 submission
+  - post-assessment submission
+- Teacher/Admin combined portal exists as one shared portal.
+- Masterlist and class/section listings exist.
+- Teacher/Admin can send feedback on assessments and lesson outputs.
+- Feedback acknowledgment flow exists on the student side.
+- Next activity unlocking is tied to submission + feedback + acknowledgment flow.
+- Student performance summary exists and reflects saved scores/feedback paths.
+- Class record exists and is connected to live response data.
+- Lesson 1 / Lesson 2 / Lesson 3 output tabs exist in the combined portal.
+- Teacher/Admin lesson score entry exists and saves to live Supabase response rows.
+- CSV/download/report features exist.
+- Handover and technical documentation files were prepared.
+- GitHub repository was updated with working cleanup checkpoints.
+
+2. REAL SOURCE OF TRUTH USED BY THE CURRENT SYSTEM
+
+The current cleaned-up system uses these active data sources:
+
+- public.users
+  - user identity and role metadata
+- public.classes
+  - class metadata
+- public.class_students
+  - student-to-class enrollment mapping
+- public.responses
+  - final submitted activity data
+  - teacher_score, teacher_scored_by, teacher_scored_at
+  - activity_type values such as pre, lesson1, lesson2, lesson3, post
+- public.feedback
+  - teacher feedback text
+  - feedback acknowledgment state
+- public.student_state
+  - lesson draft / in-progress saved state for lessons
+
+Important clarification:
+- public.lessons is not the main source of submitted lesson output data.
+- public.student_progress is not the main active source of truth for final lesson unlocking/scoring.
+- browser localStorage / IndexedDB may still cache some UI state, but the intended live source of truth is now responses + feedback + student_state.
+
+3. PROBLEMS ENCOUNTERED FROM THE PREMADE WEBSITE / EXISTING PROJECT
+
+The following issues were encountered because the provided website/frontend and database flow were not fully aligned when development started:
+
+- Student-side and Teacher/Admin-side logic were mixed between localStorage-era logic and live Supabase logic.
+- Some active portal flows still depended on legacy client-side state even when live data tables already existed.
+- Some Teacher/Admin actions were sending usernames where UUIDs were required, causing feedback/scoring failures.
+- Student identity, staff auth identity, and public.users identity were not consistently aligned.
+- Feedback visibility and lesson unlocking had to be repaired because the original frontend flow did not consistently match the intended LMS behavior.
+- Lesson state persistence was partly browser-only before cleanup, which caused confusing reset/test behavior.
+- The schema contains transitional/legacy fields and tables, while the active code only uses a subset of them.
+- The Teacher/Admin portal initially lacked a fully clear review workflow for complex lesson outputs.
+- Some parts of the provided frontend behaved like local/demo logic rather than a finalized live LMS workflow.
+- Asset path issues, stale browser caches, and browser-only lesson progress added testing noise that was not caused by Supabase itself.
+
+4. WHAT WAS IN CONTRACT SCOPE
+
+Based on the service contract, the following were part of the agreed deliverables:
+
+- Supabase backend setup and storage of student response data
+- combined Teacher/Admin portal
+- role-based access paths
+- teacher feedback flow
+- teacher scoring flow
+- dashboards, class records, and downloadable reports
+- student performance summary
+- integration and GitHub delivery
+
+5. WHAT BECAME EXTRA / OUTSIDE SIMPLE INTEGRATION SCOPE
+
+The following items are not just backend hookup work. These involve missing product/frontend design decisions or deeper post-delivery enhancement work:
+
+- Designing a brand-new teacher review/grading UX for lesson outputs if the provided frontend does not already define how lesson content should be reviewed.
+- Rebuilding complex teacher-side lesson review screens from scratch so staff can inspect every activity in a highly polished format.
+- Full schema redesign to remove all transitional/legacy columns and tables after the system is already working.
+- Converting the entire project to a strict database-only state model with zero browser caching/fallback behavior.
+- Hardening security further beyond current practical custom-auth integration, such as replacing custom student login with full Supabase Auth for every user.
+- Deep analytics expansion beyond the current required overview/class-record/reporting level.
+- Additional UI/UX redesign requests not already represented in the provided frontend.
+
+These items are better treated as future improvement work or a separate enhancement phase if requested.
+
+6. RECOMMENDED POST-HANDOVER IMPROVEMENTS
+
+These are recommended improvements to make the system cleaner, safer, and easier to maintain after handover:
+
+- Add a dedicated teacher "Review Submission" panel/modal for Lesson 1, Lesson 2, and Lesson 3 so teachers can inspect saved lesson outputs more comfortably before grading.
+- Consolidate or retire legacy inactive code paths that still reference old localStorage-era teacher portal logic.
+- Normalize the responses table over time if you want to remove older unused columns such as question_id, choice, is_correct, and response_json.
+- Decide whether public.lessons and public.student_progress should remain part of the long-term architecture or be formally deprecated.
+- Add an admin-only in-app reset tool for lesson progress/testing instead of relying on manual localStorage/SQL cleanup.
+- Perform one final structured QA pass across Student, Teacher, and Admin roles using clean accounts and fresh submissions.
+- If stronger security is desired, migrate student login from the current custom verification flow to a stricter authenticated model.
+- Add clearer lesson-review UI for staff if the client wants a more polished grading experience than the current score + feedback workflow.
+
+7. CURRENT PRACTICAL STATUS
+
+The project is in a deliverable state for the contracted backend/dashboard/integration work, with the main remaining caution being final user acceptance testing across all roles.
+
+In practical terms:
+
+- Core LMS data flow is connected.
+- Student submission and feedback workflow is present.
+- Teacher/Admin scoring workflow exists.
+- Reports and class records exist.
+- Source code and documentation are prepared for handover.
+
+What should still be done before final sign-off:
+
+- run a clean end-to-end QA pass:
+  - Pre-assessment -> feedback -> acknowledgment -> Lesson 1 unlock
+  - Lesson 1 -> teacher score/feedback -> summary reflection -> Lesson 2 unlock
+  - Lesson 2 -> teacher score/feedback -> summary reflection -> Lesson 3 unlock
+  - Lesson 3 -> teacher score/feedback -> summary reflection -> Post-assessment unlock
+  - Post-assessment -> final record/report verification
+
+8. SHORT CLIENT-FACING EXPLANATION
+
+Suggested wording:
+
+"The contracted backend, portal integration, feedback, scoring, class record, and reporting work has been implemented. During development, several issues came from the premade website using mixed local/browser-state logic and incomplete alignment with the live database workflow. Those issues required cleanup and integration fixes so the LMS could function properly. Additional teacher-side grading/review UX improvements are possible, but those are best treated as enhancement work beyond simple backend integration unless they were already fully defined in the provided frontend."
