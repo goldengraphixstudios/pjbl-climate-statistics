@@ -16,7 +16,7 @@ export const validateStudentCredentials = async (
   username: string,
   password: string
 ): Promise<{ valid: boolean; userId?: string; email?: string }> => {
-  // Direct email sign-in
+  // Direct email sign-in (admin/teacher accounts use Supabase Auth)
   if (username.includes('@')) {
     try {
       const res = await signIn(username, password);
@@ -27,19 +27,14 @@ export const validateStudentCredentials = async (
     return { valid: false };
   }
 
-  // Username → look up email in users table → Supabase signIn
+  // Student login: verify password via DB function (no Supabase Auth session needed)
   try {
-    const profile = await supabase
-      .from('users')
-      .select('id, email, username')
-      .eq('username', username)
-      .maybeSingle();
-
-    if (!profile.error && profile.data?.email) {
-      const res = await signIn(profile.data.email, password);
-      if (!res.error && res.data?.session) {
-        return { valid: true, userId: res.data.session.user.id, email: profile.data.email };
-      }
+    const { data, error } = await supabase.rpc('verify_student', {
+      p_username: username,
+      p_password: password,
+    });
+    if (!error && data?.valid) {
+      return { valid: true, userId: data.id };
     }
   } catch {}
 
@@ -48,7 +43,6 @@ export const validateStudentCredentials = async (
     const raw = localStorage.getItem('studentDatabase');
     const db = raw ? JSON.parse(raw) as Record<string, string> : defaultStudents;
     if ((db[username] || '') === password) {
-      // Try to get the Supabase ID even for legacy accounts
       try {
         const profile = await supabase
           .from('users')
@@ -72,66 +66,24 @@ export const registerStudent = async (
   name: string,
   username: string,
   password: string,
-  email?: string
+  _email?: string
 ): Promise<{ success: boolean; userId?: string; reason?: 'exists' | 'quota' | 'supabase' }> => {
-
-  // Derive email: use provided email, or generate a synthetic address so
-  // Supabase Auth can create an account without requiring a real email.
-  const authEmail = email && email.includes('@') ? email : `${username}@pjbl.edu.ph`;
-
-  // Check if username already exists in users table
+  // Use SECURITY DEFINER RPC function — bypasses Supabase Auth entirely.
+  // No email validation, no rate limits, no confirmation emails.
   try {
-    const existing = await supabase
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
-    if (existing.data) {
-      return { success: false, reason: 'exists' };
-    }
-  } catch {}
-
-  // Create Supabase Auth account
-  try {
-    const res = await signUp(authEmail, password);
-    if (res.error) {
-      // If user already exists in Auth but not in our users table, try to recover
-      if (res.error.message?.includes('already registered')) {
-        // Attempt sign-in to get existing user id
-        const loginRes = await signIn(authEmail, password);
-        if (!loginRes.error && loginRes.data?.session) {
-          const userId = loginRes.data.session.user.id;
-          await supabase.from('users').upsert({
-            id: userId,
-            name,
-            email: authEmail,
-            username,
-            role: 'student',
-          }, { onConflict: 'id' });
-          return { success: true, userId };
-        }
-      }
-      console.error('[authService] signUp error', res.error);
+    const { data, error } = await supabase.rpc('register_student', {
+      p_name: name,
+      p_username: username,
+      p_password: password,
+    });
+    if (error) {
+      console.error('[authService] register_student rpc error', error);
       return { success: false, reason: 'supabase' };
     }
+    if (data?.error === 'username_taken') return { success: false, reason: 'exists' };
+    if (!data?.id) return { success: false, reason: 'supabase' };
 
-    const userId = res.data?.user?.id;
-
-    // Insert profile row into public.users
-    if (userId) {
-      const { error: profileErr } = await supabase.from('users').upsert({
-        id: userId,
-        name,
-        email: authEmail,
-        username,
-        role: 'student',
-      }, { onConflict: 'id' });
-      if (profileErr) {
-        console.error('[authService] profile insert error', profileErr);
-      }
-    }
-
-    // Also keep legacy localStorage entry so existing fallback logic still works
+    // Cache plaintext password locally for credential display
     try {
       const raw = localStorage.getItem('studentDatabase');
       const db = raw ? JSON.parse(raw) as Record<string, string> : {};
@@ -139,7 +91,7 @@ export const registerStudent = async (
       localStorage.setItem('studentDatabase', JSON.stringify(db));
     } catch {}
 
-    return { success: true, userId };
+    return { success: true, userId: data.id };
   } catch (e) {
     console.error('[authService] registerStudent exception', e);
     return { success: false, reason: 'supabase' };
