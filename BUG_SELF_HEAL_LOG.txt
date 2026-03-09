@@ -65,6 +65,34 @@ Files touched
 Verification
 - repo-local TypeScript build succeeded
 - repo-local Vite build succeeded
+
+[2026-03-10 14:35] Lesson 1 page resets to 0% after live completion
+
+Observed issue
+- Student dashboard showed Lesson 1 as completed.
+- Opening the Lesson 1 page showed teacher feedback but a `0%` progress bar and collapsed empty phase state.
+- User confirmed lesson data still existed live in `student_state`.
+
+Diagnosis
+- Dashboard completion was being inferred from `responses` + `feedback`.
+- Lesson 1 page hydration depended mainly on `student_state` and browser cache.
+- If `student_state` read failed or returned stale data, the page could fall back to an empty local state even though the final submitted `responses.answers.lesson1State` payload existed.
+- Mission Complete was also upserting the `responses.lesson1` row from the pre-normalized mission state, which could leave the stored final snapshot weaker than the UI-completed version.
+
+Self-heal actions applied
+- Added a merged hydration path in Lesson 1:
+  - local cache
+  - `student_state`
+  - `responses.answers.lesson1State`
+- Added Lesson 1 state normalization so completed phase flags restore sensible `completedPhases`, `unlockedPhase`, and per-phase progress values.
+- Updated Mission Complete to persist the normalized final Lesson 1 state before saving the final response row.
+
+Files touched
+- src/pages/student_sections/Lesson1.tsx
+- PROJECT_WORK_LOG.txt
+
+Verification
+- repo-local TypeScript build succeeded
 - Full browser-flow verification remains pending a reliable local preview/deploy target
 
 [2026-03-10 12:08] Deployed smoke-test asset noise

@@ -425,3 +425,28 @@ How To Use Going Forward
   - repo-local `vite build` executed successfully
 - Commit: pending
 - Push: pending
+
+[2026-03-10 14:35] Lesson 1 hydration regression fix
+- Investigated a live mismatch where:
+  - Student dashboard card showed Lesson 1 as completed
+  - Opening Lesson 1 showed teacher feedback but progress reset to 0%
+- Root cause:
+  - Dashboard completion was driven by `responses` + `feedback`
+  - Lesson 1 page was hydrating mostly from `student_state` / browser cache
+  - when `student_state` read was unavailable or stale, the page fell back to an empty local state even though the submitted `responses.lesson1` row existed
+- Fix applied:
+  - Lesson 1 now hydrates from a merged state built from:
+    - local `lesson1State`
+    - Supabase `student_state`
+    - submitted `responses.answers.lesson1State`
+  - Added normalization so completed phase flags produce non-zero phase progress and completed phase markers
+  - Mission Complete now persists a normalized final Lesson 1 state before upserting the final `responses` row
+- Source-of-truth clarification:
+  - `student_progress` is currently legacy / transitional and is not the active source of truth for dashboard state
+  - active lesson state is currently driven by `responses`, `feedback`, `student_state`, and browser caches
+- Files:
+  - `src/pages/student_sections/Lesson1.tsx`
+- Local verification:
+  - repo-local `tsc -b` passed
+- Commit: pending
+- Push: pending

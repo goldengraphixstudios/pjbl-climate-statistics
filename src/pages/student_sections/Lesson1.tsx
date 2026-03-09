@@ -2,9 +2,10 @@
 import ProgressBar from '../../components/ProgressBar';
 import React from 'react';
 import { getLesson1State, getLesson1StateAsync, saveLesson1State, awaitSaveLesson1State, flushLesson1StateSync, getTeacherFeedback, setUserProgress, setPhase1ActivityFlag, getPhase1Progress, saveActivity2Checkpoint, saveActivity3Choice, saveActivity4aQuestion, saveActivity4bFinal, savePhase2Activity1, savePhase2Activity2, savePhase2Activity2Answer, savePhase2Activity2Steps, getPhase2Activity2AnswersAll, getPhase2Activity2All, savePhase2FinalizeScatter, savePhase2SelfAssessment, savePhase2Activity4Check, savePhase2Activity4Interpret, savePhase2Activity3Upload, getPhase2Activity3All, getPhase2SelfAssessAll, savePhase3FinishAnalysis, savePhase3SubmitWorksheet, savePhase3FinalizeRecommendation, savePhase4SubmitReview, savePhase4MissionComplete, savePhase4PeerReview, savePhase4Reflection, getPhase4ReviewAll, getPhase4CompleteAll, getPhase2Activity4CheckAll, getPhase2Activity4InterpAllDetailed, Lesson1State } from '../../services/progressService';
-import { ActivityType, upsertResponse } from '../../services/responsesService';
+import { ActivityType, getResponseForStudentActivity, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { resolveStudentId } from '../../services/studentStateService';
 import BarDualChart from '../../components/BarDualChart';
 import { climateLabels, societalLabels, getMonthlySeriesForClimate, getMonthlySeriesForSocietal, Year } from '../../services/lesson1Phase1Data';
 import { activity2Questions, activity2Validators } from '../../services/activity2Questions';
@@ -21,6 +22,85 @@ interface Lesson1Props {
   user: AuthUser;
   onBack: () => void;
 }
+
+const createEmptyLesson1State = (): Lesson1State => ({
+  unlockedPhase: 0,
+  completedPhases: [],
+  phaseData: {},
+});
+
+const mergeLesson1States = (...candidates: Array<Lesson1State | null | undefined>): Lesson1State | null => {
+  const valid = candidates.filter((candidate): candidate is Lesson1State => !!candidate && typeof candidate === 'object');
+  if (valid.length === 0) return null;
+
+  return valid.reduce<Lesson1State>((acc, candidate) => {
+    const mergedPhaseData: Lesson1State['phaseData'] = { ...(acc.phaseData || {}) };
+    for (const phase of [1, 2, 3, 4] as const) {
+      const existing = (mergedPhaseData as any)[phase] || {};
+      const incoming = (candidate.phaseData as any)?.[phase] || {};
+      if (Object.keys(incoming).length > 0) {
+        (mergedPhaseData as any)[phase] = { ...existing, ...incoming };
+      }
+    }
+
+    return {
+      unlockedPhase: Math.max(acc.unlockedPhase || 0, candidate.unlockedPhase || 0),
+      completedPhases: Array.from(new Set([...(acc.completedPhases || []), ...(candidate.completedPhases || [])])),
+      phaseProgress: {
+        ...(acc.phaseProgress || {}),
+        ...(candidate.phaseProgress || {}),
+        1: Math.max(acc.phaseProgress?.[1] || 0, candidate.phaseProgress?.[1] || 0),
+        2: Math.max(acc.phaseProgress?.[2] || 0, candidate.phaseProgress?.[2] || 0),
+        3: Math.max(acc.phaseProgress?.[3] || 0, candidate.phaseProgress?.[3] || 0),
+        4: Math.max(acc.phaseProgress?.[4] || 0, candidate.phaseProgress?.[4] || 0),
+      },
+      phaseData: mergedPhaseData,
+    };
+  }, createEmptyLesson1State());
+};
+
+const normalizeLesson1State = (rawState: Lesson1State | null | undefined): Lesson1State => {
+  const state = rawState ? mergeLesson1States(rawState) || createEmptyLesson1State() : createEmptyLesson1State();
+  const phaseData = { ...(state.phaseData || {}) } as any;
+  const phaseProgress = { ...(state.phaseProgress || {}) } as Record<number, number>;
+  const completedPhases = new Set<number>(state.completedPhases || []);
+
+  const p1 = phaseData[1] || {};
+  const p2 = phaseData[2] || {};
+  const p3 = phaseData[3] || {};
+  const p4 = phaseData[4] || {};
+
+  const phase1Complete = !!(p1.a1Done && p1.a2Done && p1.a3Done && p1.a4bFinalized);
+  const phase2Complete = !!(p2.a1Done && p2.a2Done && p2.a3Done && p2.selfAssessSubmitted && (p2.interpretSubmitted || p2.a4Checked));
+  const phase3Complete = !!(p3.part1Done && p3.saDone && p3.recFinalized);
+  const phase4Complete = !!(p4.peerReviewSubmitted && p4.missionComplete);
+
+  if (phase1Complete) {
+    completedPhases.add(1);
+    phaseProgress[1] = 25;
+  }
+  if (phase2Complete) {
+    completedPhases.add(2);
+    phaseProgress[2] = 25;
+  }
+  if (phase3Complete) {
+    completedPhases.add(3);
+    phaseProgress[3] = 25;
+  }
+  if (phase4Complete) {
+    completedPhases.add(4);
+    phaseProgress[4] = 25;
+  }
+
+  const highestCompleted = completedPhases.size > 0 ? Math.max(...completedPhases) : 0;
+
+  return {
+    unlockedPhase: Math.max(state.unlockedPhase || 0, highestCompleted > 0 ? highestCompleted + 1 : 0),
+    completedPhases: Array.from(completedPhases).sort((a, b) => a - b),
+    phaseProgress,
+    phaseData,
+  };
+};
 
 const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   const labelDefinitions: Record<string, string> = {
@@ -77,11 +157,17 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
     const load = async () => {
       try {
         const prof = await getMyProfile();
-        const studentId = prof?.id;
+        const studentId = prof?.id || await resolveStudentId(user.username);
+        const localState = getLesson1State(user.username);
         const remoteState = await getLesson1StateAsync(studentId || user.username);
-        if (remoteState) {
-          setState(remoteState);
-        }
+        const responseRow = studentId
+          ? await getResponseForStudentActivity(studentId, 'lesson1').catch(() => null)
+          : null;
+        const responseState = responseRow?.answers?.lesson1State as Lesson1State | null | undefined;
+        const hydratedState = normalizeLesson1State(
+          mergeLesson1States(localState, remoteState, responseState)
+        );
+        setState(hydratedState);
         if (!studentId) return;
         const fb = await getFeedbackForStudentActivity(studentId, 'lesson1');
         if (fb) setServerFeedback(fb);
@@ -131,19 +217,6 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
     setState(prev => {
       const unlockedPhase = Math.max(prev.unlockedPhase ?? 0, phase);
       const next: Lesson1State = { ...prev, unlockedPhase };
-      saveLesson1State(user.username, next);
-      return next;
-    });
-  };
-
-  const markCompleted = (phase: number) => {
-    setState(prev => {
-      const completedPhases = prev.completedPhases.includes(phase)
-        ? prev.completedPhases
-        : [...prev.completedPhases, phase];
-      const phaseProgress = { ...(prev.phaseProgress || {}), [phase]: 25 };
-      const unlockedPhase = Math.max(prev.unlockedPhase ?? 0, phase + 1);
-      const next: Lesson1State = { ...prev, completedPhases, phaseProgress, unlockedPhase };
       saveLesson1State(user.username, next);
       return next;
     });
@@ -3866,9 +3939,15 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       // persist reflection fields and uploaded file, then mark mission complete
                       const finalize = async (uploadUrl?: string, mime?: string) => {
                         try { savePhase4Reflection(user.username, reflectionFields || {}, uploadUrl, mime); } catch (e) {}
-                        const next = savePhase4MissionComplete(user.username);
+                        const missionState = savePhase4MissionComplete(user.username);
+                        const next = normalizeLesson1State({
+                          ...missionState,
+                          completedPhases: Array.from(new Set([...(missionState.completedPhases || []), 4])),
+                          phaseProgress: { ...(missionState.phaseProgress || {}), 4: 25 },
+                          unlockedPhase: Math.max(missionState.unlockedPhase || 0, 5),
+                        });
+                        saveLesson1State(user.username, next);
                         setState(next);
-                        markCompleted(4);
                         // upsert lesson1 response record
                         try {
                           const prof = await getMyProfile();
