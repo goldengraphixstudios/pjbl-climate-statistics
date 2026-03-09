@@ -134,6 +134,7 @@ function App() {
 
   const handleLogout = () => {
     try { signOut().catch(() => {}); } catch {}
+    localStorage.removeItem('currentUserId');
     setAuthUser(null);
     setCurrentPage('landing');
   };
@@ -152,7 +153,10 @@ function App() {
     })));
 
     const userObj: AuthUser = { username, role };
-    if (id) userObj.id = id;
+    if (id) {
+      userObj.id = id;
+      localStorage.setItem('currentUserId', id);
+    }
     setAuthUser(userObj);
     setPortalTab('overview');
 

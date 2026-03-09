@@ -10,8 +10,9 @@ export interface Profile {
 }
 
 export async function getMyProfile(): Promise<Profile | null> {
+  // Prefer Supabase Auth session (admin/teacher); fall back to stored student UUID
   const userRes = await supabase.auth.getUser();
-  const uid = userRes.data?.user?.id;
+  const uid = userRes.data?.user?.id || localStorage.getItem('currentUserId') || null;
   if (!uid) return null;
   const { data, error } = await supabase
     .from('users')
