@@ -4,6 +4,8 @@ import AnalyticsChart from '../../components/admin/AnalyticsChart';
 import FeedbackPanel from '../../components/teacher/FeedbackPanel';
 import ClassManagement from '../../components/teacher/ClassManagement';
 import StudentList from '../../components/teacher/StudentList';
+import { FeedbackRow, getFeedbackForStudents } from '../../services/feedbackService';
+import { ActivityType, ResponseRow, getResponsesForStudents } from '../../services/responsesService';
 import { getPreAssessmentSummary, getInitialSurveySummary, getAssessmentScores, getPostAssessmentSummary, getEndOfLessonSurveySummary } from '../../services/progressService';
 import { getPreAssessmentSummaryFromDB, getInitialSurveySummaryFromDB, getPostAssessmentSummaryFromDB, getEndOfLessonSurveySummaryFromDB, getClassRecordForExport } from '../../services/analyticsService';
 import { getClassRecord } from '../../services/submissionsService';
@@ -39,6 +41,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const [feedbackStudent, setFeedbackStudent] = useState<{id: string, name: string, activity: any} | null>(null);
   const [classRecord, setClassRecord] = useState<any[]>([]);
   const [classRecordLoading, setClassRecordLoading] = useState(false);
+  const [feedbackRows, setFeedbackRows] = useState<FeedbackRow[]>([]);
+  const [responseRows, setResponseRows] = useState<ResponseRow[]>([]);
+  const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📘' },
@@ -66,6 +71,51 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       .catch(e => console.error('[AdminPortal] classRecord error', e))
       .finally(() => setClassRecordLoading(false));
   }, [activeTab, sectionFilter, classes]);
+
+  useEffect(() => {
+    const loadFeedback = async () => {
+      try {
+        const studentIds = (sectionFilter === 'ALL'
+          ? classes.flatMap(c => c.students)
+          : classes.filter(c => `Section ${c.section}` === sectionFilter).flatMap(c => c.students))
+          .map((s: any) => s.id)
+          .filter(Boolean);
+        if (studentIds.length === 0) {
+          setFeedbackRows([]);
+          return;
+        }
+        const rows = await getFeedbackForStudents(studentIds);
+        setFeedbackRows(rows);
+      } catch (e) {
+        console.error('[AdminPortal] feedback load error', e);
+      }
+    };
+    loadFeedback();
+  }, [classes, sectionFilter, feedbackRefreshKey]);
+
+  useEffect(() => {
+    const loadResponses = async () => {
+      try {
+        const studentIds = (sectionFilter === 'ALL'
+          ? classes.flatMap(c => c.students)
+          : classes.filter(c => `Section ${c.section}` === sectionFilter).flatMap(c => c.students))
+          .map((s: any) => s.id)
+          .filter(Boolean);
+        if (studentIds.length === 0) {
+          setResponseRows([]);
+          return;
+        }
+        const rows = await getResponsesForStudents(studentIds);
+        setResponseRows(rows);
+      } catch (e) {
+        console.error('[AdminPortal] responses load error', e);
+      }
+    };
+    loadResponses();
+  }, [classes, sectionFilter, feedbackRefreshKey]);
+
+  const getLatestResponse = (studentId: string, activityType: ActivityType) =>
+    responseRows.find((row) => row.student_id === studentId && row.activity_type === activityType);
 
   const sectionOptions = ['ALL', ...classes.map(c => `Section ${c.section}`)];
   const filteredStudents = sectionFilter === 'ALL'
@@ -1069,15 +1119,21 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                 <div className="chart-section table-section card-student-responses">
                   <h3>List of Students and their Responses</h3>
                   {(() => {
-                    const scores = getAssessmentScores();
                     const rows = filteredStudents.map((s: any) => {
-                      const entry = scores[s.username] || {} as any;
+                      const response = getLatestResponse(s.id, 'pre');
+                      const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === 'pre');
+                      const derivedScore = Array.isArray(response?.correctness?.part1)
+                        ? response.correctness.part1.filter(Boolean).length
+                        : null;
                       return {
                         id: s.id || '',
                         name: s.name || '',
                         username: s.username || '',
-                        answers: entry.prePart1Responses || Array.from({ length: 15 }, () => ''),
-                        score: typeof entry.prePart1Correct === 'number' ? entry.prePart1Correct : null
+                        answers: Array.isArray(response?.answers?.part1) ? response.answers.part1 : Array.from({ length: 15 }, () => ''),
+                        score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null,
+                        feedbackText: feedback?.feedback_text || '',
+                        feedbackAcknowledged: !!feedback?.acknowledged,
+                        hasFeedback: !!feedback
                       };
                     }).filter(r => r.score !== null);
                     // format name Last, First and sort alphabetically by last name
@@ -1102,6 +1158,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 <th>Name</th>
                                 {Array.from({length:15}, (_,i)=> <th key={i}>Q{i+1}</th>)}
                                 <th>Score</th>
+                                <th>Feedback</th>
                                 <th style={{textAlign: 'center'}}>Action</th>
                               </tr>
                             </thead>
@@ -1111,6 +1168,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   <td style={{whiteSpace: 'nowrap', textAlign: 'left'}}>{fmt(r.name)}</td>
                                   {r.answers.map((a:any, i:number) => <td key={i}>{a}</td>)}
                                   <td style={{textAlign: 'center'}}>{r.score}</td>
+                                  <td style={{ textAlign: 'left', fontSize: 12, color: r.feedbackText ? '#555' : '#999', maxWidth: 220 }}>
+                                    {r.feedbackText || 'No feedback yet'}
+                                    {r.feedbackAcknowledged && (
+                                      <div style={{ color: '#15803d', marginTop: 4, fontWeight: 600 }}>Acknowledged</div>
+                                    )}
+                                  </td>
                                   <td style={{textAlign: 'center'}}>
                                     <button
                                       onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'pre' })}
@@ -1413,12 +1476,22 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                 <div className="chart-section table-section card-student-responses">
                   <h3>List of Students and their Responses</h3>
                   {(() => {
-                    const all = getAssessmentScores();
                     const rows = filteredStudents.map((s: any) => {
-                      const entry = all[s.username] || {} as any;
-                      const responses = Array.isArray(entry.postPart1Responses) && entry.postPart1Responses.length === 15 ? entry.postPart1Responses : null;
-                      const score = typeof entry.postPart1Correct === 'number' ? entry.postPart1Correct : null;
-                      return { id: s.id || '', name: s.name || '', username: s.username || '', responses, score };
+                      const response = getLatestResponse(s.id, 'post');
+                      const derivedScore = Array.isArray(response?.correctness?.part1)
+                        ? response.correctness.part1.filter(Boolean).length
+                        : null;
+                      const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === 'post');
+                      return {
+                        id: s.id || '',
+                        name: s.name || '',
+                        username: s.username || '',
+                        responses: Array.isArray(response?.answers?.part1) ? response.answers.part1 : null,
+                        score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null,
+                        feedbackText: feedback?.feedback_text || '',
+                        feedbackAcknowledged: !!feedback?.acknowledged,
+                        hasFeedback: !!feedback
+                      };
                     }).filter((r:any) => r.responses !== null);
                     const fmt = (full: string) => {
                       const p = (full || '').trim().split(/\s+/);
@@ -1436,6 +1509,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                               <th>Name</th>
                               {Array.from({length:15}, (_,i)=> <th key={i}>Q{i+1}</th>)}
                               <th>Score</th>
+                              <th>Feedback</th>
                               <th style={{textAlign: 'center'}}>Action</th>
                             </tr>
                           </thead>
@@ -1445,6 +1519,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 <td style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>{fmt(r.name)}</td>
                                 {r.responses.map((ans:any, i:number) => <td key={i}>{ans}</td>)}
                                 <td style={{ textAlign: 'center' }}>{r.score}</td>
+                                <td style={{ textAlign: 'left', fontSize: 12, color: r.feedbackText ? '#555' : '#999', maxWidth: 220 }}>
+                                  {r.feedbackText || 'No feedback yet'}
+                                  {r.feedbackAcknowledged && (
+                                    <div style={{ color: '#15803d', marginTop: 4, fontWeight: 600 }}>Acknowledged</div>
+                                  )}
+                                </td>
                                 <td style={{textAlign: 'center'}}>
                                   <button
                                     onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'post' })}
@@ -1668,7 +1748,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
             studentName={feedbackStudent.name}
             activityType={feedbackStudent.activity}
             onClose={() => setFeedbackStudent(null)}
-            onSubmitSuccess={() => {}}
+            onSubmitSuccess={() => setFeedbackRefreshKey(key => key + 1)}
           />
         )}
       </main>

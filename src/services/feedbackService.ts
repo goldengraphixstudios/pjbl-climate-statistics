@@ -70,7 +70,19 @@ export async function getFeedbackForStudent(student_id: string) {
   const { data, error } = await supabase
     .from('feedback')
     .select('*')
-    .eq('student_id', student_id);
+    .eq('student_id', student_id)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data as FeedbackRow[]) || [];
+}
+
+export async function getFeedbackForStudents(studentIds: string[]) {
+  if (studentIds.length === 0) return [] as FeedbackRow[];
+  const { data, error } = await supabase
+    .from('feedback')
+    .select('*')
+    .in('student_id', studentIds)
+    .order('updated_at', { ascending: false });
   if (error) throw error;
   return (data as FeedbackRow[]) || [];
 }
@@ -84,6 +96,7 @@ export async function getFeedbackForStudentActivity(
     .select('*')
     .eq('student_id', student_id)
     .eq('activity_type', activity_type)
+    .order('updated_at', { ascending: false })
     .maybeSingle();
   if (error) throw error;
   return data as FeedbackRow | null;

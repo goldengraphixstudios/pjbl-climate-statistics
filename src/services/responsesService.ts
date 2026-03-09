@@ -46,7 +46,19 @@ export async function getResponsesForStudent(student_id: string) {
   const { data, error } = await supabase
     .from('responses')
     .select('*')
-    .eq('student_id', student_id);
+    .eq('student_id', student_id)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data as ResponseRow[]) || [];
+}
+
+export async function getResponsesForStudents(studentIds: string[]) {
+  if (studentIds.length === 0) return [] as ResponseRow[];
+  const { data, error } = await supabase
+    .from('responses')
+    .select('*')
+    .in('student_id', studentIds)
+    .order('updated_at', { ascending: false });
   if (error) throw error;
   return (data as ResponseRow[]) || [];
 }
@@ -60,6 +72,7 @@ export async function getResponseForStudentActivity(
     .select('*')
     .eq('student_id', student_id)
     .eq('activity_type', activity_type)
+    .order('updated_at', { ascending: false })
     .maybeSingle();
   if (error) throw error;
   return data as ResponseRow | null;

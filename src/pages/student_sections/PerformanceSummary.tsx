@@ -1,8 +1,6 @@
 import '../../styles/StudentPortal.css';
 import '../../styles/Lesson.css';
-import { useMemo, useState, useEffect } from 'react';
-import { getAssessmentScores, getLesson1State } from '../../services/progressService';
-import { getUserProgress } from '../../services/progressService';
+import { useState, useEffect } from 'react';
 import { ActivityType, getResponsesForStudent } from '../../services/responsesService';
 import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
@@ -137,7 +135,12 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
                       const fb = feedbackRows.find((f: any) => f.activity_type === actKey);
                       const maxScores: Record<number,number> = {1:15, 2:32, 3:32, 4:32, 5:15};
                       const max = maxScores[item.id] || '—';
-                      const score = (item.id===1||item.id===5) ? (resp?.answers?.part1Score ?? resp?.teacher_score ?? null) : (resp?.teacher_score ?? null);
+                      const derivedAssessmentScore = Array.isArray(resp?.correctness?.part1)
+                        ? resp.correctness.part1.filter(Boolean).length
+                        : null;
+                      const score = (item.id===1||item.id===5)
+                        ? (resp?.answers?.part1Score ?? derivedAssessmentScore ?? resp?.teacher_score ?? null)
+                        : (resp?.teacher_score ?? null);
                       const hasScore = typeof score === 'number' && score !== null;
                       const summaryStatus = getSummaryStatus(resp, fb);
                       return (
@@ -147,6 +150,7 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           </div>
                           {fb?.feedback_text && (
                             <div style={{ fontSize: '0.8rem', color: '#555', marginTop: 4, maxWidth: 260, textAlign: 'right' }}>
+                              <strong style={{ fontStyle: 'normal' }}>Teacher feedback:</strong>{' '}
                               <em>"{fb.feedback_text}"</em>
                             </div>
                           )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { upsertFeedback } from '../../services/feedbackService';
+import { getFeedbackForStudentActivity, upsertFeedback } from '../../services/feedbackService';
 import { ActivityType } from '../../services/responsesService';
 
 interface FeedbackPanelProps {
@@ -21,6 +21,24 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [hasExistingFeedback, setHasExistingFeedback] = useState(false);
+
+  React.useEffect(() => {
+    const loadExisting = async () => {
+      try {
+        const existing = await getFeedbackForStudentActivity(studentId, activityType);
+        setHasExistingFeedback(!!existing?.feedback_text);
+        if (existing?.feedback_text) {
+          setFeedbackText(existing.feedback_text);
+        } else {
+          setFeedbackText('');
+        }
+      } catch (err) {
+        console.error('Error loading existing feedback:', err);
+      }
+    };
+    loadExisting();
+  }, [studentId, activityType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +208,7 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
                   opacity: isSubmitting ? 0.7 : 1
                 }}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                {isSubmitting ? 'Submitting...' : hasExistingFeedback ? 'Update Feedback' : 'Submit Feedback'}
               </button>
             </div>
           </form>

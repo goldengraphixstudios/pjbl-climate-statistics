@@ -119,3 +119,22 @@ How To Use Going Forward
 - Push: not yet pushed
 - Open issues:
   - Supabase SQL must be updated so student-side reads can see teacher feedback in the current custom-auth design.
+
+[2026-03-10 00:08] Fix: staff and student feedback views now read the same live Supabase rows
+- Added ordered Supabase fetches for `responses` and `feedback` so latest updates win in the UI.
+- Added `getResponsesForStudents()` to support staff-side pre/post tables from the database instead of browser-local `assessmentScores`.
+- Updated Admin pre/post response tables to read answers and score from live `responses` rows and keep feedback text/acknowledgement from live `feedback` rows.
+- Updated Student Performance Summary to label visible feedback explicitly as teacher feedback while continuing to derive the auto-scored assessment result from the unified `responses` row.
+- Live verification at time of change:
+  - anon read of `responses` returned Gabriel's `pre` submission
+  - anon read of `feedback` returned zero rows
+  - this means missing feedback in the UI may still be true backend state, not just stale frontend rendering
+- Files:
+  - src/services/responsesService.ts
+  - src/services/feedbackService.ts
+  - src/pages/portals/AdminPortal.tsx
+  - src/pages/student_sections/PerformanceSummary.tsx
+- Commit: not yet committed
+- Push: not yet pushed
+- Verification limits:
+  - `npm run build` could not complete in this shell because `tsc` is not available on PATH
