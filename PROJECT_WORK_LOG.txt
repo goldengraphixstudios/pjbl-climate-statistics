@@ -338,3 +338,38 @@ How To Use Going Forward
   - repo-local `vite build` executed successfully
 - Commit: pending
 - Push: pending
+
+[2026-03-10 13:02] Cleanup pass: lesson source-of-truth hardening
+- Added a new shared `studentStateService` to centralize:
+  - username/id resolution
+  - `student_state` reads
+  - `student_state` upserts
+  - `student_state` deletes
+- Fixed an important lesson-state persistence bug:
+  - several lesson state paths were incorrectly trying to resolve students by `email` or `name` while being passed a username
+  - this could silently fail and leave lesson draft state browser-only
+- Updated Lesson 1 to hydrate from server-side `student_state` on load.
+- Added consolidated server-side draft snapshots for:
+  - Lesson 2
+  - Lesson 3
+  so browser-local state is no longer the only draft persistence path for those lessons.
+- Added explicit source-of-truth documentation and Supabase cleanup SQL helper file:
+  - `DATA_SOURCE_OF_TRUTH.md`
+  - `SUPABASE_CLEANUP_SQL.sql`
+- Updated handover and checklist docs to reflect the new source-of-truth model.
+- Files:
+  - src/services/studentStateService.ts
+  - src/services/progressService.ts
+  - src/pages/student_sections/Lesson1.tsx
+  - src/pages/student_sections/Lesson2.tsx
+  - src/pages/student_sections/Lesson3.tsx
+  - DATA_SOURCE_OF_TRUTH.md
+  - SUPABASE_CLEANUP_SQL.sql
+  - HANDOVER_DOCUMENTATION.md
+  - PROJECT_PHASE_CHECKLIST.txt
+  - PROJECT_VERIFICATION_CHECKLIST.txt
+- Local verification:
+  - repo-local `tsc` executed successfully
+  - repo-local `vite build` executed successfully
+- Commit: pending
+- Push: pending

@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import ProgressBar from '../../components/ProgressBar';
 import React from 'react';
-import { getLesson1State, saveLesson1State, awaitSaveLesson1State, flushLesson1StateSync, getTeacherFeedback, setUserProgress, setPhase1ActivityFlag, getPhase1Progress, saveActivity2Checkpoint, saveActivity3Choice, saveActivity4aQuestion, saveActivity4bFinal, savePhase2Activity1, savePhase2Activity2, savePhase2Activity2Answer, savePhase2Activity2Steps, getPhase2Activity2AnswersAll, getPhase2Activity2All, savePhase2FinalizeScatter, savePhase2SelfAssessment, savePhase2Activity4Check, savePhase2Activity4Interpret, savePhase2Activity3Upload, getPhase2Activity3All, getPhase2SelfAssessAll, savePhase3FinishAnalysis, savePhase3SubmitWorksheet, savePhase3FinalizeRecommendation, savePhase4SubmitReview, savePhase4MissionComplete, savePhase4PeerReview, savePhase4Reflection, getPhase4ReviewAll, getPhase4CompleteAll, getPhase2Activity4CheckAll, getPhase2Activity4InterpAllDetailed, Lesson1State } from '../../services/progressService';
+import { getLesson1State, getLesson1StateAsync, saveLesson1State, awaitSaveLesson1State, flushLesson1StateSync, getTeacherFeedback, setUserProgress, setPhase1ActivityFlag, getPhase1Progress, saveActivity2Checkpoint, saveActivity3Choice, saveActivity4aQuestion, saveActivity4bFinal, savePhase2Activity1, savePhase2Activity2, savePhase2Activity2Answer, savePhase2Activity2Steps, getPhase2Activity2AnswersAll, getPhase2Activity2All, savePhase2FinalizeScatter, savePhase2SelfAssessment, savePhase2Activity4Check, savePhase2Activity4Interpret, savePhase2Activity3Upload, getPhase2Activity3All, getPhase2SelfAssessAll, savePhase3FinishAnalysis, savePhase3SubmitWorksheet, savePhase3FinalizeRecommendation, savePhase4SubmitReview, savePhase4MissionComplete, savePhase4PeerReview, savePhase4Reflection, getPhase4ReviewAll, getPhase4CompleteAll, getPhase2Activity4CheckAll, getPhase2Activity4InterpAllDetailed, Lesson1State } from '../../services/progressService';
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
@@ -78,6 +78,10 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
       try {
         const prof = await getMyProfile();
         const studentId = prof?.id;
+        const remoteState = await getLesson1StateAsync(studentId || user.username);
+        if (remoteState) {
+          setState(remoteState);
+        }
         if (!studentId) return;
         const fb = await getFeedbackForStudentActivity(studentId, 'lesson1');
         if (fb) setServerFeedback(fb);

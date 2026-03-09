@@ -34,14 +34,16 @@ Teacher and Admin share the same active combined portal.
 - `student_progress`
   - legacy / partial progress support
 - `student_state`
-  - legacy / partial state support
+  - authoritative draft / in-progress lesson state snapshots for lessons 1-3
 
-## Important implementation note
+## Important implementation notes
 
 The live lesson submission and lesson scoring flow is driven by `responses`, not by `lessons`.
 
 - `public.lessons` is not the table that stores lesson outputs
 - lesson outputs and teacher lesson scores are stored in `public.responses`
+
+Draft lesson progress is now intended to be driven by `student_state`, with browser storage used as cache/fallback only.
 
 ## Activity storage model
 
@@ -108,6 +110,10 @@ The live lesson submission and lesson scoring flow is driven by `responses`, not
   - QA / functional verification checklist
 - `BUG_SELF_HEAL_LOG.txt`
   - error log and self-diagnosis notes
+- `DATA_SOURCE_OF_TRUTH.md`
+  - canonical storage/source-of-truth map
+- `SUPABASE_CLEANUP_SQL.sql`
+  - verification/reset SQL helpers for live data
 
 ## Recommended final verification before production use
 

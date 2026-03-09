@@ -24,6 +24,7 @@ const SCORES_KEY = 'assessmentScores';
 const REWARD_KEY = 'rewardShownSections';
 import localforage from 'localforage';
 import { supabase } from './supabaseClient';
+import { getStudentState, upsertStudentState, resolveStudentId } from './studentStateService';
 
 const LESSON1_KEY = 'lesson1State';
 
@@ -216,13 +217,7 @@ export const getLesson1State = (username: string): Lesson1State => {
 // Async loader from Supabase: returns the lesson state stored for the given student and lesson slug 'lesson1'
 export const getLesson1StateAsync = async (studentIdOrUsername: string): Promise<Lesson1State | null> => {
   try {
-    // Attempt to resolve student by email/username in `users` table
-    const userRes = await supabase.from('users').select('id').or(`email.eq.${studentIdOrUsername},name.eq.${studentIdOrUsername}`).limit(1).maybeSingle();
-    const student_id = (userRes.data as any)?.id;
-    if (!student_id) return null;
-    const { data, error } = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson1').limit(1).maybeSingle();
-    if (error) return null;
-    return data?.state ?? null;
+    return await getStudentState(studentIdOrUsername, 'lesson1') as Lesson1State | null;
   } catch (e) {
     return null;
   }
@@ -251,10 +246,7 @@ export const saveLesson1State = (username: string, state: Lesson1State) => {
   // Persist to Supabase asynchronously (best-effort)
   (async () => {
     try {
-      const userRes = await supabase.from('users').select('id').or(`email.eq.${username},name.eq.${username}`).limit(1).maybeSingle();
-      const student_id = (userRes.data as any)?.id;
-      if (!student_id) return;
-      await (supabase.from('student_state') as any).upsert({ student_id, lesson_slug: 'lesson1', state, updated_at: new Date().toISOString() }, { onConflict: ['student_id', 'lesson_slug'] });
+      await upsertStudentState(username, 'lesson1', state);
     } catch (e) {
       // ignore supabase errors (keep local state)
     }
@@ -283,11 +275,7 @@ export const awaitSaveLesson1State = async (username: string, state: Lesson1Stat
 
   // Best-effort persist to Supabase synchronously in this async function
   try {
-    const userRes = await supabase.from('users').select('id').or(`email.eq.${username},name.eq.${username}`).limit(1).maybeSingle();
-    const student_id = (userRes.data as any)?.id;
-    if (student_id) {
-      await (supabase.from('student_state') as any).upsert({ student_id, lesson_slug: 'lesson1', state, updated_at: new Date().toISOString() }, { onConflict: ['student_id', 'lesson_slug'] });
-    }
+    await upsertStudentState(username, 'lesson1', state);
   } catch (e) {
     // ignore
   }
@@ -396,14 +384,13 @@ export const saveLesson3Phase1Activity1 = async (username: string, payload: { re
   // Best-effort persist to Supabase student_state (merge into lesson3)
   (async () => {
     try {
-      const userRes = await supabase.from('users').select('id').or(`email.eq.${username},name.eq.${username}`).limit(1).maybeSingle();
-      const student_id = (userRes.data as any)?.id;
+      const student_id = await resolveStudentId(username);
       if (!student_id) return;
       // fetch existing student_state
       const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
       const existing = ss.data?.state || {};
       const merged = { ...(existing as any), phase3_p1_a1: { researchQuestion: payload.researchQuestion, regressionEquation: payload.regressionEquation, interpretation: payload.interpretation, timestamp: payload.timestamp || new Date().toISOString() } };
-      await (supabase.from('student_state') as any).upsert({ student_id, lesson_slug: 'lesson3', state: merged, updated_at: new Date().toISOString() }, { onConflict: ['student_id', 'lesson_slug'] });
+      await upsertStudentState(student_id, 'lesson3', merged);
     } catch (e) {
       // ignore
     }
@@ -429,8 +416,7 @@ export const saveLesson3Phase1Activity2 = async (username: string, payload: { fi
   // If a file dataUrl is supplied, try uploading to Supabase Storage and save public URL instead
   (async () => {
     try {
-      const userRes = await supabase.from('users').select('id').or(`email.eq.${username},name.eq.${username}`).limit(1).maybeSingle();
-      const student_id = (userRes.data as any)?.id;
+      const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
       if (payload.fileDataUrl && payload.filename) {
@@ -445,7 +431,7 @@ export const saveLesson3Phase1Activity2 = async (username: string, payload: { fi
       const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
       const existing = ss.data?.state || {};
       const merged = { ...(existing as any), phase3_p1_a2: { fileUrl: publicUrl, filename: payload.filename, considerations: payload.considerations, timestamp: payload.timestamp || new Date().toISOString() } };
-      await (supabase.from('student_state') as any).upsert({ student_id, lesson_slug: 'lesson3', state: merged, updated_at: new Date().toISOString() }, { onConflict: ['student_id', 'lesson_slug'] });
+      await upsertStudentState(student_id, 'lesson3', merged);
     } catch (e) {
       // ignore
     }
@@ -476,8 +462,7 @@ export const saveLesson3Phase2Activity1 = async (username: string, payload: { fi
   // Best-effort persist to Supabase student_state (merge into lesson3)
   (async () => {
     try {
-      const userRes = await supabase.from('users').select('id').or(`email.eq.${username},name.eq.${username}`).limit(1).maybeSingle();
-      const student_id = (userRes.data as any)?.id;
+      const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
       if (payload.fileDataUrl && payload.filename) {
@@ -492,7 +477,7 @@ export const saveLesson3Phase2Activity1 = async (username: string, payload: { fi
       const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
       const existing = ss.data?.state || {};
       const merged = { ...(existing as any), phase3_p2_a1: { fileUrl: publicUrl, filename: payload.filename, timestamp: payload.timestamp || new Date().toISOString() } };
-      await (supabase.from('student_state') as any).upsert({ student_id, lesson_slug: 'lesson3', state: merged, updated_at: new Date().toISOString() }, { onConflict: ['student_id', 'lesson_slug'] });
+      await upsertStudentState(student_id, 'lesson3', merged);
     } catch (e) {
       // ignore
     }

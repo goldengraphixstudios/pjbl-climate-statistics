@@ -64,8 +64,13 @@ Integration / deployment
 - [ ] Lesson 2 scenario images load on deployed site
 - [ ] No `React is not defined` runtime error
 - [ ] No lesson-image 404s in browser console
+- [ ] No stale `vite.svg` favicon 404 in browser console
 - [ ] No duplicate-key warnings in Lesson 1
 - [ ] Student dashboard no longer emits the realtime websocket warning
 - [ ] Supabase reads/writes succeed for responses
 - [ ] Supabase reads/writes succeed for feedback
+- [ ] Supabase reads/writes succeed for `student_state` snapshots on Lesson 1
+- [ ] Supabase reads/writes succeed for `student_state` snapshots on Lesson 2
+- [ ] Supabase reads/writes succeed for `student_state` snapshots on Lesson 3
+- [ ] Browser-only stale lesson progress does not return after server-backed reset
 - [ ] GitHub Pages build contains latest code

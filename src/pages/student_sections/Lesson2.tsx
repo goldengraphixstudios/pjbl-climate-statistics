@@ -1,12 +1,13 @@
 import '../../styles/StudentPortal.css';
 import '../../styles/Lesson.css';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import ProgressBar from '../../components/ProgressBar';
 import { setUserProgress, saveLesson2Phase1Activity1, getLesson2Phase1Activity1All, saveLesson2Phase1Activity1b, getLesson2Phase1Activity1bAll, saveLesson2Phase1Activity2Checkpoint, getLesson2Phase1Activity2All, saveLesson2Phase1Activity2b, getLesson2Phase1Activity2bAll, saveLesson2Phase1Activity3, getLesson2Phase1Activity3All, saveLesson2Phase1Activity4, getLesson2Phase1Activity4All, saveLesson2Phase2Activity1, getLesson2Phase2Activity1All, saveLesson2Phase2Activity2, getLesson2Phase2Activity2All, saveLesson2Phase2Activity3, getLesson2Phase2Activity3All, saveLesson2Phase2Activity4, getLesson2Phase2Activity4All, saveLesson2Phase2Activity4Interpret, getLesson2Phase2Activity4InterpAll, saveLesson2Phase3Activity1, getLesson2Phase3Activity1All, savePhase3FinishAnalysis, saveLesson2Phase3Activity2, getLesson2Phase3Activity2All, savePhase3SubmitWorksheet, saveLesson2Phase4Activity1, getLesson2Phase4Activity1All } from '../../services/progressService';
 import { activity2bAnswerKey, lesson2Phase2Activity1Validators, lesson2Phase2Activity1Questions } from '../../services/activity2Questions';
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { getStudentState, upsertStudentState } from '../../services/studentStateService';
 
 interface AuthUser {
   username: string;
@@ -19,6 +20,8 @@ interface SectionPageProps {
 }
 
 const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
+  const studentStateIdentifier = useRef<string>(user.username);
+  const lesson2SnapshotLoaded = useRef(false);
   const displayName = (() => {
     const raw = localStorage.getItem('teacherClasses');
     if (raw) {
@@ -438,6 +441,176 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     const total = Math.min(100, phase1Contrib + phase2Contrib + phase3Contrib + phase4Contrib);
     setDisplayProgress(total);
   }, [observations, activity1aSubmitted, videoSubmitted, pairSubmitted, a3Submitted, exitSubmitted, phase2A1Submitted, phase2A2Submitted, submitDisabled3, submitDisabled4, analysisSubmitted, analysis2Submitted, submitDisabledP4]);
+
+  useEffect(() => {
+    const hydrateFromServer = async () => {
+      try {
+        const prof = await getMyProfile();
+        const identifier = prof?.id || user.username;
+        studentStateIdentifier.current = identifier;
+        const snapshot = await getStudentState(identifier, 'lesson2') as any;
+        if (!snapshot) return;
+
+        if (snapshot.observations) setObservations(snapshot.observations);
+        if (snapshot.activity1b) setActivity1b(snapshot.activity1b);
+        if (Array.isArray(snapshot.videoAnswers)) setVideoAnswers(snapshot.videoAnswers);
+        if (Array.isArray(snapshot.videoChecks)) setVideoChecks(snapshot.videoChecks);
+        if (typeof snapshot.videoSubmitted === 'boolean') setVideoSubmitted(snapshot.videoSubmitted);
+        if (Array.isArray(snapshot.pairAnswers)) setPairAnswers(snapshot.pairAnswers);
+        if (Array.isArray(snapshot.pairChecks)) setPairChecks(snapshot.pairChecks);
+        if (typeof snapshot.pairSubmitted === 'boolean') setPairSubmitted(snapshot.pairSubmitted);
+        if (Array.isArray(snapshot.phase2A1Answers)) setPhase2A1Answers(snapshot.phase2A1Answers);
+        if (Array.isArray(snapshot.phase2A1Checks)) setPhase2A1Checks(snapshot.phase2A1Checks);
+        if (typeof snapshot.phase2A1Submitted === 'boolean') setPhase2A1Submitted(snapshot.phase2A1Submitted);
+        if (typeof snapshot.phase2A2Submitted === 'boolean') setPhase2A2Submitted(snapshot.phase2A2Submitted);
+        if (typeof snapshot.previewURL === 'string') setPreviewURL(snapshot.previewURL);
+        if (typeof snapshot.uploadedFileName === 'string') setUploadedFileName(snapshot.uploadedFileName);
+        if (typeof snapshot.previewURL3 === 'string') setPreviewURL3(snapshot.previewURL3);
+        if (typeof snapshot.submitDisabled3 === 'boolean') setSubmitDisabled3(snapshot.submitDisabled3);
+        if (typeof snapshot.submissionMessage3 === 'string') setSubmissionMessage3(snapshot.submissionMessage3);
+        if (typeof snapshot.previewURL4 === 'string') setPreviewURL4(snapshot.previewURL4);
+        if (typeof snapshot.submitDisabled4 === 'boolean') setSubmitDisabled4(snapshot.submitDisabled4);
+        if (typeof snapshot.submissionMessage4 === 'string') setSubmissionMessage4(snapshot.submissionMessage4);
+        if (typeof snapshot.p4Equation === 'string') setP4Equation(snapshot.p4Equation);
+        if (typeof snapshot.p4YIntercept === 'string') setP4YIntercept(snapshot.p4YIntercept);
+        if (typeof snapshot.p4Interpretation === 'string') setP4Interpretation(snapshot.p4Interpretation);
+        if (typeof snapshot.p4Locked === 'boolean') setP4Locked(snapshot.p4Locked);
+        if (snapshot.analysisInputs) setAnalysisInputs(snapshot.analysisInputs);
+        if (typeof snapshot.analysisSubmitted === 'boolean') setAnalysisSubmitted(snapshot.analysisSubmitted);
+        if (snapshot.analysis2Inputs) setAnalysis2Inputs(snapshot.analysis2Inputs);
+        if (typeof snapshot.analysis2Submitted === 'boolean') setAnalysis2Submitted(snapshot.analysis2Submitted);
+        if (typeof snapshot.previewURLP4 === 'string') setPreviewURLP4(snapshot.previewURLP4);
+        if (typeof snapshot.submitDisabledP4 === 'boolean') setSubmitDisabledP4(snapshot.submitDisabledP4);
+        if (typeof snapshot.submissionMessageP4 === 'string') setSubmissionMessageP4(snapshot.submissionMessageP4);
+        if (typeof snapshot.a3Var1 === 'string') setA3Var1(snapshot.a3Var1);
+        if (typeof snapshot.a3Var2 === 'string') setA3Var2(snapshot.a3Var2);
+        if (typeof snapshot.a3Reasoning === 'string') setA3Reasoning(snapshot.a3Reasoning);
+        if (typeof snapshot.a3Prediction === 'string') setA3Prediction(snapshot.a3Prediction);
+        if (typeof snapshot.a3ResearchQuestion === 'string') setA3ResearchQuestion(snapshot.a3ResearchQuestion);
+        if (typeof snapshot.a3Submitted === 'boolean') setA3Submitted(snapshot.a3Submitted);
+        if (typeof snapshot.exitText === 'string') setExitText(snapshot.exitText);
+        if (typeof snapshot.exitScale1 === 'number') setExitScale1(snapshot.exitScale1);
+        if (typeof snapshot.exitScale2 === 'number') setExitScale2(snapshot.exitScale2);
+        if (typeof snapshot.exitScale3 === 'number') setExitScale3(snapshot.exitScale3);
+        if (typeof snapshot.exitSubmitted === 'boolean') setExitSubmitted(snapshot.exitSubmitted);
+        if (Array.isArray(snapshot.completedPhases)) setCompletedPhases(snapshot.completedPhases);
+        if (typeof snapshot.displayProgress === 'number') setDisplayProgress(snapshot.displayProgress);
+      } finally {
+        lesson2SnapshotLoaded.current = true;
+      }
+    };
+
+    hydrateFromServer();
+  }, [user.username]);
+
+  const lesson2Snapshot = useMemo(() => ({
+    version: 1,
+    source: 'lesson2-student-page',
+    syncedAt: new Date().toISOString(),
+    completedPhases,
+    displayProgress,
+    observations,
+    activity1b,
+    videoAnswers,
+    videoChecks,
+    videoSubmitted,
+    pairAnswers,
+    pairChecks,
+    pairSubmitted,
+    phase2A1Answers,
+    phase2A1Checks,
+    phase2A1Submitted,
+    phase2A2Submitted,
+    previewURL: previewURL && !previewURL.startsWith('blob:') ? previewURL : null,
+    uploadedFileName,
+    previewURL3: previewURL3 && !previewURL3.startsWith('blob:') ? previewURL3 : null,
+    submissionMessage3,
+    submitDisabled3,
+    previewURL4: previewURL4 && !previewURL4.startsWith('blob:') ? previewURL4 : null,
+    submissionMessage4,
+    submitDisabled4,
+    p4Equation,
+    p4YIntercept,
+    p4Interpretation,
+    p4Locked,
+    analysisInputs,
+    analysisSubmitted,
+    analysis2Inputs,
+    analysis2Submitted,
+    previewURLP4: previewURLP4 && !previewURLP4.startsWith('blob:') ? previewURLP4 : null,
+    submissionMessageP4,
+    submitDisabledP4,
+    a3Var1,
+    a3Var2,
+    a3Reasoning,
+    a3Prediction,
+    a3ResearchQuestion,
+    a3Submitted,
+    exitText,
+    exitScale1,
+    exitScale2,
+    exitScale3,
+    exitSubmitted,
+  }), [
+    completedPhases,
+    displayProgress,
+    observations,
+    activity1b,
+    videoAnswers,
+    videoChecks,
+    videoSubmitted,
+    pairAnswers,
+    pairChecks,
+    pairSubmitted,
+    phase2A1Answers,
+    phase2A1Checks,
+    phase2A1Submitted,
+    phase2A2Submitted,
+    previewURL,
+    uploadedFileName,
+    previewURL3,
+    submissionMessage3,
+    submitDisabled3,
+    previewURL4,
+    submissionMessage4,
+    submitDisabled4,
+    p4Equation,
+    p4YIntercept,
+    p4Interpretation,
+    p4Locked,
+    analysisInputs,
+    analysisSubmitted,
+    analysis2Inputs,
+    analysis2Submitted,
+    previewURLP4,
+    submissionMessageP4,
+    submitDisabledP4,
+    a3Var1,
+    a3Var2,
+    a3Reasoning,
+    a3Prediction,
+    a3ResearchQuestion,
+    a3Submitted,
+    exitText,
+    exitScale1,
+    exitScale2,
+    exitScale3,
+    exitSubmitted,
+  ]);
+
+  useEffect(() => {
+    if (!lesson2SnapshotLoaded.current) return;
+
+    const persistSnapshot = async () => {
+      try {
+        await upsertStudentState(studentStateIdentifier.current || user.username, 'lesson2', lesson2Snapshot);
+      } catch (e) {
+        console.error('persist lesson2 snapshot failed', e);
+      }
+    };
+
+    persistSnapshot();
+  }, [lesson2Snapshot, user.username]);
   
 
   const canSubmitA3 = () => {

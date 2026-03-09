@@ -82,3 +82,42 @@ Self-heal action applied
 
 Files touched
 - index.html
+
+[2026-03-10 13:02] Lesson draft persistence cleanup
+
+Observed issues
+- Lesson draft/completion state was still mixed across:
+  - `responses`
+  - `student_state`
+  - browser `localStorage`
+  - IndexedDB / `localforage`
+- Some `student_state` persistence paths were incorrectly resolving the current student by `email` or `name` while being given a username.
+- Result:
+  - draft state could silently fail to save to Supabase
+  - old local browser state could appear to be the source of truth
+
+Diagnosis
+- The resolver bug meant `student_state` upserts for lesson draft state were not reliable.
+- Lesson 2 did not have a consolidated server-side lesson snapshot at all.
+- Lesson 3 had partial `student_state` writes, but no consolidated page snapshot.
+
+Self-heal actions applied
+- Added a shared `studentStateService` with correct username/id resolution.
+- Replaced bad username resolution logic in `progressService`.
+- Lesson 1 now hydrates from server `student_state` on load.
+- Lesson 2 now persists a consolidated draft snapshot into `student_state`.
+- Lesson 3 now persists a consolidated draft snapshot into `student_state`.
+- Added source-of-truth and SQL cleanup docs to reduce future confusion.
+
+Files touched
+- src/services/studentStateService.ts
+- src/services/progressService.ts
+- src/pages/student_sections/Lesson1.tsx
+- src/pages/student_sections/Lesson2.tsx
+- src/pages/student_sections/Lesson3.tsx
+- DATA_SOURCE_OF_TRUTH.md
+- SUPABASE_CLEANUP_SQL.sql
+
+Verification
+- repo-local TypeScript build succeeded
+- repo-local Vite build succeeded

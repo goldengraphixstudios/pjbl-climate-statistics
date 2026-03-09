@@ -6,9 +6,10 @@ PHASE 1 - Database & Form Collection
 [x] Form data collection stores student answers
 [x] Pre-assessment rows include answers and correctness
 [x] Post-assessment rows include answers and correctness
-[~] Lesson 1/2/3 submissions stored in Supabase responses
+[x] Lesson 1/2/3 submissions stored in Supabase responses
 [~] Support registered and unregistered student submission flow
 [x] Standardize row structure across all assessments and lessons
+[x] Define source-of-truth model for final submissions vs draft lesson state
 [~] Confirm session-detail requirements and add missing fields if needed
 
 PHASE 2 - Student Portal
@@ -50,19 +51,19 @@ PHASE 3 - Teacher / Admin Combined Portal
 [~] Show live saved lesson scores in student performance summary
 [x] Show live saved lesson scores in class record
 [~] Add lesson analytics/visualization to combined portal
-[ ] Remove or retire old localStorage-only teacher scoring paths
+[~] Remove or retire old localStorage-only teacher scoring paths
 
 PHASE 4 - Integration & Deployment
 [x] GitHub repo connected
 [x] Work log file created
-[~] Supabase integration active, but some legacy localStorage paths remain
+[~] Supabase integration active, with lesson draft snapshots now persisted to student_state
 [x] Role-based staff access exists
 [~] Student auth works through custom RPC flow
 [~] Final cross-role testing
 [~] Teacher workflow QA
 [~] Student workflow QA
 [~] Admin workflow QA
-[ ] Push final code to client repository
+[x] Push cleanup checkpoints to client repository
 [x] Final handover documentation
 
 NEXT EXECUTION ORDER
@@ -76,15 +77,15 @@ NEXT EXECUTION ORDER
 8. Prepare handover notes and push final state
 
 CURRENT LESSON STORAGE FINDINGS
-- Lesson 1 final output currently upserts a responses row with:
-  activity_type = lesson1
-  answers = { lesson1State: <full lesson state> }
-- Lesson 2 final output currently upserts a responses row with:
-  activity_type = lesson2
-  answers = { phase4_upload: <data url or file reference> }
-- Lesson 3 final output currently upserts a responses row with:
-  activity_type = lesson3
-  answers = { phase4_reflection: <data url or file reference> }
+- Lesson 1
+  - final output source of truth: `responses.activity_type = 'lesson1'`
+  - draft/in-progress source of truth: `student_state.lesson_slug = 'lesson1'`
+- Lesson 2
+  - final output source of truth: `responses.activity_type = 'lesson2'`
+  - draft/in-progress source of truth: `student_state.lesson_slug = 'lesson2'`
+- Lesson 3
+  - final output source of truth: `responses.activity_type = 'lesson3'`
+  - draft/in-progress source of truth: `student_state.lesson_slug = 'lesson3'`
 
 CURRENT BLOCKER
-- Teacher scoring backend exists, but the active combined portal still lacks a complete Supabase-backed scoring workflow for Lesson 1/2/3 final outputs.
+- Remaining work is primarily end-to-end QA and retirement of inactive legacy localStorage-era teacher portal code paths.

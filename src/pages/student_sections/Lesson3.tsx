@@ -1,11 +1,12 @@
 import '../../styles/StudentPortal.css';
 import '../../styles/Lesson.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ProgressBar from '../../components/ProgressBar';
 import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1All, getUserProgress, saveLesson3Phase1Activity2, getLesson3Phase1Activity2All, saveLesson3Phase2Activity1, getLesson3Phase2Activity1All, saveLesson3Phase2Activity2, getLesson3Phase2Activity2All, saveLesson3Phase2Activity3, getLesson3Phase2Activity3All, saveLesson3Phase3Activity1, getLesson3Phase3Activity1All, saveLesson3Phase4PeerReview, getLesson3Phase4ReviewAll, saveLesson3Phase4Reflection, getLesson3Phase4CompleteAll } from '../../services/progressService';
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { getStudentState, upsertStudentState } from '../../services/studentStateService';
 
 interface AuthUser {
   username: string;
@@ -18,6 +19,8 @@ interface SectionPageProps {
 }
 
 const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
+  const studentStateIdentifier = useRef<string>(user.username);
+  const lesson3SnapshotLoaded = useRef(false);
   const displayName = (() => {
     const raw = localStorage.getItem('teacherClasses');
     if (raw) {
@@ -288,6 +291,152 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
+
+  useEffect(() => {
+    const hydrateFromServer = async () => {
+      try {
+        const prof = await getMyProfile();
+        const identifier = prof?.id || user.username;
+        studentStateIdentifier.current = identifier;
+        const snapshot = await getStudentState(identifier, 'lesson3') as any;
+        if (!snapshot) return;
+
+        if (Array.isArray(snapshot.completedPhases)) setCompletedPhases(snapshot.completedPhases);
+        if (typeof snapshot.lesson3ExtraPct === 'number') setLesson3ExtraPct(snapshot.lesson3ExtraPct);
+        if (typeof snapshot.recallA === 'string') setRecallA(snapshot.recallA);
+        if (typeof snapshot.recallB === 'string') setRecallB(snapshot.recallB);
+        if (typeof snapshot.recallC === 'string') setRecallC(snapshot.recallC);
+        if (typeof snapshot.recallLocked === 'boolean') setRecallLocked(snapshot.recallLocked);
+        if (typeof snapshot.finalConsiderations === 'string') setFinalConsiderations(snapshot.finalConsiderations);
+        if (typeof snapshot.submitted2 === 'boolean') setSubmitted2(snapshot.submitted2);
+        if (typeof snapshot.uploadedDiagramPreview === 'string') setUploadedDiagramPreview(snapshot.uploadedDiagramPreview);
+        if (typeof snapshot.p2a1Preview === 'string') setP2a1Preview(snapshot.p2a1Preview);
+        if (typeof snapshot.p2a1Submitted === 'boolean') setP2a1Submitted(snapshot.p2a1Submitted);
+        if (typeof snapshot.p2a2Preview === 'string') setP2a2Preview(snapshot.p2a2Preview);
+        if (typeof snapshot.p2a2Submitted === 'boolean') setP2a2Submitted(snapshot.p2a2Submitted);
+        if (typeof snapshot.p2a3Preview === 'string') setP2a3Preview(snapshot.p2a3Preview);
+        if (typeof snapshot.p2a3Submitted === 'boolean') setP2a3Submitted(snapshot.p2a3Submitted);
+        if (typeof snapshot.p2a3Answer === 'string') setP2a3Answer(snapshot.p2a3Answer);
+        if (typeof snapshot.p3Preview === 'string') setP3Preview(snapshot.p3Preview);
+        if (typeof snapshot.p3Submitted === 'boolean') setP3Submitted(snapshot.p3Submitted);
+        if (typeof snapshot.peer1Answer === 'string') setPeer1Answer(snapshot.peer1Answer);
+        if (typeof snapshot.peer2Answer === 'string') setPeer2Answer(snapshot.peer2Answer);
+        if (typeof snapshot.peer3Answer === 'string') setPeer3Answer(snapshot.peer3Answer);
+        if (typeof snapshot.peer4Answer === 'string') setPeer4Answer(snapshot.peer4Answer);
+        if (typeof snapshot.peerStrength === 'string') setPeerStrength(snapshot.peerStrength);
+        if (typeof snapshot.peerSuggestion === 'string') setPeerSuggestion(snapshot.peerSuggestion);
+        if (typeof snapshot.peerReviewerUsername === 'string') setPeerReviewerUsername(snapshot.peerReviewerUsername);
+        if (typeof snapshot.peerSubmitted === 'boolean') setPeerSubmitted(snapshot.peerSubmitted);
+        if (typeof snapshot.finalConfidence === 'string') setFinalConfidence(snapshot.finalConfidence);
+        if (typeof snapshot.finalConfidenceReason === 'string') setFinalConfidenceReason(snapshot.finalConfidenceReason);
+        if (typeof snapshot.finalChallenge === 'string') setFinalChallenge(snapshot.finalChallenge);
+        if (typeof snapshot.finalStatsChange === 'string') setFinalStatsChange(snapshot.finalStatsChange);
+        if (typeof snapshot.finalClimateChange === 'string') setFinalClimateChange(snapshot.finalClimateChange);
+        if (typeof snapshot.finalConnectionChange === 'string') setFinalConnectionChange(snapshot.finalConnectionChange);
+        if (typeof snapshot.finalExtension === 'string') setFinalExtension(snapshot.finalExtension);
+        if (typeof snapshot.finalLearnerInsight === 'string') setFinalLearnerInsight(snapshot.finalLearnerInsight);
+        if (typeof snapshot.finalPreview === 'string') setFinalPreview(snapshot.finalPreview);
+        if (typeof snapshot.finalSubmitted === 'boolean') setFinalSubmitted(snapshot.finalSubmitted);
+      } finally {
+        lesson3SnapshotLoaded.current = true;
+      }
+    };
+
+    hydrateFromServer();
+  }, [user.username]);
+
+  const lesson3Snapshot = useMemo(() => ({
+    version: 1,
+    source: 'lesson3-student-page',
+    syncedAt: new Date().toISOString(),
+    completedPhases,
+    lesson3ExtraPct,
+    recallA,
+    recallB,
+    recallC,
+    recallLocked,
+    finalConsiderations,
+    submitted2,
+    uploadedDiagramPreview: uploadedDiagramPreview && !uploadedDiagramPreview.startsWith('blob:') ? uploadedDiagramPreview : null,
+    p2a1Preview: p2a1Preview && !p2a1Preview.startsWith('blob:') ? p2a1Preview : null,
+    p2a1Submitted,
+    p2a2Preview: p2a2Preview && !p2a2Preview.startsWith('blob:') ? p2a2Preview : null,
+    p2a2Submitted,
+    p2a3Preview: p2a3Preview && !p2a3Preview.startsWith('blob:') ? p2a3Preview : null,
+    p2a3Submitted,
+    p2a3Answer,
+    p3Preview: p3Preview && !p3Preview.startsWith('blob:') ? p3Preview : null,
+    p3Submitted,
+    peer1Answer,
+    peer2Answer,
+    peer3Answer,
+    peer4Answer,
+    peerStrength,
+    peerSuggestion,
+    peerReviewerUsername,
+    peerSubmitted,
+    finalConfidence,
+    finalConfidenceReason,
+    finalChallenge,
+    finalStatsChange,
+    finalClimateChange,
+    finalConnectionChange,
+    finalExtension,
+    finalLearnerInsight,
+    finalPreview: finalPreview && !finalPreview.startsWith('blob:') ? finalPreview : null,
+    finalSubmitted,
+  }), [
+    completedPhases,
+    lesson3ExtraPct,
+    recallA,
+    recallB,
+    recallC,
+    recallLocked,
+    finalConsiderations,
+    submitted2,
+    uploadedDiagramPreview,
+    p2a1Preview,
+    p2a1Submitted,
+    p2a2Preview,
+    p2a2Submitted,
+    p2a3Preview,
+    p2a3Submitted,
+    p2a3Answer,
+    p3Preview,
+    p3Submitted,
+    peer1Answer,
+    peer2Answer,
+    peer3Answer,
+    peer4Answer,
+    peerStrength,
+    peerSuggestion,
+    peerReviewerUsername,
+    peerSubmitted,
+    finalConfidence,
+    finalConfidenceReason,
+    finalChallenge,
+    finalStatsChange,
+    finalClimateChange,
+    finalConnectionChange,
+    finalExtension,
+    finalLearnerInsight,
+    finalPreview,
+    finalSubmitted,
+  ]);
+
+  useEffect(() => {
+    if (!lesson3SnapshotLoaded.current) return;
+
+    const persistSnapshot = async () => {
+      try {
+        await upsertStudentState(studentStateIdentifier.current || user.username, 'lesson3', lesson3Snapshot);
+      } catch (e) {
+        console.error('persist lesson3 snapshot failed', e);
+      }
+    };
+
+    persistSnapshot();
+  }, [lesson3Snapshot, user.username]);
 
   return (
     <div className="portal-container">
