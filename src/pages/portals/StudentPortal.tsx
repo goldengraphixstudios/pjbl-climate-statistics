@@ -183,9 +183,9 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
         }
       }
     }
-    // prevent pre/post resubmission after a final submission exists
+    // prevent reopening a section after a final submission exists
     const myStatus = activityStatuses[current];
-    if ((sectionId === 1 || sectionId === 5) && myStatus?.submitted) {
+    if (myStatus?.submitted) {
       return true;
     }
     return false;

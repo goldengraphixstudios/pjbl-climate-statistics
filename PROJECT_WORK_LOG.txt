@@ -101,3 +101,21 @@ How To Use Going Forward
 - Push: not yet pushed
 - Open issues:
   - Lesson 1/2/3 final-output pages may still allow re-entry after submission depending on how each lesson persists its final state. Pre/post are now guarded explicitly.
+
+[2026-03-09 23:43] Diagnosis: feedback rows are not visible to student-side anon requests
+- Queried live Supabase directly with the frontend anon key.
+- Confirmed the unified `responses` row exists for Gabriel under activity_type `pre`.
+- Confirmed there were no visible feedback rows from anon reads for Gabriel at the time of inspection.
+- Reproduced a signed staff insert directly against Supabase and confirmed feedback insert works when authenticated as staff.
+- Conclusion: the student app is blocked by current feedback table visibility/policy behavior, not by the dashboard code alone.
+- Additional code updates:
+  - all submitted dashboard sections now lock after final submission
+  - pre/post unified response rows now also carry `part1Score` and `part1GroupScores` for summary display
+- Files:
+  - src/pages/portals/StudentPortal.tsx
+  - src/pages/student_sections/PreAssessment.tsx
+  - src/pages/student_sections/PostAssessment.tsx
+- Commit: not yet committed
+- Push: not yet pushed
+- Open issues:
+  - Supabase SQL must be updated so student-side reads can see teacher feedback in the current custom-auth design.

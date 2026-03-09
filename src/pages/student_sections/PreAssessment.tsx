@@ -62,6 +62,12 @@ const answerKey: Option[] = ['C','A','C','D','A','B','A','B','A','C','B','A','C'
 
 const likertLabels = ['Not Aware', 'A Little Aware', 'Aware', 'Very Aware']; // 1..4
 
+const getGroupScores = (itemCorrect: boolean[]) => ({
+  lc12: itemCorrect.slice(0, 5).filter(Boolean).length,
+  lc34: itemCorrect.slice(5, 10).filter(Boolean).length,
+  lc56: itemCorrect.slice(10, 15).filter(Boolean).length,
+});
+
 const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const displayName = (() => {
     const raw = localStorage.getItem('teacherClasses');
@@ -142,6 +148,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const itemCorrectLocal = responses.map((r, i) => r === answerKey[i]);
       setItemCorrect(itemCorrectLocal);
       const correct = itemCorrectLocal.filter(Boolean).length;
+      const part1GroupScores = getGroupScores(itemCorrectLocal);
       savePreAssessmentPart1Score(user.username, correct, itemCorrectLocal);
       // save raw responses (letters) so teacher can review them
       try {
@@ -162,7 +169,8 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
           await upsertResponse({
             student_id: studentId,
             activity_type: 'pre',
-            answers: { part1: responses }
+            answers: { part1: responses, part1Score: correct, part1GroupScores },
+            correctness: { part1: itemCorrectLocal }
           });
         }
       } catch (e) {
@@ -198,10 +206,11 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const prof = await getMyProfile();
       const studentId = prof?.id;
       if (studentId) {
+        const correct = itemCorrect.filter(Boolean).length;
         await upsertResponse({
           student_id: studentId,
           activity_type: 'pre',
-          answers: { part1: responses, part2: part2Responses },
+          answers: { part1: responses, part2: part2Responses, part1Score: correct, part1GroupScores: getGroupScores(itemCorrect) },
           correctness: { part1: itemCorrect }
         });
       }

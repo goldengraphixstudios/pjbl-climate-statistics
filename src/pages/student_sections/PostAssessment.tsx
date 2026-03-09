@@ -50,6 +50,12 @@ const setQuestionCounts = [1, 1, 2, 1, 2, 2, 1, 1, 2, 2];
 const answerKey: Option[] = ['C','A','C','D','A','B','A','B','A','C','B','A','C','D','A'];
 const likertLabels = ['Not Aware', 'A Little Aware', 'Aware', 'Very Aware'];
 
+const getGroupScores = (itemCorrect: boolean[]) => ({
+  lc12: itemCorrect.slice(0, 5).filter(Boolean).length,
+  lc34: itemCorrect.slice(5, 10).filter(Boolean).length,
+  lc56: itemCorrect.slice(10, 15).filter(Boolean).length,
+});
+
 const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const displayName = (() => {
     const raw = localStorage.getItem('teacherClasses');
@@ -121,6 +127,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     if (isLast) {
       const itemCorrect = responses.map((r, i) => r === answerKey[i]);
       const correct = itemCorrect.filter(Boolean).length;
+      const part1GroupScores = getGroupScores(itemCorrect);
       // persist selected letters and correctness
       savePostAssessmentPart1Responses(user.username, responses.map(r => r || '') as string[]);
       savePostAssessmentPart1Score(user.username, correct, itemCorrect);
@@ -133,7 +140,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
           await upsertResponse({
             student_id: studentId,
             activity_type: 'post',
-            answers: { part1: responses },
+            answers: { part1: responses, part1Score: correct, part1GroupScores },
             correctness: { part1: itemCorrect }
           });
         }
@@ -155,10 +162,13 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const prof = await getMyProfile();
       const studentId = prof?.id;
       if (studentId) {
+        const itemCorrect = responses.map((r, i) => r === answerKey[i]);
+        const correct = itemCorrect.filter(Boolean).length;
         await upsertResponse({
           student_id: studentId,
           activity_type: 'post',
-          answers: { part1: responses, part2: part2Responses }
+          answers: { part1: responses, part2: part2Responses, part1Score: correct, part1GroupScores: getGroupScores(itemCorrect) },
+          correctness: { part1: itemCorrect }
         });
       }
     } catch (e) {
