@@ -10,14 +10,29 @@ export interface Profile {
 }
 
 export async function getMyProfile(): Promise<Profile | null> {
-  // Prefer Supabase Auth session (admin/teacher); fall back to stored student UUID
+  // Prefer the app-level user id we store locally. Staff accounts can have an
+  // auth.users UUID that differs from public.users.id, so fall back to email.
   const userRes = await supabase.auth.getUser();
-  const uid = userRes.data?.user?.id || localStorage.getItem('currentUserId') || null;
-  if (!uid) return null;
+  const sessionUser = userRes.data?.user || null;
+  const storedId = localStorage.getItem('currentUserId') || null;
+  const identifier = storedId || sessionUser?.id || null;
+
+  if (identifier) {
+    const byId = await supabase
+      .from('users')
+      .select('id,name,email,username,role,section')
+      .eq('id', identifier)
+      .maybeSingle();
+    if (byId.error) throw byId.error;
+    if (byId.data) return byId.data as Profile | null;
+  }
+
+  if (!sessionUser?.email) return null;
+
   const { data, error } = await supabase
     .from('users')
     .select('id,name,email,username,role,section')
-    .eq('id', uid)
+    .eq('email', sessionUser.email)
     .maybeSingle();
   if (error) throw error;
   return data as Profile | null;

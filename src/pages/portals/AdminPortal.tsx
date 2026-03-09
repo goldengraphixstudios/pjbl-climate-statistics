@@ -1073,6 +1073,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                     const rows = filteredStudents.map((s: any) => {
                       const entry = scores[s.username] || {} as any;
                       return {
+                        id: s.id || '',
                         name: s.name || '',
                         username: s.username || '',
                         answers: entry.prePart1Responses || Array.from({ length: 15 }, () => ''),
@@ -1112,7 +1113,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   <td style={{textAlign: 'center'}}>{r.score}</td>
                                   <td style={{textAlign: 'center'}}>
                                     <button
-                                      onClick={() => setFeedbackStudent({ id: r.username, name: r.name, activity: 'pre' })}
+                                      onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'pre' })}
                                       style={{
                                         padding: '6px 12px',
                                         backgroundColor: '#1976D2',
@@ -1417,7 +1418,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                       const entry = all[s.username] || {} as any;
                       const responses = Array.isArray(entry.postPart1Responses) && entry.postPart1Responses.length === 15 ? entry.postPart1Responses : null;
                       const score = typeof entry.postPart1Correct === 'number' ? entry.postPart1Correct : null;
-                      return { name: s.name || '', username: s.username || '', responses, score };
+                      return { id: s.id || '', name: s.name || '', username: s.username || '', responses, score };
                     }).filter((r:any) => r.responses !== null);
                     const fmt = (full: string) => {
                       const p = (full || '').trim().split(/\s+/);
@@ -1446,7 +1447,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 <td style={{ textAlign: 'center' }}>{r.score}</td>
                                 <td style={{textAlign: 'center'}}>
                                   <button
-                                    onClick={() => setFeedbackStudent({ id: r.username, name: r.name, activity: 'post' })}
+                                    onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'post' })}
                                     style={{
                                       padding: '6px 12px',
                                       backgroundColor: '#1976D2',

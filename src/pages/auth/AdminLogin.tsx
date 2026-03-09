@@ -50,9 +50,9 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
           return;
         }
 
-        const sessionUserId = res.data?.session?.user?.id;
         const displayUsername = profileRes.data?.username || username;
-        onLogin(displayUsername, 'admin', sessionUserId);
+        const appUserId = profileRes.data?.id || res.data?.session?.user?.id;
+        onLogin(displayUsername, 'admin', appUserId);
       } catch (e) {
         setError('Login failed. Please try again.');
         console.error(e);

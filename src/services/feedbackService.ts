@@ -13,13 +13,41 @@ export interface FeedbackRow {
   updated_at: string;
 }
 
+function isUuid(value: string | null | undefined) {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function resolveCreatorId(): Promise<string | null> {
+  const userRes = await supabase.auth.getUser();
+  const sessionUser = userRes.data?.user || null;
+  const storedId = localStorage.getItem('currentUserId');
+
+  if (isUuid(storedId)) return storedId!;
+  if (!sessionUser) return null;
+
+  const byAuthId = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', sessionUser.id)
+    .maybeSingle();
+  if (byAuthId.data?.id) return byAuthId.data.id;
+
+  if (!sessionUser.email) return null;
+
+  const byEmail = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', sessionUser.email)
+    .maybeSingle();
+  return byEmail.data?.id || null;
+}
+
 export async function upsertFeedback(
   student_id: string,
   activity_type: ActivityType,
   feedback_text: string
 ) {
-  const user = await supabase.auth.getUser();
-  const teacher_id = user.data?.user?.id || null;
+  const created_by = await resolveCreatorId();
   const { data, error } = await supabase
     .from('feedback')
     .upsert(
@@ -27,9 +55,10 @@ export async function upsertFeedback(
         student_id,
         activity_type,
         feedback_text,
-        created_by: teacher_id,
+        created_by,
+        updated_at: new Date().toISOString(),
       },
-      { onConflict: 'student_id, activity_type' }
+      { onConflict: 'student_id,activity_type' }
     )
     .select()
     .maybeSingle();

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { upsertFeedback } from '../../services/feedbackService';
-import { getMyProfile } from '../../services/profilesService';
 import { ActivityType } from '../../services/responsesService';
 
 interface FeedbackPanelProps {
@@ -33,12 +32,6 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
     setIsSubmitting(true);
     setError('');
     try {
-      const prof = await getMyProfile();
-      if (!prof?.id) {
-        setError('Unable to identify teacher. Please log in again.');
-        return;
-      }
-
       await upsertFeedback(studentId, activityType, feedbackText);
       setSuccess(true);
       setFeedbackText('');

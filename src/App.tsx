@@ -127,7 +127,10 @@ function App() {
 
   const handleLogin = (username: string, role: UserRole, id?: string) => {
     const userObj: AuthUser = { username, role };
-    if (id) userObj.id = id;
+    if (id) {
+      userObj.id = id;
+      localStorage.setItem('currentUserId', id);
+    }
     setAuthUser(userObj);
     setCurrentPage('portal');
   };

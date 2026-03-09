@@ -1,0 +1,85 @@
+PJBL Climate Statistics - Project Work Log
+==========================================
+
+Purpose
+-------
+This file is the running log for:
+- conversation decisions
+- repository state observations
+- code changes made in this workspace
+- SQL / Supabase changes that were requested or applied
+- commits created from this workspace
+- next-step handoff notes
+
+Logging Rules
+-------------
+- Append new entries at the bottom.
+- Use local date/time when possible.
+- For code changes, include affected files.
+- For database changes, include the SQL file or dashboard action.
+- For commits, include commit hash, message, and whether it was pushed.
+- For unresolved issues, end the entry with "Open issues:".
+
+Entry Format
+------------
+[YYYY-MM-DD HH:MM] Type: summary
+- Details
+- Files:
+- Commit:
+- Push:
+- Open issues:
+
+Initial Context
+---------------
+[2026-03-09] Workspace linked to remote:
+- Remote: https://github.com/goldengraphixstudios/pjbl-climate-statistics.git
+- Local path: C:\Users\AJHAY\Desktop\pjbl-climate-statistics-main
+- Note: This folder did not contain .git when work began, so a new local git repository was initialized and linked to the remote.
+
+[2026-03-09] Repo state summary reconstructed from code + Claude transcript:
+- App is a React + TypeScript + Vite climate-statistics learning platform.
+- Roles: student, teacher, admin.
+- Students use custom credential verification via Supabase RPC plus local fallback.
+- Teacher/admin login uses Supabase Auth.
+- Data model includes users, classes, class_students, responses, feedback, student_progress, and student_state.
+- The app is mid-migration from localStorage-heavy behavior to Supabase-backed behavior.
+- Combined teacher/admin portal exists in code.
+- Student portal gating is intentional: next section unlocks after prior submission, teacher feedback, and student acknowledgement.
+
+[2026-03-09] Important current findings:
+- GitHub remote is reachable.
+- Local source tree still contains known feedback-path issues:
+  - Admin portal feedback button passes username instead of UUID in some paths.
+  - Feedback write path may still break if public.users IDs do not match auth.users IDs.
+  - RLS policies in supabase/schema.sql currently assume users.id = auth.uid() in multiple places.
+  - seed.sql example uses gen_random_uuid() placeholders, which would break that identity assumption if used as-is.
+- profilesService.ts currently resolves the current profile by id only; no email fallback is present in this tree.
+
+[2026-03-09] Build verification:
+- `npm run build` did not complete in this environment because `tsc` is not available on PATH.
+- Build status remains unverified from this workspace until dependencies/tooling are corrected.
+
+How To Use Going Forward
+-----------------------
+- Every time we change code, add a new log entry here.
+- Every time we run SQL in Supabase, add the script name or summary here.
+- Every time we commit, add the hash and message here.
+- If a change was discussed but not actually applied, note that explicitly.
+
+[2026-03-09 23:12] Fix: feedback submission path hardened
+- Diagnosed from browser console screenshot plus exported Supabase tables.
+- Confirmed `public.users` stores app-level UUIDs, while staff login was still using the Supabase Auth session UUID in app state.
+- Confirmed the admin portal feedback buttons were passing `username` instead of `student UUID` for pre/post assessment feedback actions.
+- Confirmed feedback inserts were still writing `created_by` from `auth.getUser().id`, which can mismatch `public.users.id`.
+- Patched the app to use `public.users.id` as the internal app identity for staff login, fall back to email when resolving the current profile, resolve `feedback.created_by` through the app users table, and pass the correct student UUID from the staff tables.
+- Files:
+  - src/pages/portals/AdminPortal.tsx
+  - src/services/feedbackService.ts
+  - src/services/profilesService.ts
+  - src/components/teacher/FeedbackPanel.tsx
+  - src/pages/auth/AdminLogin.tsx
+  - src/App.tsx
+- Commit: not yet committed
+- Push: not yet pushed
+- Open issues:
+  - RLS in Supabase may still assume `public.users.id = auth.uid()` in multiple policies. If feedback still fails after this frontend patch, the next check is the live SQL policies.
