@@ -940,9 +940,9 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   }
 
   const visualGuides = useMemo(() => ([
-    { label: 'Positive correlation', points: makePatternPoints('positive'), img: '/correlation_positive.png' },
-    { label: 'Negative correlation', points: makePatternPoints('negative'), img: '/correlation_negative.png' },
-    { label: 'No correlation', points: makePatternPoints('none'), img: '/correlation_none.png' },
+    { label: 'Positive correlation', points: makePatternPoints('positive'), img: `${import.meta.env.BASE_URL}correlation_positive.png` },
+    { label: 'Negative correlation', points: makePatternPoints('negative'), img: `${import.meta.env.BASE_URL}correlation_negative.png` },
+    { label: 'No correlation', points: makePatternPoints('none'), img: `${import.meta.env.BASE_URL}correlation_none.png` },
   ]), []);
 
 
@@ -2007,7 +2007,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 300px)', gap: 12, justifyContent: 'space-between', width: '100%', marginBottom: 12 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifySelf: 'start' }}>
                               <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'left' }}>Temperature Ave (°C) &nbsp;<br/>Sea Temperature Ave (°C)</div>
-                              <img src="/plot1_temp_sea_temp.png" alt="plot1" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
+                              <img src={`${import.meta.env.BASE_URL}plot1_temp_sea_temp.png`} alt="plot1" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
                               <div style={{ height: 8 }} />
                               <input
                                 placeholder="pattern (positive/negative/none)"
@@ -2021,7 +2021,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifySelf: 'center' }}>
                               <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'left' }}>Relative Humidity (%) &nbsp;<br/>Temperature Max (°C)</div>
-                              <img src="/plot2_humidity_temp_max.png" alt="plot2" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
+                              <img src={`${import.meta.env.BASE_URL}plot2_humidity_temp_max.png`} alt="plot2" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
                               <div style={{ height: 8 }} />
                               <input
                                 placeholder="pattern (positive/negative/none)"
@@ -2035,7 +2035,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifySelf: 'end' }}>
                               <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'left' }}>Relative Humidity (%) &nbsp;<br/>Electricity Consumption (GWh)</div>
-                              <img src="/plot3_humidity_electricity.png" alt="plot3" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
+                              <img src={`${import.meta.env.BASE_URL}plot3_humidity_electricity.png`} alt="plot3" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
                               <div style={{ height: 8 }} />
                               <input
                                 placeholder="pattern (positive/negative/none)"
@@ -2051,7 +2051,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 300px)', gap: 12, justifyContent: 'space-between', width: '100%', marginBottom: 24 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifySelf: 'start' }}>
                               <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'left' }}>Air Quality Index &nbsp;<br/>PM10 (μg/m³)</div>
-                              <img src="/plot4_aqi_pm10.png" alt="plot4" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
+                              <img src={`${import.meta.env.BASE_URL}plot4_aqi_pm10.png`} alt="plot4" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
                               <div style={{ height: 8 }} />
                               <input
                                 placeholder="pattern (positive/negative/none)"
@@ -2065,7 +2065,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifySelf: 'center' }}>
                               <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'left' }}>Wind Speed (km/h) &nbsp;<br/>Daily Solar Energy Production (kWh)</div>
-                              <img src="/plot5_wind_solar.png" alt="plot5" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
+                              <img src={`${import.meta.env.BASE_URL}plot5_wind_solar.png`} alt="plot5" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
                               <div style={{ height: 8 }} />
                               <input
                                 placeholder="pattern (positive/negative/none)"
@@ -2079,7 +2079,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifySelf: 'end' }}>
                               <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'left' }}>Rainfall (mm) &nbsp;<br/>Dengue Cases</div>
-                              <img src="/plot6_rainfall_dengue.png" alt="plot6" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
+                              <img src={`${import.meta.env.BASE_URL}plot6_rainfall_dengue.png`} alt="plot6" style={{ width: 300, height: 300, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 12 }} />
                               <div style={{ height: 8 }} />
                               <input
                                 placeholder="pattern (positive/negative/none)"
@@ -3068,7 +3068,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                                   <>
                                     <div style={{ display: 'grid', gridTemplateColumns: '80% 20%', gap: 10, paddingLeft: 12, paddingRight: 12 }}>
                                       {checkpointLabels.map((lbl, i) => (
-                                        <>
+                                        <React.Fragment key={`cp-${i}`}>
                                           <div key={`cp-l-${i}`} style={{ textAlign: 'left' }}>{lbl}</div>
                                           <div key={`cp-r-${i}`} style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
                                             <button
@@ -3100,7 +3100,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                                               }}
                                             >No</button>
                                           </div>
-                                        </>
+                                        </React.Fragment>
                                       ))}
                                     </div>
                                     <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', paddingLeft: 12, paddingRight: 12 }}>
@@ -3163,7 +3163,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                                 <div style={{ fontWeight: 700, textAlign: 'center' }}>Items</div>
                                 <div style={{ fontWeight: 700, textAlign: 'center' }}>Scale</div>
                                 {selfAssessItems.map((label, idx) => (
-                                  <>
+                                  <React.Fragment key={`sa-${idx}`}>
                                     <div key={`num-${idx}`} style={{ textAlign: 'left' }}>{idx + 1}.</div>
                                     <div key={`lbl-${idx}`} style={{ textAlign: 'left' }}>{label}</div>
                                     <select key={`sel-${idx}`} value={selfAssessAnswers[idx]} disabled={selfAssessSubmitted} onChange={(e)=>{
@@ -3174,7 +3174,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                                       <option value="">Select</option>
                                       {selfAssessScale.map((opt, i)=>(<option key={i} value={opt}>{opt}</option>))}
                                     </select>
-                                  </>
+                                  </React.Fragment>
                                 ))}
                               </div>
                               <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>

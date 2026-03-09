@@ -161,3 +161,16 @@ How To Use Going Forward
 - Push: not yet pushed
 - Verification limits:
   - `npm run build` still not verified in this shell because `tsc` is unavailable on PATH
+
+[2026-03-10 01:02] Fix: deployment-safe lesson assets and Lesson 1 key warnings
+- Updated Lesson 1 visual-guide and scatterplot image URLs to use `import.meta.env.BASE_URL`, which fixes GitHub Pages 404s caused by root-relative `/...` asset paths.
+- Updated Lesson 2 scenario image URLs to use the same deployment-safe base path.
+- Replaced two unkeyed mapped fragments in Lesson 1 with keyed `React.Fragment` wrappers to remove the repeated React list-key warning in the browser console.
+- Clarification:
+  - the `public.lessons` table is not the source of lesson output submissions or lesson scoring
+  - lesson submissions and teacher scores are currently stored in `public.responses`
+- Files:
+  - src/pages/student_sections/Lesson1.tsx
+  - src/pages/student_sections/Lesson2.tsx
+- Commit: not yet committed
+- Push: not yet pushed

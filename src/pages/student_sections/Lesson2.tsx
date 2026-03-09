@@ -454,49 +454,49 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const climateScenarios = [
     {
       id: 1,
-      img: '/lesson2-scenario1.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario1.jpg`,
       alt: 'Reference climate scenario image',
       caption: ''
     },
     {
       id: 2,
-      img: '/lesson2-scenario2.jpg?v=1',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario2.jpg?v=1`,
       alt: 'Flooded barangay street with residents wading through water',
       caption: 'LPA AFFECTS 3,500 FAMILIES: Davao de Oro has the highest number of families affected — February 1, 2024 | Source: SunStar Davao (Photo: Ramcez Villegas)'
     },
     {
       id: 3,
-      img: '/lesson2-scenario3.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario3.jpg`,
       alt: 'Drought-stricken farmland with cracked soil and dry grass',
       caption: 'DRY SPELL DESTROYS PHP4.35-B WORTH OF CROPS (Barangay Duruluman, Arakan) — April 2, 2019 | Source: DavaoToday.com (Photo: Ken E. Cagula)'
     },
     {
       id: 4,
-      img: '/lesson2-scenario4.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario4.jpg`,
       alt: 'Rows of makeshift green partitions for cholera patients in a hall',
       caption: 'DAVAO ORIENTAL TOWN CHOLERA OUTBREAK VICTIMS CLIMB TO 544 — February 9, 2022 | Source: Philippine News Agency (Photo: Davao Oriental PIO)'
     },
     {
       id: 5,
-      img: '/lesson2-scenario5.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario5.jpg`,
       alt: 'People outside an emergency room receiving treatment for diarrhea outbreak',
       caption: 'DAVAO CITY CONFIRMS DIARRHEA OUTBREAK IN TORIL DUE TO FOOD CONTAMINATION — July 29, 2022 | Source: Philippine News Agency (Photo: Robinson Niñal)'
     },
     {
       id: 6,
-      img: '/lesson2-scenario6.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario6.jpg`,
       alt: 'Nighttime city street flooded after heavy rains with vehicles and motorcycles',
       caption: 'SEVERAL AREAS IN DAVAO CITY FLOODED FOLLOWING HEAVY RAINS — December 31, 2024 | Source: GMA Regional TV (Photo: BDRRMC Matina Pangi)'
     },
     {
       id: 7,
-      img: '/lesson2-scenario7.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario7.jpg`,
       alt: 'Crowded market scene with health personnel amid mpox update',
       caption: 'MPOX CASES IN DAVAO CITY RISE TO 6 — May 30, 2025 | Source: ABS-CBN News (Photo: Hernel Tocmo)'
     },
     {
       id: 8,
-      img: '/lesson2-scenario8.jpg',
+      img: `${import.meta.env.BASE_URL}lesson2-scenario8.jpg`,
       alt: 'Elderly couple walking under an umbrella during intense heat',
       caption: "DAVAO CITY EXPERIENCES 'DANGEROUS' HEAT INDEX LEVEL — April 30, 2024 | Source: SunStar Davao (Photo: SunStar File Photo)"
     }
