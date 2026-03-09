@@ -167,7 +167,7 @@ export async function getClassRecord(classId: string): Promise<ClassRecordRow[]>
 
   const { data: responses } = await supabase
     .from('responses')
-    .select('student_id, activity_type, teacher_score')
+    .select('student_id, activity_type, teacher_score, answers')
     .in('student_id', studentIds)
     .not('activity_type', 'is', null);
 
@@ -195,7 +195,11 @@ export async function getClassRecord(classId: string): Promise<ClassRecordRow[]>
   const scoreMap: Record<string, Record<string, number | null>> = {};
   (responses || []).forEach((r: any) => {
     if (!scoreMap[r.student_id]) scoreMap[r.student_id] = {};
-    scoreMap[r.student_id][r.activity_type] = r.teacher_score ?? null;
+    if (r.activity_type === 'pre' || r.activity_type === 'post') {
+      scoreMap[r.student_id][r.activity_type] = r.answers?.part1Score ?? r.teacher_score ?? null;
+    } else {
+      scoreMap[r.student_id][r.activity_type] = r.teacher_score ?? null;
+    }
   });
 
   return studentIds.map(sid => {

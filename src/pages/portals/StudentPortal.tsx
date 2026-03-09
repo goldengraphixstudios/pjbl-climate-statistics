@@ -6,7 +6,6 @@ import { getUserProgress, getRewardShownSections, markRewardShown } from '../../
 import { ActivityType, getResponseForStudentActivity, getResponsesForStudent } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, getFeedbackForStudent, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
-import { supabase } from '../../services/supabaseClient';
 import ConfettiOverlay from '../../components/ConfettiOverlay';
 
 interface AuthUser {
@@ -84,7 +83,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
   // load statuses from Supabase
   useEffect(() => {
     let studentId = '';
-    let realtimeSub: any = null;
     let pollId: ReturnType<typeof setInterval> | null = null;
 
     const load = async (sid?: string) => {
@@ -127,24 +125,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
       if (!studentId) return;
       await load(studentId);
       pollId = setInterval(() => load(studentId), 10000);
-
-      // Subscribe to real-time feedback changes for this student
-      realtimeSub = supabase
-        .channel(`feedback:${studentId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'feedback',
-            filter: `student_id=eq.${studentId}`,
-          },
-          () => {
-            // Reload statuses when any feedback row changes
-            load(studentId);
-          }
-        )
-        .subscribe();
     };
 
     init();
@@ -152,9 +132,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
     return () => {
       if (pollId) {
         clearInterval(pollId);
-      }
-      if (realtimeSub) {
-        supabase.removeChannel(realtimeSub);
       }
     };
   }, [user, user?.id]);
@@ -178,7 +155,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
       const prevType = activityTypeForId(sectionId - 1);
       if (prevType) {
         const prev = activityStatuses[prevType];
-        if (!prev.submitted || !prev.feedback) {
+        if (!prev.submitted || !prev.feedback || !prev.acknowledged) {
           return true;
         }
       }

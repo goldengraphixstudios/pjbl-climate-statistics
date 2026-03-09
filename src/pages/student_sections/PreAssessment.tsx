@@ -169,7 +169,19 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
           await upsertResponse({
             student_id: studentId,
             activity_type: 'pre',
-            answers: { part1: responses, part1Score: correct, part1GroupScores },
+            answers: {
+              __meta: {
+                schemaVersion: 1,
+                source: 'student-portal',
+                activityType: 'pre',
+                submittedAt: new Date().toISOString(),
+                username: user.username,
+                stage: 'part1'
+              },
+              part1: responses,
+              part1Score: correct,
+              part1GroupScores
+            },
             correctness: { part1: itemCorrectLocal }
           });
         }
@@ -210,7 +222,20 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         await upsertResponse({
           student_id: studentId,
           activity_type: 'pre',
-          answers: { part1: responses, part2: part2Responses, part1Score: correct, part1GroupScores: getGroupScores(itemCorrect) },
+          answers: {
+            __meta: {
+              schemaVersion: 1,
+              source: 'student-portal',
+              activityType: 'pre',
+              submittedAt: new Date().toISOString(),
+              username: user.username,
+              stage: 'final'
+            },
+            part1: responses,
+            part2: part2Responses,
+            part1Score: correct,
+            part1GroupScores: getGroupScores(itemCorrect)
+          },
           correctness: { part1: itemCorrect }
         });
       }

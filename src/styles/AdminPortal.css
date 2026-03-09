@@ -228,6 +228,18 @@
   color: #475569;
   font-size: 14px;
   font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.lesson-results-summary--cards {
+  margin-bottom: 18px;
+}
+
+.lesson-results-summary--cards span {
+  background: #f7fbff;
+  border: 1px solid #d7e7fb;
+  border-radius: 999px;
+  padding: 8px 12px;
 }
 
 @media (max-width: 768px) {

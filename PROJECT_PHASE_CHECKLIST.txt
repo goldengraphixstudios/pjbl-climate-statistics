@@ -8,8 +8,8 @@ PHASE 1 - Database & Form Collection
 [x] Post-assessment rows include answers and correctness
 [~] Lesson 1/2/3 submissions stored in Supabase responses
 [~] Support registered and unregistered student submission flow
-[ ] Standardize row structure across all assessments and lessons
-[ ] Confirm session-detail requirements and add missing fields if needed
+[x] Standardize row structure across all assessments and lessons
+[~] Confirm session-detail requirements and add missing fields if needed
 
 PHASE 2 - Student Portal
 [x] Student can submit pre-assessment
@@ -24,8 +24,8 @@ PHASE 2 - Student Portal
 [ ] Performance summary reflects Lesson 1 teacher score
 [ ] Performance summary reflects Lesson 2 teacher score
 [ ] Performance summary reflects Lesson 3 teacher score
-[ ] Require feedback acknowledgment before unlocking next activity
-[ ] Re-test locking flow after acknowledgment requirement is restored
+[x] Require feedback acknowledgment before unlocking next activity
+[~] Re-test locking flow after acknowledgment requirement is restored
 
 PHASE 3 - Teacher / Admin Combined Portal
 [x] Single combined Teacher/Admin portal
@@ -38,18 +38,18 @@ PHASE 3 - Teacher / Admin Combined Portal
 [x] CSV/download support exists
 [x] Overview dashboard exists
 [x] Pre/post data visualization exists
-[ ] Add Lesson 1 final output review table to active combined portal
-[ ] Add Lesson 2 final output review table to active combined portal
-[ ] Add Lesson 3 final output review table to active combined portal
-[ ] Add teacher scoring UI for Lesson 1 final outputs
-[ ] Add teacher scoring UI for Lesson 2 final outputs
-[ ] Add teacher scoring UI for Lesson 3 final outputs
-[ ] Save Lesson 1 scores to responses.teacher_score
-[ ] Save Lesson 2 scores to responses.teacher_score
-[ ] Save Lesson 3 scores to responses.teacher_score
-[ ] Show live saved lesson scores in student performance summary
-[ ] Show live saved lesson scores in class record
-[ ] Add lesson analytics/visualization to combined portal
+[x] Add Lesson 1 final output review table to active combined portal
+[x] Add Lesson 2 final output review table to active combined portal
+[x] Add Lesson 3 final output review table to active combined portal
+[x] Add teacher scoring UI for Lesson 1 final outputs
+[x] Add teacher scoring UI for Lesson 2 final outputs
+[x] Add teacher scoring UI for Lesson 3 final outputs
+[x] Save Lesson 1 scores to responses.teacher_score
+[x] Save Lesson 2 scores to responses.teacher_score
+[x] Save Lesson 3 scores to responses.teacher_score
+[~] Show live saved lesson scores in student performance summary
+[x] Show live saved lesson scores in class record
+[~] Add lesson analytics/visualization to combined portal
 [ ] Remove or retire old localStorage-only teacher scoring paths
 
 PHASE 4 - Integration & Deployment
@@ -58,12 +58,12 @@ PHASE 4 - Integration & Deployment
 [~] Supabase integration active, but some legacy localStorage paths remain
 [x] Role-based staff access exists
 [~] Student auth works through custom RPC flow
-[ ] Final cross-role testing
-[ ] Teacher workflow QA
-[ ] Student workflow QA
-[ ] Admin workflow QA
+[~] Final cross-role testing
+[~] Teacher workflow QA
+[~] Student workflow QA
+[~] Admin workflow QA
 [ ] Push final code to client repository
-[ ] Final handover documentation
+[x] Final handover documentation
 
 NEXT EXECUTION ORDER
 1. Audit Lesson 1/2/3 final submission payloads and current storage shape

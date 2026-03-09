@@ -1616,7 +1616,17 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 await upsertResponse({
                                   student_id: studentId,
                                   activity_type: 'lesson3',
-                                  answers: { phase4_reflection: dataUrl || '' }
+                                  answers: {
+                                    __meta: {
+                                      schemaVersion: 1,
+                                      source: 'student-portal',
+                                      activityType: 'lesson3',
+                                      submittedAt: new Date().toISOString(),
+                                      username: user.username,
+                                      stage: 'final'
+                                    },
+                                    phase4_reflection: dataUrl || ''
+                                  }
                                 });
                               }
                             } catch (e) {

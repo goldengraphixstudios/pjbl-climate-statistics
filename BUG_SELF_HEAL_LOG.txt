@@ -1,0 +1,34 @@
+PJBL Climate Statistics - Bug / Self-Heal Log
+=============================================
+
+[2026-03-10 01:10] Student-side runtime and deployment audit
+
+Observed issues
+- Lesson 1 crashed in the browser with `ReferenceError: React is not defined`.
+- Lesson 1 and Lesson 2 used root-relative image paths (`/...`) that break under GitHub Pages base path `/pjbl-climate-statistics/`.
+- Student portal emitted a Supabase realtime websocket warning:
+  - `WebSocket is closed before the connection is established`
+- Lesson 1 showed React list-key warnings from mapped fragments.
+
+Diagnosis
+- `React.Fragment` was introduced in `Lesson1.tsx`, but the file only imported named hooks from `react`.
+- Static images were being requested from site root instead of Vite base URL.
+- Student dashboard already polls feedback/status every 10 seconds, so realtime subscription was redundant and noisy.
+- Two mapped fragment blocks in Lesson 1 lacked stable fragment keys.
+
+Self-heal actions applied
+- Added a direct `React` import to `src/pages/student_sections/Lesson1.tsx`.
+- Replaced Lesson 1 image URLs with `import.meta.env.BASE_URL`-based paths.
+- Replaced Lesson 2 scenario image URLs with `import.meta.env.BASE_URL`-based paths.
+- Replaced unkeyed mapped fragments in Lesson 1 with keyed `React.Fragment`.
+- Removed student dashboard realtime websocket subscription from `src/pages/portals/StudentPortal.tsx`, keeping polling active.
+
+Files touched
+- src/pages/student_sections/Lesson1.tsx
+- src/pages/student_sections/Lesson2.tsx
+- src/pages/portals/StudentPortal.tsx
+
+Notes
+- `public.lessons` is not the source of lesson submissions or teacher lesson scores.
+- Live lesson output + scoring currently use `public.responses`.
+- If the live website still shows the old behavior after these fixes, the deployed build is stale and needs a new deploy from the updated repo.

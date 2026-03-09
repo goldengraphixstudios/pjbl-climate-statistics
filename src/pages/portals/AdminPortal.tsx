@@ -151,6 +151,17 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
   return { summary: 'Submitted', detail: '' };
 }
 
+function downloadCsvFile(rows: string[][], filename: string) {
+  const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCreateClass, onUpdateStudents, onDeleteClass }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
@@ -307,14 +318,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   };
   const endSummary = getEndOfLessonSurveySummary(usernames);
 
-  const renderLessonResultsTab = (activityType: 'lesson1' | 'lesson2' | 'lesson3', rows: ResponseRow[]) => {
-    const lessonLabelMap = {
-      lesson1: 'Lesson 1',
-      lesson2: 'Lesson 2',
-      lesson3: 'Lesson 3'
-    } as const;
-
-    const lessonRows = filteredStudents.map((s: any) => {
+  const getLessonRowsForActivity = (activityType: 'lesson1' | 'lesson2' | 'lesson3') => {
+    return filteredStudents.map((s: any) => {
       const response = getLatestResponse(s.id, activityType);
       const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === activityType);
       const preview = getLessonSubmissionPreview(response);
@@ -326,13 +331,33 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
         feedback,
         preview
       };
-    }).filter((row) => row.response);
+    }).filter((row) => row.response)
+      .sort((a, b) => formatDisplayName(a.name).toLowerCase().localeCompare(formatDisplayName(b.name).toLowerCase()));
+  };
 
-    lessonRows.sort((a, b) => formatDisplayName(a.name).toLowerCase().localeCompare(formatDisplayName(b.name).toLowerCase()));
+  const renderLessonResultsTab = (activityType: 'lesson1' | 'lesson2' | 'lesson3', rows: ResponseRow[]) => {
+    const lessonLabelMap = {
+      lesson1: 'Lesson 1',
+      lesson2: 'Lesson 2',
+      lesson3: 'Lesson 3'
+    } as const;
+
+    const lessonRows = getLessonRowsForActivity(activityType);
+    const scoredRows = rows.filter((row) => typeof row.teacher_score === 'number');
+    const averageScore = scoredRows.length
+      ? (scoredRows.reduce((sum, row) => sum + Number(row.teacher_score || 0), 0) / scoredRows.length).toFixed(2)
+      : null;
+    const feedbackReadyCount = lessonRows.filter((row) => !!row.feedback).length;
 
     return (
       <div className="chart-section table-section card-student-responses">
         <h3>{lessonLabelMap[activityType]} Final Outputs</h3>
+        <div className="lesson-results-summary lesson-results-summary--cards">
+          <span>Submitted outputs: {rows.length}</span>
+          <span>Scored outputs: {scoredRows.length}</span>
+          <span>Feedback sent: {feedbackReadyCount}</span>
+          <span>Average score: {averageScore ?? '—'}</span>
+        </div>
         {lessonRows.length === 0 ? (
           <p className="no-data">No submitted outputs yet for this section filter.</p>
         ) : (
@@ -412,10 +437,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
             </table>
           </div>
         )}
-        <div className="lesson-results-summary">
-          <span>Submitted outputs: {rows.length}</span>
-          <span>Scored outputs: {rows.filter((row) => typeof row.teacher_score === 'number').length}</span>
-        </div>
       </div>
     );
   };
@@ -424,6 +445,84 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   // totals moved into filtered context
 
   const handleDownloadReport = (format: 'pdf' | 'csv') => {
+    if (activeTab === 'lesson1-results' || activeTab === 'lesson2-results' || activeTab === 'lesson3-results') {
+      const activityType = activeTab === 'lesson1-results' ? 'lesson1' : activeTab === 'lesson2-results' ? 'lesson2' : 'lesson3';
+      const label = sectionFilter === 'ALL' ? 'all' : sectionFilter.replace(/\s+/g, '_').toLowerCase();
+      const lessonRows = getLessonRowsForActivity(activityType);
+      const lessonTitle = activityType === 'lesson1' ? 'Lesson 1 Outputs' : activityType === 'lesson2' ? 'Lesson 2 Outputs' : 'Lesson 3 Outputs';
+
+      if (format === 'csv') {
+        const rows: string[][] = [['Name', 'Username', 'Submission', 'Submission Detail', 'Teacher Score', 'Feedback', 'Acknowledged', 'Updated At']];
+        lessonRows.forEach((row) => {
+          rows.push([
+            formatDisplayName(row.name || ''),
+            row.username || '',
+            row.preview.summary,
+            row.preview.detail || '',
+            row.response?.teacher_score != null ? String(row.response.teacher_score) : '',
+            row.feedback?.feedback_text || '',
+            row.feedback?.acknowledged ? 'Yes' : 'No',
+            row.response?.updated_at ? new Date(row.response.updated_at).toLocaleString() : ''
+          ]);
+        });
+        downloadCsvFile(rows, `${activityType}_outputs_${label}.csv`);
+        return;
+      }
+
+      const html = `
+        <html>
+          <head>
+            <title>${lessonTitle}</title>
+            <style>
+              body{font-family:Arial,Helvetica,sans-serif;color:#1f2937;padding:18px}
+              h1{font-size:20px;margin-bottom:6px}
+              table{border-collapse:collapse;width:100%;font-size:12px;margin-top:12px}
+              th,td{border:1px solid #e5e7eb;padding:6px;vertical-align:top}
+              th{background:#f8fafc}
+              .small{font-size:12px;color:#374151}
+            </style>
+          </head>
+          <body>
+            <h1>${lessonTitle}</h1>
+            <div class="small">Filter: ${sectionFilter} - Generated from Admin Dashboard</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Username</th>
+                  <th>Submission</th>
+                  <th>Teacher Score</th>
+                  <th>Feedback</th>
+                  <th>Acknowledged</th>
+                  <th>Updated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lessonRows.map((row) => `
+                  <tr>
+                    <td>${formatDisplayName(row.name || '')}</td>
+                    <td>${row.username || ''}</td>
+                    <td><strong>${row.preview.summary}</strong><br/>${row.preview.detail || ''}</td>
+                    <td>${row.response?.teacher_score != null ? row.response.teacher_score : ''}</td>
+                    <td>${row.feedback?.feedback_text || ''}</td>
+                    <td>${row.feedback?.acknowledged ? 'Yes' : 'No'}</td>
+                    <td>${row.response?.updated_at ? new Date(row.response.updated_at).toLocaleString() : ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+      const popup = window.open('', '_blank');
+      if (!popup) return;
+      popup.document.write(html);
+      popup.document.close();
+      popup.focus();
+      setTimeout(() => { try { popup.print(); } catch {} }, 400);
+      return;
+    }
+
     if (format === 'csv') {
       if (activeTab === 'pre-assessment') {
         // CSV should contain the "List of Students and their Responses" (Pre Part I)
@@ -1098,7 +1197,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
             <>
               <div className="section-header">
                 <h2>{tabs.find(t => t.id === activeTab)?.label}</h2>
-                {analyticsTabIds.includes(activeTab) && <div className="download-buttons">
+                {(analyticsTabIds.includes(activeTab) || activeTab === 'lesson1-results' || activeTab === 'lesson2-results' || activeTab === 'lesson3-results') && <div className="download-buttons">
                   <button className="download-btn" onClick={() => handleDownloadReport('pdf')}>
                     📥 Download PDF
                   </button>

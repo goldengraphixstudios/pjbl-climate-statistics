@@ -1955,7 +1955,17 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               await upsertResponse({
                                 student_id: studentId,
                                 activity_type: 'lesson2',
-                                answers: { phase4_upload: uploadUrl || previewURLP4 }
+                                answers: {
+                                  __meta: {
+                                    schemaVersion: 1,
+                                    source: 'student-portal',
+                                    activityType: 'lesson2',
+                                    submittedAt: new Date().toISOString(),
+                                    username: user.username,
+                                    stage: 'final'
+                                  },
+                                  phase4_upload: uploadUrl || previewURLP4
+                                }
                               });
                             }
                           } catch (e) {

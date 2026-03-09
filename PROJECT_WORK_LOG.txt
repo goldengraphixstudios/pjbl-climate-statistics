@@ -174,3 +174,93 @@ How To Use Going Forward
   - src/pages/student_sections/Lesson2.tsx
 - Commit: not yet committed
 - Push: not yet pushed
+
+[2026-03-10 01:16] Fix: student-side runtime crash and noisy realtime warning
+- Added a direct `React` import in `Lesson1.tsx` so the new keyed `React.Fragment` usage no longer crashes with `ReferenceError: React is not defined`.
+- Removed the student dashboard realtime websocket subscription in `StudentPortal.tsx`; polling remains active every 10 seconds, so status refresh still works without the noisy websocket warning in the browser console.
+- Added a dedicated bug tracking file for ongoing self-diagnosis and fixes:
+  - `BUG_SELF_HEAL_LOG.txt`
+- Local verification:
+  - repo-local `tsc` and `vite` binaries executed successfully from the workspace shell
+- Files:
+  - src/pages/student_sections/Lesson1.tsx
+  - src/pages/portals/StudentPortal.tsx
+  - BUG_SELF_HEAL_LOG.txt
+- Commit: not yet committed
+- Push: not yet pushed
+
+[2026-03-10 01:29] Feature: lesson result tabs now include exports and summary metrics
+- Added lesson-tab CSV export and printable/PDF-style output for `Lesson 1 Outputs`, `Lesson 2 Outputs`, and `Lesson 3 Outputs`.
+- Added small lesson analytics chips to the active lesson tabs:
+  - submitted outputs
+  - scored outputs
+  - feedback sent
+  - average score
+- Restored acknowledgment-based unlocking in the student dashboard so the next section now waits for:
+  - previous submission
+  - feedback exists
+  - feedback acknowledged
+- Added a separate verification checklist file:
+  - `PROJECT_VERIFICATION_CHECKLIST.txt`
+- Files:
+  - src/pages/portals/AdminPortal.tsx
+  - src/styles/AdminPortal.css
+  - src/pages/portals/StudentPortal.tsx
+  - PROJECT_VERIFICATION_CHECKLIST.txt
+  - PROJECT_PHASE_CHECKLIST.txt
+- Local verification:
+  - repo-local `tsc` and `vite` binaries executed successfully from the workspace shell
+- Commit: not yet committed
+- Push: not yet pushed
+
+[2026-03-10 01:38] Fix: class record now uses actual assessment scores for pre/post
+- Updated `getClassRecord()` so pre/post values come from `responses.answers.part1Score` first, with `teacher_score` only as fallback.
+- Lesson 1/2/3 class record values continue to come from `responses.teacher_score`.
+- This aligns class record behavior with the rest of the app:
+  - assessments are auto-scored
+  - lessons are teacher-scored
+- Files:
+  - src/services/submissionsService.ts
+- Local verification:
+  - repo-local `tsc` and `vite` binaries executed successfully from the workspace shell
+- Commit: not yet committed
+- Push: not yet pushed
+
+[2026-03-10 01:44] Documentation: handover and verification files added
+- Added handover documentation covering:
+  - active portals
+  - Supabase tables
+  - scoring model
+  - feedback flow
+  - deployment notes
+- Added a separate verification checklist for functional QA.
+- Files:
+  - HANDOVER_DOCUMENTATION.md
+  - PROJECT_VERIFICATION_CHECKLIST.txt
+- Commit: not yet committed
+- Push: not yet pushed
+
+[2026-03-10 01:53] Phase 1 consistency: unified submission metadata added to responses
+- Standardized `responses.answers` payloads across pre/post and lesson finals by adding a shared `__meta` block with:
+  - `schemaVersion`
+  - `source`
+  - `activityType`
+  - `submittedAt`
+  - `username`
+  - `stage`
+- Applied to:
+  - Pre-assessment part 1 + final
+  - Post-assessment part 1 + final
+  - Lesson 1 final output
+  - Lesson 2 final output
+  - Lesson 3 final output
+- Files:
+  - src/pages/student_sections/PreAssessment.tsx
+  - src/pages/student_sections/PostAssessment.tsx
+  - src/pages/student_sections/Lesson1.tsx
+  - src/pages/student_sections/Lesson2.tsx
+  - src/pages/student_sections/Lesson3.tsx
+- Local verification:
+  - repo-local `tsc` and `vite` binaries executed successfully from the workspace shell
+- Commit: not yet committed
+- Push: not yet pushed

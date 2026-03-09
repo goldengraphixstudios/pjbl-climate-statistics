@@ -1,0 +1,71 @@
+PJBL Climate Statistics - Verification Checklist
+================================================
+
+Use this after each major patch and again before final push/deploy.
+
+Student flow
+- [ ] Student can log in successfully
+- [ ] Pre-assessment can be submitted once
+- [ ] Pre-assessment becomes locked after submission
+- [ ] Teacher feedback appears on pre-assessment page
+- [ ] Student can acknowledge pre-assessment feedback
+- [ ] Lesson 1 stays locked until pre-assessment feedback is acknowledged
+- [ ] Lesson 1 unlocks after pre-assessment feedback acknowledgment
+- [ ] Lesson 1 final output can be submitted once
+- [ ] Lesson 1 becomes locked after final submission
+- [ ] Teacher feedback appears on Lesson 1 page
+- [ ] Student can acknowledge Lesson 1 feedback
+- [ ] Lesson 2 unlocks only after Lesson 1 feedback acknowledgment
+- [ ] Lesson 2 final output can be submitted once
+- [ ] Lesson 2 becomes locked after final submission
+- [ ] Teacher feedback appears on Lesson 2 page
+- [ ] Student can acknowledge Lesson 2 feedback
+- [ ] Lesson 3 unlocks only after Lesson 2 feedback acknowledgment
+- [ ] Lesson 3 final output can be submitted once
+- [ ] Lesson 3 becomes locked after final submission
+- [ ] Teacher feedback appears on Lesson 3 page
+- [ ] Student can acknowledge Lesson 3 feedback
+- [ ] Post-assessment unlocks only after Lesson 3 feedback acknowledgment
+- [ ] Post-assessment can be submitted once
+- [ ] Post-assessment becomes locked after submission
+- [ ] Teacher feedback appears on post-assessment page
+- [ ] Student can acknowledge post-assessment feedback
+- [ ] Performance summary shows pre score
+- [ ] Performance summary shows Lesson 1 teacher score
+- [ ] Performance summary shows Lesson 2 teacher score
+- [ ] Performance summary shows Lesson 3 teacher score
+- [ ] Performance summary shows post score
+
+Teacher / Admin flow
+- [ ] Teacher/Admin can log in successfully
+- [ ] Overview tab loads
+- [ ] Masterlist tab loads
+- [ ] Class list tab loads
+- [ ] Pre-assessment results tab loads
+- [ ] Lesson 1 outputs tab loads
+- [ ] Lesson 2 outputs tab loads
+- [ ] Lesson 3 outputs tab loads
+- [ ] Post-assessment results tab loads
+- [ ] Class record tab loads
+- [ ] Teacher can submit feedback for pre-assessment
+- [ ] Teacher can submit feedback for Lesson 1
+- [ ] Teacher can submit feedback for Lesson 2
+- [ ] Teacher can submit feedback for Lesson 3
+- [ ] Teacher can submit feedback for post-assessment
+- [ ] Teacher can save Lesson 1 score
+- [ ] Teacher can save Lesson 2 score
+- [ ] Teacher can save Lesson 3 score
+- [ ] Saved lesson scores remain after reload
+- [ ] Class record reflects live lesson scores
+- [ ] CSV export works for pre/post/class record
+
+Integration / deployment
+- [ ] Lesson 1 images load on deployed site
+- [ ] Lesson 2 scenario images load on deployed site
+- [ ] No `React is not defined` runtime error
+- [ ] No lesson-image 404s in browser console
+- [ ] No duplicate-key warnings in Lesson 1
+- [ ] Student dashboard no longer emits the realtime websocket warning
+- [ ] Supabase reads/writes succeed for responses
+- [ ] Supabase reads/writes succeed for feedback
+- [ ] GitHub Pages build contains latest code
