@@ -5,6 +5,8 @@ export interface FeedbackRow {
   id: string;
   student_id: string;
   activity_type: ActivityType;
+  feedback_scope?: 'overall' | 'activity';
+  sub_activity_key?: string;
   feedback_text: string;
   created_by: string | null;
   acknowledged: boolean;
@@ -42,23 +44,33 @@ async function resolveCreatorId(): Promise<string | null> {
   return byEmail.data?.id || null;
 }
 
+export interface FeedbackQueryOptions {
+  feedbackScope?: 'overall' | 'activity';
+  subActivityKey?: string | null;
+}
+
 export async function upsertFeedback(
   student_id: string,
   activity_type: ActivityType,
-  feedback_text: string
+  feedback_text: string,
+  options: FeedbackQueryOptions = {}
 ) {
   const created_by = await resolveCreatorId();
+  const feedback_scope = options.feedbackScope || 'overall';
+  const sub_activity_key = feedback_scope === 'activity' ? (options.subActivityKey || '') : '';
   const { data, error } = await supabase
     .from('feedback')
     .upsert(
       {
         student_id,
         activity_type,
+        feedback_scope,
+        sub_activity_key,
         feedback_text,
         created_by,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'student_id,activity_type' }
+      { onConflict: 'student_id,activity_type,feedback_scope,sub_activity_key' }
     )
     .select()
     .maybeSingle();
@@ -71,6 +83,7 @@ export async function getFeedbackForStudent(student_id: string) {
     .from('feedback')
     .select('*')
     .eq('student_id', student_id)
+    .eq('feedback_scope', 'overall')
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return (data as FeedbackRow[]) || [];
@@ -82,6 +95,7 @@ export async function getFeedbackForStudents(studentIds: string[]) {
     .from('feedback')
     .select('*')
     .in('student_id', studentIds)
+    .eq('feedback_scope', 'overall')
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return (data as FeedbackRow[]) || [];
@@ -89,30 +103,40 @@ export async function getFeedbackForStudents(studentIds: string[]) {
 
 export async function getFeedbackForStudentActivity(
   student_id: string,
-  activity_type: ActivityType
+  activity_type: ActivityType,
+  options: FeedbackQueryOptions = {}
 ) {
-  const { data, error } = await supabase
+  const feedback_scope = options.feedbackScope || 'overall';
+  let query = supabase
     .from('feedback')
     .select('*')
     .eq('student_id', student_id)
     .eq('activity_type', activity_type)
-    .order('updated_at', { ascending: false })
-    .maybeSingle();
+    .eq('feedback_scope', feedback_scope);
+  if (feedback_scope === 'activity') {
+    query = query.eq('sub_activity_key', options.subActivityKey || '');
+  }
+  const { data, error } = await query.order('updated_at', { ascending: false }).maybeSingle();
   if (error) throw error;
   return data as FeedbackRow | null;
 }
 
 export async function acknowledgeFeedback(
   student_id: string,
-  activity_type: ActivityType
+  activity_type: ActivityType,
+  options: FeedbackQueryOptions = {}
 ) {
-  const { data, error } = await supabase
+  const feedback_scope = options.feedbackScope || 'overall';
+  let query = supabase
     .from('feedback')
     .update({ acknowledged: true, acknowledged_at: new Date().toISOString() })
     .eq('student_id', student_id)
     .eq('activity_type', activity_type)
-    .select()
-    .maybeSingle();
+    .eq('feedback_scope', feedback_scope);
+  if (feedback_scope === 'activity') {
+    query = query.eq('sub_activity_key', options.subActivityKey || '');
+  }
+  const { data, error } = await query.select().maybeSingle();
   if (error) throw error;
   return data as FeedbackRow | null;
 }

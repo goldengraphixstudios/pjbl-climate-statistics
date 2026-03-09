@@ -171,6 +171,85 @@ function downloadCsvFile(rows: string[][], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function formatReviewValue(value: any): string {
+  if (value == null || value === '') return '—';
+  if (typeof value === 'string') {
+    if (value.startsWith('data:')) return '[uploaded file]';
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((item) => formatReviewValue(item))
+      .filter((item) => item !== '—');
+    return normalized.length ? normalized.join(', ') : '—';
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function getLessonReviewSections(response?: ResponseRow | null) {
+  if (!response) return [] as Array<{ title: string; items: Array<{ label: string; value: any }> }>;
+
+  if (response.activity_type === 'lesson1') {
+    const state = response.answers?.lesson1State;
+    const phaseData = state?.phaseData || {};
+    return [
+      {
+        title: 'Phase 1',
+        items: [
+          { label: 'Variable 1', value: phaseData?.[1]?.a3Var1 },
+          { label: 'Variable 2', value: phaseData?.[1]?.a3Var2 },
+          { label: 'Reason', value: phaseData?.[1]?.a3Reason },
+          { label: 'Initial research question', value: phaseData?.[1]?.a4aQuestion },
+          { label: 'Revised research question', value: phaseData?.[1]?.a4bFinalQuestion }
+        ]
+      },
+      {
+        title: 'Phase 2',
+        items: [
+          { label: 'Pattern answers', value: phaseData?.[2]?.a1Answers },
+          { label: 'Guided Pearson r answer', value: phaseData?.[2]?.a2Answer },
+          { label: 'Spreadsheet result', value: phaseData?.[2]?.a3Result },
+          { label: 'Interpretation', value: phaseData?.[2]?.interpretation }
+        ]
+      },
+      {
+        title: 'Phase 3',
+        items: [
+          { label: 'Correlation coefficient', value: phaseData?.[3]?.part1_r },
+          { label: 'Interpretation', value: phaseData?.[3]?.part1_interp },
+          { label: 'Possible explanation 1', value: phaseData?.[3]?.part2_exp1 },
+          { label: 'Possible explanation 2', value: phaseData?.[3]?.part2_exp2 },
+          { label: 'Recommendation', value: phaseData?.[3]?.recommendation }
+        ]
+      },
+      {
+        title: 'Phase 4',
+        items: [
+          { label: 'Confidence', value: phaseData?.[4]?.confidence },
+          { label: 'Most challenging', value: phaseData?.[4]?.challenging },
+          { label: 'Extension idea', value: phaseData?.[4]?.extend },
+          { label: 'Uploaded final output', value: phaseData?.[4]?.uploadUrl || phaseData?.[4]?.fileDataUrl }
+        ]
+      }
+    ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
+  }
+
+  const answerEntries = Object.entries(response.answers || {})
+    .filter(([key]) => key !== '__meta')
+    .map(([key, value]) => ({
+      label: key.replace(/_/g, ' '),
+      value
+    }));
+
+  return [
+    {
+      title: response.activity_type === 'lesson2' ? 'Lesson 2 Submission' : 'Lesson 3 Submission',
+      items: answerEntries
+    }
+  ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
+}
+
 const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCreateClass, onUpdateStudents, onDeleteClass }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
@@ -180,6 +259,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
     activity: any;
     title?: string;
     helperText?: string;
+    feedbackScope?: 'overall' | 'activity';
+    subActivityKey?: string | null;
   } | null>(null);
   const [classRecord, setClassRecord] = useState<any[]>([]);
   const [classRecordLoading, setClassRecordLoading] = useState(false);
@@ -188,6 +269,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0);
   const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
   const [scoreSavingKey, setScoreSavingKey] = useState<string | null>(null);
+  const [reviewRow, setReviewRow] = useState<{
+    name: string;
+    username: string;
+    activityType: ActivityType;
+    response: ResponseRow;
+  } | null>(null);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📘' },
@@ -473,12 +560,25 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                           <button
+                            onClick={() => setReviewRow({
+                              name: row.name,
+                              username: row.username,
+                              activityType,
+                              response
+                            })}
+                            className="download-btn lesson-feedback-button"
+                          >
+                            Review
+                          </button>
+                          <button
                             onClick={() => setFeedbackStudent({
                               id: row.id,
                               name: row.name,
                               activity: activityType,
                               title: `${lessonLabelMap[activityType]} Feedback`,
-                              helperText: 'Use this for the overall lesson feedback that appears on the student lesson page and performance summary.'
+                              helperText: 'Use this for the overall lesson feedback that appears on the student lesson page and performance summary.',
+                              feedbackScope: 'overall',
+                              subActivityKey: null
                             })}
                             className="download-btn lesson-feedback-button"
                           >
@@ -491,7 +591,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 name: row.name,
                                 activity: activityType,
                                 title: 'Lesson 1 Activity 4 Feedback',
-                                helperText: 'Use this when responding to the Activity 4 research-question revision step. Current backend stores this under the same live Lesson 1 feedback row.'
+                                helperText: 'Use this only for the Activity 4 research-question revision step in Lesson 1.',
+                                feedbackScope: 'activity',
+                                subActivityKey: 'lesson1_phase1_activity4'
                               })}
                               className="download-btn lesson-feedback-button"
                             >
@@ -2142,9 +2244,112 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
             activityType={feedbackStudent.activity}
             title={feedbackStudent.title}
             helperText={feedbackStudent.helperText}
+            feedbackScope={feedbackStudent.feedbackScope}
+            subActivityKey={feedbackStudent.subActivityKey}
             onClose={() => setFeedbackStudent(null)}
             onSubmitSuccess={() => setFeedbackRefreshKey(key => key + 1)}
           />
+        )}
+        {reviewRow && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: 24
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: 14,
+              width: 'min(960px, 94vw)',
+              maxHeight: '88vh',
+              overflowY: 'auto',
+              padding: 28,
+              boxShadow: '0 18px 48px rgba(0,0,0,0.18)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 26, color: '#0b61c9' }}>Submission Review</h2>
+                  <div style={{ marginTop: 8, color: '#444', fontSize: 15 }}>
+                    <strong>{formatDisplayName(reviewRow.name)}</strong> ({reviewRow.username}) - {reviewRow.activityType === 'lesson1' ? 'Lesson 1' : reviewRow.activityType === 'lesson2' ? 'Lesson 2' : 'Lesson 3'}
+                  </div>
+                  <div style={{ marginTop: 4, color: '#666', fontSize: 13 }}>
+                    Last updated {new Date(reviewRow.response.updated_at).toLocaleString()}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewRow(null)}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gap: 16 }}>
+                {getLessonReviewSections(reviewRow.response).map((section) => (
+                  <section
+                    key={section.title}
+                    style={{
+                      border: '1px solid #dbe6f3',
+                      borderRadius: 14,
+                      padding: 18,
+                      background: '#f8fbff'
+                    }}
+                  >
+                    <h3 style={{ margin: '0 0 14px 0', color: '#0b61c9' }}>{section.title}</h3>
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {section.items
+                        .filter((item) => {
+                          const formatted = formatReviewValue(item.value);
+                          return formatted !== '-' && formatted !== 'â€”';
+                        })
+                        .map((item) => {
+                          const formatted = formatReviewValue(item.value);
+                          const multiline = formatted.includes('\n') || formatted.length > 120;
+                          return (
+                            <div
+                              key={`${section.title}-${item.label}`}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '220px 1fr',
+                                gap: 12,
+                                alignItems: multiline ? 'start' : 'center'
+                              }}
+                            >
+                              <div style={{ fontWeight: 700, color: '#334155' }}>{item.label}</div>
+                              <div
+                                style={{
+                                  background: '#fff',
+                                  border: '1px solid #dbe6f3',
+                                  borderRadius: 10,
+                                  padding: '10px 12px',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  minHeight: multiline ? 72 : 'auto'
+                                }}
+                              >
+                                {formatted}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -97,17 +97,21 @@ create table if not exists feedback (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references users(id) on delete cascade,
   activity_type text not null,
+  feedback_scope text not null default 'overall',
+  sub_activity_key text not null default '',
   feedback_text text not null default '',
   created_by uuid references users(id) on delete set null,
   acknowledged boolean not null default false,
   acknowledged_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (student_id, activity_type)
+  unique (student_id, activity_type, feedback_scope, sub_activity_key)
 );
 
 create index if not exists idx_feedback_student on feedback(student_id);
 create index if not exists idx_feedback_activity on feedback(activity_type);
+create index if not exists idx_feedback_scope on feedback(feedback_scope);
+create index if not exists idx_feedback_sub_activity on feedback(sub_activity_key);
 
 -- ============================================================
 -- MIGRATIONS (run these in Supabase SQL editor if the tables

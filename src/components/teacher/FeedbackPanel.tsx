@@ -8,6 +8,8 @@ interface FeedbackPanelProps {
   activityType: ActivityType;
   title?: string;
   helperText?: string;
+  feedbackScope?: 'overall' | 'activity';
+  subActivityKey?: string | null;
   onClose: () => void;
   onSubmitSuccess: () => void;
 }
@@ -18,6 +20,8 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
   activityType,
   title,
   helperText,
+  feedbackScope = 'overall',
+  subActivityKey = null,
   onClose,
   onSubmitSuccess
 }) => {
@@ -30,7 +34,10 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
   React.useEffect(() => {
     const loadExisting = async () => {
       try {
-        const existing = await getFeedbackForStudentActivity(studentId, activityType);
+        const existing = await getFeedbackForStudentActivity(studentId, activityType, {
+          feedbackScope,
+          subActivityKey
+        });
         setHasExistingFeedback(!!existing?.feedback_text);
         if (existing?.feedback_text) {
           setFeedbackText(existing.feedback_text);
@@ -42,7 +49,7 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
       }
     };
     loadExisting();
-  }, [studentId, activityType]);
+  }, [studentId, activityType, feedbackScope, subActivityKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +61,10 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
     setIsSubmitting(true);
     setError('');
     try {
-      await upsertFeedback(studentId, activityType, feedbackText);
+      await upsertFeedback(studentId, activityType, feedbackText, {
+        feedbackScope,
+        subActivityKey
+      });
       setSuccess(true);
       setFeedbackText('');
       setTimeout(() => {

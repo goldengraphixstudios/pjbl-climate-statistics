@@ -483,3 +483,30 @@ How To Use Going Forward
   - `src/components/teacher/FeedbackPanel.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 16:05] Scoped lesson feedback + admin review modal
+- Converted Lesson 1 feedback handling from a UI-only split into a real scoped-feedback model:
+  - `Feedback` now targets the overall Lesson 1 summary row
+  - `Activity 4 Feedback` now targets a separate Lesson 1 activity-scoped row using:
+    - `feedback_scope = 'activity'`
+    - `sub_activity_key = 'lesson1_phase1_activity4'`
+- Student Lesson 1 Activity 4 now reads only the scoped activity feedback row instead of reusing the overall lesson feedback.
+- Added a read-only `Review` action on Lesson 1 / 2 / 3 rows in the admin portal.
+- Review modal now shows grading-relevant submitted content grouped by lesson phase/section without cloning the student UI.
+- Added Supabase SQL helper for the feedback schema extension:
+  - `SUPABASE_FEEDBACK_SCOPE_SQL.sql`
+- Schema/source-of-truth note:
+  - overall lesson summary feedback remains the row used by dashboard/performance-summary views
+  - activity-scoped feedback is currently implemented for Lesson 1 Activity 4
+  - lesson review UI is frontend-only and does not require new Supabase tables
+- Files:
+  - `src/services/feedbackService.ts`
+  - `src/components/teacher/FeedbackPanel.tsx`
+  - `src/pages/student_sections/Lesson1.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+  - `supabase/schema.sql`
+  - `SUPABASE_FEEDBACK_SCOPE_SQL.sql`
+- Required manual step:
+  - run `SUPABASE_FEEDBACK_SCOPE_SQL.sql` in Supabase SQL Editor before using the new activity-scoped feedback button live
+- Commit: pending
+- Push: pending

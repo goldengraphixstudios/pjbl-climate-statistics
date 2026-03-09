@@ -152,6 +152,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   const [state, setState] = useState(getLesson1State(user.username));
   const [open, setOpen] = useState<{ overview: boolean; p1: boolean; p2: boolean; p3: boolean; p4: boolean }>({ overview: false, p1: false, p2: false, p3: false, p4: false });
   const [serverFeedback, setServerFeedback] = useState<any>(null);
+  const [activity4FeedbackRow, setActivity4FeedbackRow] = useState<any>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -171,6 +172,11 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
         if (!studentId) return;
         const fb = await getFeedbackForStudentActivity(studentId, 'lesson1');
         if (fb) setServerFeedback(fb);
+        const activity4Fb = await getFeedbackForStudentActivity(studentId, 'lesson1', {
+          feedbackScope: 'activity',
+          subActivityKey: 'lesson1_phase1_activity4'
+        });
+        if (activity4Fb) setActivity4FeedbackRow(activity4Fb);
       } catch (e) {
         console.error('load lesson1 feedback', e);
       }
@@ -192,7 +198,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   const p2Score = teacher?.phaseScores?.[2];
   const p3Score = teacher?.phaseScores?.[3];
   const p4Score = teacher?.phaseScores?.[4];
-  const activity4Feedback = serverFeedback?.feedback_text || teacher?.comments?.[1] || '';
+  const activity4Feedback = activity4FeedbackRow?.feedback_text || teacher?.comments?.[1] || '';
 
   const progressPct = useMemo(() => {
     const pp = state.phaseProgress || {};
