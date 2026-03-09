@@ -117,6 +117,8 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
   if (response.activity_type === 'lesson1') {
     const state = response.answers?.lesson1State;
     if (state && typeof state === 'object') {
+      const question = state?.phaseData?.[1]?.a4aQuestion || '';
+      const revisedQuestion = state?.phaseData?.[1]?.a4bFinalQuestion || '';
       const completed = Object.entries(state).filter(([, value]) => {
         if (Array.isArray(value)) return value.length > 0;
         if (typeof value === 'string') return value.trim().length > 0;
@@ -124,7 +126,10 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
         if (value && typeof value === 'object') return Object.keys(value).length > 0;
         return !!value;
       }).length;
-      return { summary: 'Final output submitted', detail: `${completed} saved lesson fields` };
+      const detailParts = [`${completed} saved lesson fields`];
+      if (question) detailParts.push(`Research question: ${question}`);
+      if (revisedQuestion) detailParts.push(`Revised question: ${revisedQuestion}`);
+      return { summary: 'Final output submitted', detail: detailParts.join(' • ') };
     }
     return { summary: 'Final output submitted', detail: 'Lesson state captured' };
   }
@@ -464,7 +469,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                           onClick={() => setFeedbackStudent({ id: row.id, name: row.name, activity: activityType })}
                           className="download-btn lesson-feedback-button"
                         >
-                          Feedback
+                          {activityType === 'lesson1' ? 'Activity 4 Feedback' : 'Feedback'}
                         </button>
                       </td>
                     </tr>

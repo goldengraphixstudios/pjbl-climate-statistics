@@ -450,3 +450,19 @@ How To Use Going Forward
   - repo-local `tsc -b` passed
 - Commit: pending
 - Push: pending
+
+[2026-03-10 15:05] Lesson 1 Activity 4 feedback path alignment
+- Investigated Lesson 1 Phase 1 Activity 4 feedback UX mismatch:
+  - student page had a dedicated feedback box for the research question revision flow
+  - active admin portal exposed only the generic Lesson 1 feedback action
+  - student Activity 4 revision gate still depended on an older local `teacherFeedback` path
+- Fix applied:
+  - Lesson 1 Activity 4 now accepts the live Supabase `feedback.lesson1` message as the feedback source
+  - revised-question textarea and finalize flow now unlock from the live feedback row as well
+  - Admin Lesson 1 Outputs now surfaces the saved research question text inside the submission detail
+  - Lesson 1 action button label updated to `Activity 4 Feedback` so the teacher/admin path is explicit
+- Files:
+  - `src/pages/student_sections/Lesson1.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending

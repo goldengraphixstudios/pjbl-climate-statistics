@@ -192,6 +192,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   const p2Score = teacher?.phaseScores?.[2];
   const p3Score = teacher?.phaseScores?.[3];
   const p4Score = teacher?.phaseScores?.[4];
+  const activity4Feedback = serverFeedback?.feedback_text || teacher?.comments?.[1] || '';
 
   const progressPct = useMemo(() => {
     const pp = state.phaseProgress || {};
@@ -886,7 +887,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
     setState(getLesson1State(user.username));
   };
 
-  const canFinalize = useMemo(() => !!(p1Data.a4aSubmitted) && !!(p1Data.a4bFinalQuestion || '').trim() && !!(teacher?.comments?.[1]), [p1Data.a4aSubmitted, p1Data.a4bFinalQuestion, teacher?.comments?.[1]]);
+  const canFinalize = useMemo(() => !!(p1Data.a4aSubmitted) && !!(p1Data.a4bFinalQuestion || '').trim() && !!activity4Feedback, [p1Data.a4aSubmitted, p1Data.a4bFinalQuestion, activity4Feedback]);
   const onFinalizeQuestion = () => {
     saveActivity4bFinal(user.username, p1Data.a4bFinalQuestion || '');
     setState(getLesson1State(user.username));
@@ -2001,11 +2002,11 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                     <div className="section-actions" style={{ justifyContent:'flex-end' }}><button className="submit-btn" onClick={onSubmitQuestion} disabled={!canSubmitQuestion || !!p1Data.a4aSubmitted}>Submit Question</button></div>
                     <div className="gap-3 feedback-box" style={{ width: '100%' }}>
                       <b>Feedback Box</b>
-                      <div className="gap-2">{teacher?.comments?.[1] || 'Awaiting teacher feedback...'}</div>
+                      <div className="gap-2">{activity4Feedback || 'Awaiting teacher feedback...'}</div>
                     </div>
                     <div className="gap-3">
                       <div><b>Now, encode here your revised question based on your teacher’s feedback.</b></div>
-                      <textarea rows={3} style={{ width: '100%' }} value={(state.phaseData as any)[1]?.a4bFinalQuestion || ''} onChange={(e)=> savePhaseData(1, { a4bFinalQuestion: e.target.value })} disabled={!teacher?.comments?.[1] || !!((state.phaseData as any)[1]?.a4bFinalized)} />
+                      <textarea rows={3} style={{ width: '100%' }} value={(state.phaseData as any)[1]?.a4bFinalQuestion || ''} onChange={(e)=> savePhaseData(1, { a4bFinalQuestion: e.target.value })} disabled={!activity4Feedback || !!((state.phaseData as any)[1]?.a4bFinalized)} />
                     </div>
                     <div className="section-actions" style={{ justifyContent:'flex-end' }}><button className="finalize-btn" onClick={onFinalizeQuestion} disabled={!canFinalize || !!p1Data.a4bFinalized}>Finalize Question</button></div>
                   </div>

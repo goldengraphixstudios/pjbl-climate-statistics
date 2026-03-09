@@ -93,6 +93,30 @@ Files touched
 
 Verification
 - repo-local TypeScript build succeeded
+
+[2026-03-10 15:05] Lesson 1 Activity 4 teacher feedback not reachable from active admin portal
+
+Observed issue
+- Student Lesson 1 Phase 1 Activity 4 includes a feedback box and revised-question flow.
+- Active Teacher/Admin portal did not make that flow explicit:
+  - action button was generic
+  - submission detail did not show the research question content
+- Student-side Activity 4 revision gate still depended on an older local teacher-feedback path instead of the live Supabase `feedback` row.
+
+Diagnosis
+- The active admin portal already had a working `lesson1` feedback action, but it was not obvious that it was the correct path for Activity 4.
+- The student-side Activity 4 UI was not treating the live `feedback.lesson1` row as the authoritative feedback source for the question revision step.
+
+Self-heal actions applied
+- Lesson 1 Activity 4 feedback box now falls back to `serverFeedback.feedback_text`.
+- Revised-question textarea and finalize button now unlock from the live feedback row.
+- Admin Lesson 1 Outputs now includes the saved research question in the submission detail.
+- Lesson 1 feedback action label changed to `Activity 4 Feedback`.
+
+Files touched
+- src/pages/student_sections/Lesson1.tsx
+- src/pages/portals/AdminPortal.tsx
+- PROJECT_WORK_LOG.txt
 - Full browser-flow verification remains pending a reliable local preview/deploy target
 
 [2026-03-10 12:08] Deployed smoke-test asset noise
