@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
-import { HeaderStudentIcon, HeaderTeacherIcon, HeaderAdminIcon } from '../../components/RoleIcons';
+import React from 'react';
 import StudentPortal from './StudentPortal';
-import TeacherPortal from './TeacherPortal';
 import AdminPortal from './AdminPortal';
 import '../../styles/StudentPortal.css';
-import '../../styles/TeacherPortal.css';
 import '../../styles/AdminPortal.css';
 
 interface AuthUser {
@@ -42,8 +39,7 @@ interface CombinedPortalProps {
 /**
  * CombinedPortal renders the appropriate portal based on user role:
  * - Students see StudentPortal with lessons, assessments, and performance
- * - Teachers see TeacherPortal with class/student management and performance tracking
- * - Admins see AdminPortal with analytics and reporting
+ * - Teachers and Admins both see AdminPortal (unified staff portal)
  */
 const CombinedPortal: React.FC<CombinedPortalProps> = ({
   user,
@@ -72,21 +68,17 @@ const CombinedPortal: React.FC<CombinedPortalProps> = ({
     return <StudentPortal user={user} onLogout={onLogout} classes={classes} onOpenSection={onOpenSection} initialTab={initialTab} />;
   }
 
-  if (user.role === 'teacher') {
+  if (user.role === 'teacher' || user.role === 'admin') {
     return (
-      <TeacherPortal
+      <AdminPortal
         user={user}
         onLogout={onLogout}
         classes={classes}
-        onCreateClass={onCreateClass || (() => {})}
-        onUpdateStudents={onUpdateStudents || (() => {})}
+        onCreateClass={onCreateClass}
+        onUpdateStudents={onUpdateStudents}
         onDeleteClass={onDeleteClass}
       />
     );
-  }
-
-  if (user.role === 'admin') {
-    return <AdminPortal user={user} onLogout={onLogout} classes={classes} />;
   }
 
   return (

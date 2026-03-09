@@ -43,9 +43,9 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
           return;
         }
 
-        // Verify the user has admin role
+        // Verify the user has admin or teacher role
         const role = profileRes.data?.role;
-        if (role && role !== 'admin') {
+        if (role && role !== 'admin' && role !== 'teacher') {
           setError('This account does not have admin access.');
           return;
         }
@@ -67,7 +67,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
       <button className="back-button" onClick={onBack}>← Back</button>
       <div className="auth-card">
         <div className="auth-icon"><AdminShieldIcon size={56} /></div>
-        <h2>Administrator Login</h2>
+        <h2>Teacher / Administrator Login</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="username">Username</label>

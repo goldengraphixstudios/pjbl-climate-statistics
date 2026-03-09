@@ -3,7 +3,6 @@ import { supabase, getUserProfileByIdentifier, signOut } from './services/supaba
 import './styles/App.css';
 import LandingPage from './pages/LandingPage';
 import StudentLogin from './pages/auth/StudentLogin';
-import TeacherLogin from './pages/auth/TeacherLogin';
 import AdminLogin from './pages/auth/AdminLogin';
 import CombinedPortal from './pages/portals/CombinedPortal';
 import PreAssessment from './pages/student_sections/PreAssessment';
@@ -196,7 +195,7 @@ function App() {
   };
 
   const knownPages = [
-    'landing', 'student-login', 'teacher-login', 'admin-login',
+    'landing', 'student-login', 'admin-login',
     'portal',
     'student-section-1', 'student-section-2', 'student-section-3',
     'student-section-4', 'student-section-5', 'student-section-6'
@@ -207,9 +206,6 @@ function App() {
       {currentPage === 'landing' && <LandingPage onRoleSelect={handleRoleSelect} />}
       {currentPage === 'student-login' && (
         <StudentLogin onLogin={handleStudentLogin} onBack={() => setCurrentPage('landing')} />
-      )}
-      {currentPage === 'teacher-login' && (
-        <TeacherLogin onLogin={handleLogin} onBack={() => setCurrentPage('landing')} />
       )}
       {currentPage === 'admin-login' && (
         <AdminLogin onLogin={handleLogin} onBack={() => setCurrentPage('landing')} />

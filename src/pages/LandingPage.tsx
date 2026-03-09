@@ -1,5 +1,5 @@
 import React from 'react';
-import { StudentCapIcon, TeacherCalendarIcon, AdminShieldIcon } from '../components/RoleIcons';
+import { StudentCapIcon, AdminShieldIcon } from '../components/RoleIcons';
 import '../styles/LandingPage.css';
 
 interface LandingPageProps {
@@ -22,7 +22,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onRoleSelect }) => {
           <h3>Student</h3>
           <p>Access learning materials and projects</p>
         </div>
-        <div className="role-card" onClick={() => onRoleSelect('teacher')}>
+        <div className="role-card" onClick={() => onRoleSelect('admin')}>
           <div className="role-icon"><AdminShieldIcon /></div>
           <h3>Teacher / Administrator</h3>
           <p>Manage classes, track progress, and oversee system</p>
