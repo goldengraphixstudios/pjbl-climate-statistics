@@ -66,3 +66,19 @@ Verification
 - repo-local TypeScript build succeeded
 - repo-local Vite build succeeded
 - Full browser-flow verification remains pending a reliable local preview/deploy target
+
+[2026-03-10 12:08] Deployed smoke-test asset noise
+
+Observed issue
+- Live student smoke test on GitHub Pages still produced a 404 for `vite.svg`.
+
+Diagnosis
+- `index.html` still contained the default Vite starter favicon reference:
+  - `<link rel="icon" type="image/svg+xml" href="./vite.svg" />`
+- The project does not ship that file in `public/`, so every load produced a console/network error.
+
+Self-heal action applied
+- Removed the stale favicon reference from `index.html`.
+
+Files touched
+- index.html

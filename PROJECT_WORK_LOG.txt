@@ -321,3 +321,20 @@ How To Use Going Forward
   - work log update
 - Git status after push:
   - clean working tree
+
+[2026-03-10 12:08] Smoke test follow-up: favicon 404 cleanup
+- Ran a live student smoke pass against the deployed GitHub Pages site using `gabriel_labriaga`.
+- Confirmed:
+  - student login succeeds
+  - pre-assessment shows as completed
+  - Lesson 1 is unlocked
+  - Lesson 1 opens successfully
+- Found one remaining console/network issue on deploy:
+  - missing favicon request to `vite.svg`
+- Fixed by removing the stale Vite starter favicon reference from:
+  - index.html
+- Local verification:
+  - repo-local `tsc` executed successfully
+  - repo-local `vite build` executed successfully
+- Commit: pending
+- Push: pending
