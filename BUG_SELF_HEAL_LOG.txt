@@ -117,6 +117,32 @@ Files touched
 - src/pages/student_sections/Lesson1.tsx
 - src/pages/portals/AdminPortal.tsx
 - PROJECT_WORK_LOG.txt
+
+[2026-03-10 15:22] Lesson feedback actions too ambiguous in admin portal
+
+Observed issue
+- Lesson output rows exposed only a single generic feedback action.
+- Teacher/Admin could not easily distinguish between:
+  - overall lesson feedback
+  - Lesson 1 Activity 4 research-question feedback
+
+Diagnosis
+- The active backend only stores one live feedback row per `student_id + activity_type`.
+- The UX therefore needed to be clarified without pretending the DB already had sub-activity feedback records for every lesson.
+
+Self-heal actions applied
+- Added a persistent overall `Feedback` button for all lesson rows.
+- Added a second `Activity 4 Feedback` button for Lesson 1 rows.
+- Added modal helper copy explaining the current backend limit.
+
+Supabase impact
+- No SQL/schema change required for this UI-only patch.
+- Separate activity-level feedback records across lessons would require a future schema change.
+
+Files touched
+- src/pages/portals/AdminPortal.tsx
+- src/components/teacher/FeedbackPanel.tsx
+- PROJECT_WORK_LOG.txt
 - Full browser-flow verification remains pending a reliable local preview/deploy target
 
 [2026-03-10 12:08] Deployed smoke-test asset noise

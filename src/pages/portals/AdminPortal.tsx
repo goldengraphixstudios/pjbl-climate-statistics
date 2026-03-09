@@ -174,7 +174,13 @@ function downloadCsvFile(rows: string[][], filename: string) {
 const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCreateClass, onUpdateStudents, onDeleteClass }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
-  const [feedbackStudent, setFeedbackStudent] = useState<{id: string, name: string, activity: any} | null>(null);
+  const [feedbackStudent, setFeedbackStudent] = useState<{
+    id: string;
+    name: string;
+    activity: any;
+    title?: string;
+    helperText?: string;
+  } | null>(null);
   const [classRecord, setClassRecord] = useState<any[]>([]);
   const [classRecordLoading, setClassRecordLoading] = useState(false);
   const [feedbackRows, setFeedbackRows] = useState<FeedbackRow[]>([]);
@@ -465,12 +471,34 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <button
-                          onClick={() => setFeedbackStudent({ id: row.id, name: row.name, activity: activityType })}
-                          className="download-btn lesson-feedback-button"
-                        >
-                          {activityType === 'lesson1' ? 'Activity 4 Feedback' : 'Feedback'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => setFeedbackStudent({
+                              id: row.id,
+                              name: row.name,
+                              activity: activityType,
+                              title: `${lessonLabelMap[activityType]} Feedback`,
+                              helperText: 'Use this for the overall lesson feedback that appears on the student lesson page and performance summary.'
+                            })}
+                            className="download-btn lesson-feedback-button"
+                          >
+                            Feedback
+                          </button>
+                          {activityType === 'lesson1' && (
+                            <button
+                              onClick={() => setFeedbackStudent({
+                                id: row.id,
+                                name: row.name,
+                                activity: activityType,
+                                title: 'Lesson 1 Activity 4 Feedback',
+                                helperText: 'Use this when responding to the Activity 4 research-question revision step. Current backend stores this under the same live Lesson 1 feedback row.'
+                              })}
+                              className="download-btn lesson-feedback-button"
+                            >
+                              Activity 4 Feedback
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2112,6 +2140,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
             studentId={feedbackStudent.id}
             studentName={feedbackStudent.name}
             activityType={feedbackStudent.activity}
+            title={feedbackStudent.title}
+            helperText={feedbackStudent.helperText}
             onClose={() => setFeedbackStudent(null)}
             onSubmitSuccess={() => setFeedbackRefreshKey(key => key + 1)}
           />

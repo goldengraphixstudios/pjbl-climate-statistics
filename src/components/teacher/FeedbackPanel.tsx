@@ -6,6 +6,8 @@ interface FeedbackPanelProps {
   studentId: string;
   studentName: string;
   activityType: ActivityType;
+  title?: string;
+  helperText?: string;
   onClose: () => void;
   onSubmitSuccess: () => void;
 }
@@ -14,6 +16,8 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
   studentId,
   studentName,
   activityType,
+  title,
+  helperText,
   onClose,
   onSubmitSuccess
 }) => {
@@ -99,11 +103,16 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
             <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 700 }}>
-              Submit Feedback
+              {title || 'Submit Feedback'}
             </h2>
             <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
               To: <strong>{studentName}</strong> ({activityLabels[activityType]})
             </p>
+            {helperText && (
+              <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#777' }}>
+                {helperText}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}

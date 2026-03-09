@@ -466,3 +466,20 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 15:22] Lesson admin feedback action split
+- Added a clearer lesson-row action layout in the active admin portal:
+  - all lesson rows keep a normal `Feedback` button for overall lesson feedback
+  - Lesson 1 rows now also show a second `Activity 4 Feedback` button for the research-question revision flow
+- Added contextual modal titles/helper copy so staff can distinguish:
+  - overall lesson feedback
+  - Lesson 1 Activity 4 feedback usage
+- Scope/implementation note:
+  - no Supabase SQL/schema change was required for this UI-only split
+  - the current backend still stores Lesson 1 overall feedback and Activity 4 feedback in the same live `feedback.lesson1` row
+  - truly separate activity-level feedback records for Lesson 2/3 (or separate Lesson 1 sub-activity records) would require a schema extension
+- Files:
+  - `src/pages/portals/AdminPortal.tsx`
+  - `src/components/teacher/FeedbackPanel.tsx`
+- Commit: pending
+- Push: pending
