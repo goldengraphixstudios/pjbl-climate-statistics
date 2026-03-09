@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { StudentCapIcon } from '../../components/RoleIcons';
-import { validateStudentCredentials, registerStudent } from '../../services/authService';
-import { signIn } from '../../services/supabaseClient';
-import { getUserProfileByIdentifier } from '../../services/supabaseClient';
+import { validateStudentCredentials } from '../../services/authService';
+import { supabase, getUserProfileByIdentifier } from '../../services/supabaseClient';
 import '../../styles/Auth.css';
 
 interface StudentLoginProps {
-  onLogin: (username: string, role: 'student' | 'admin') => void;
+  onLogin: (username: string, role: 'student' | 'admin', id?: string) => void;
   onBack: () => void;
 }
 
@@ -22,36 +21,40 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
     setError('');
     setIsLoading(true);
 
-    // Allow admin credentials here for bypass testing
-    if (username === 'sirmarco' && password === '101997') {
-      onLogin(username, 'admin');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // If username looks like email, try Supabase auth
-      if (username.includes('@')) {
-        const res = await signIn(username, password);
-        if (res.error) {
-          setError('Invalid credentials. Please contact your teacher for login details.');
-        } else {
-          // lookup role from users table
-          const profile = await getUserProfileByIdentifier(username);
-          const role = (profile && (profile.role as 'student' | 'teacher' | 'admin')) || 'student';
-          onLogin(username, role);
-        }
-      } else {
-        const isValid = await validateStudentCredentials(username, password);
-        if (isValid) {
-          onLogin(username, 'student');
-        } else {
-          setError('Invalid credentials. Please contact your teacher for login details.');
-        }
+      const result = await validateStudentCredentials(username, password);
+      if (!result.valid) {
+        setError('Invalid credentials. Please contact your teacher for login details.');
+        return;
       }
+
+      // Determine role from users table if we have an id or username
+      let userId = result.userId;
+      let role: 'student' | 'admin' = 'student';
+
+      if (userId) {
+        const profile = await getUserProfileByIdentifier(userId);
+        if (profile?.role === 'admin') role = 'admin';
+        userId = profile?.id || userId;
+      } else if (!userId) {
+        // Look up by username to get the Supabase id
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('id, role')
+            .eq('username', username)
+            .maybeSingle();
+          if (data) {
+            userId = data.id;
+            if (data.role === 'admin') role = 'admin';
+          }
+        } catch {}
+      }
+
+      onLogin(username, role, userId);
     } catch (err) {
       setError('Login failed. Please try again.');
-      console.error('validateStudentCredentials error', err);
+      console.error('Student login error', err);
     } finally {
       setIsLoading(false);
     }

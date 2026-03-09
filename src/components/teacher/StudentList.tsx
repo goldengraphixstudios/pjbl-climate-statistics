@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { removeStudentFromMap } from '../../services/classService';
+import { removeStudentFromClass } from '../../services/classService';
 import LoginStatusChart from './LoginStatusChart';
 import '../../styles/StudentList.css';
 
@@ -60,25 +60,13 @@ const StudentList: React.FC<StudentListProps> = ({ classes, onUpdateStudents }) 
 
   // Add Student functionality moved to ClassManagement per class card
 
-  const handleDeleteStudent = (studentId: string) => {
-    if (selectedClass) {
-      const student = selectedClass.students.find(s => s.id === studentId);
-      if (student) {
-        removeStudentFromMap(student.username);
-      }
-      const updatedStudents = selectedClass.students.filter(s => s.id !== studentId);
-      onUpdateStudents(selectedClass.id, updatedStudents);
-    } else {
-      // When viewing all classes, find the class containing the student and remove
-      const containingClass = classes.find(c => c.students.some(s => s.id === studentId));
-      if (!containingClass) return;
-      const student = containingClass.students.find(s => s.id === studentId);
-      if (student) {
-        removeStudentFromMap(student.username);
-      }
-      const updatedStudents = containingClass.students.filter(s => s.id !== studentId);
-      onUpdateStudents(containingClass.id, updatedStudents);
-    }
+  const handleDeleteStudent = async (studentId: string) => {
+    const containingClass = selectedClass || classes.find(c => c.students.some(s => s.id === studentId));
+    if (!containingClass) return;
+    // Remove from Supabase class_students
+    await removeStudentFromClass(studentId, containingClass.id);
+    const updatedStudents = containingClass.students.filter(s => s.id !== studentId);
+    onUpdateStudents(containingClass.id, updatedStudents);
   };
 
   return (

@@ -8,6 +8,7 @@ import '../../styles/TeacherPortal.css';
 import '../../styles/AdminPortal.css';
 
 interface AuthUser {
+  id?: string;
   username: string;
   role: 'student' | 'teacher' | 'admin' | null;
 }

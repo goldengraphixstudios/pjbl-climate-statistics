@@ -6,6 +6,7 @@ import { getUserProgress, getRewardShownSections, markRewardShown } from '../../
 import { ActivityType, getResponseForStudentActivity, getResponsesForStudent } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, getFeedbackForStudent, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { supabase } from '../../services/supabaseClient';
 import ConfettiOverlay from '../../components/ConfettiOverlay';
 
 interface AuthUser {
@@ -71,16 +72,16 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
 
   // load statuses from Supabase
   useEffect(() => {
-    const load = async () => {
+    let studentId = '';
+    let realtimeSub: any = null;
+
+    const load = async (sid?: string) => {
       try {
-        let studentId = user?.id || '';
-        if (!studentId) {
-          const prof = await getMyProfile();
-          studentId = prof?.id || '';
-        }
-        if (!studentId) return;
-        const resps = await getResponsesForStudent(studentId);
-        const fbs = await getFeedbackForStudent(studentId);
+        const id = sid || studentId || user?.id || '';
+        if (!id) return;
+        const resolvedId = id;
+        const resps = await getResponsesForStudent(resolvedId);
+        const fbs = await getFeedbackForStudent(resolvedId);
         const mapStatus: any = {
           pre: { submitted: false, feedback: undefined, acknowledged: false },
           lesson1: { submitted: false, feedback: undefined, acknowledged: false },
@@ -104,7 +105,42 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
         console.error('failed to load activity statuses', e);
       }
     };
-    load();
+
+    const init = async () => {
+      studentId = user?.id || '';
+      if (!studentId) {
+        const prof = await getMyProfile();
+        studentId = prof?.id || '';
+      }
+      if (!studentId) return;
+      await load(studentId);
+
+      // Subscribe to real-time feedback changes for this student
+      realtimeSub = supabase
+        .channel(`feedback:${studentId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'feedback',
+            filter: `student_id=eq.${studentId}`,
+          },
+          () => {
+            // Reload statuses when any feedback row changes
+            load(studentId);
+          }
+        )
+        .subscribe();
+    };
+
+    init();
+
+    return () => {
+      if (realtimeSub) {
+        supabase.removeChannel(realtimeSub);
+      }
+    };
   }, [user, user?.id]);
 
   useEffect(() => {

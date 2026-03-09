@@ -1,42 +1,275 @@
-// Service to manage student-class relationships
+// Service to manage classes and student-class relationships via Supabase
+// localStorage is used as a read-through cache only; Supabase is the source of truth
+
+import { supabase } from './supabaseClient';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface StudentRow {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  password?: string; // stored locally only; not in DB
+  section?: string;
+  hasLoggedIn?: boolean;
+}
+
+export interface ClassRow {
+  id: string;
+  name: string;
+  grade: string;
+  section: string;
+  teacher_id?: string;
+  students: StudentRow[];
+}
+
+// ─── Local password cache ─────────────────────────────────────────────────────
+// Supabase doesn't store plaintext passwords; we cache them locally so the
+// teacher can display / copy credentials after enrollment.
+
+const PW_CACHE_KEY = 'studentPasswordCache';
+
+export const getPasswordCache = (): Record<string, string> => {
+  try {
+    const raw = localStorage.getItem(PW_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const savePasswordCache = (cache: Record<string, string>) => {
+  try {
+    localStorage.setItem(PW_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+};
+
+export const cacheStudentPassword = (username: string, password: string) => {
+  const cache = getPasswordCache();
+  cache[username] = password;
+  savePasswordCache(cache);
+};
+
+export const getStudentPassword = (username: string): string => {
+  return getPasswordCache()[username] || '';
+};
+
+// ─── Class CRUD ───────────────────────────────────────────────────────────────
+
+export const createClass = async (
+  grade: string,
+  section: string,
+  teacherId?: string
+): Promise<{ id: string } | null> => {
+  const name = `Grade ${grade} - ${section}`;
+  const payload: any = { name, grade };
+  if (teacherId) payload.teacher_id = teacherId;
+
+  const { data, error } = await supabase
+    .from('classes')
+    .insert(payload)
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[classService] createClass error', error);
+    return null;
+  }
+  return data;
+};
+
+export const getClassesByTeacher = async (teacherId: string): Promise<ClassRow[]> => {
+  const { data: classRows, error } = await supabase
+    .from('classes')
+    .select('id, name, grade, teacher_id')
+    .eq('teacher_id', teacherId)
+    .order('created_at');
+
+  if (error) {
+    console.error('[classService] getClassesByTeacher error', error);
+    return [];
+  }
+  if (!classRows || classRows.length === 0) return [];
+
+  const classIds = classRows.map((c: any) => c.id);
+
+  // Fetch all class_students for these classes
+  const { data: csRows } = await supabase
+    .from('class_students')
+    .select('class_id, student_id')
+    .in('class_id', classIds);
+
+  const studentIds = [...new Set((csRows || []).map((r: any) => r.student_id))];
+
+  let userMap: Record<string, any> = {};
+  if (studentIds.length > 0) {
+    const { data: userRows } = await supabase
+      .from('users')
+      .select('id, name, email, username, section')
+      .in('id', studentIds);
+    (userRows || []).forEach((u: any) => { userMap[u.id] = u; });
+  }
+
+  const pwCache = getPasswordCache();
+
+  return classRows.map((c: any) => {
+    const enrolledIds = (csRows || [])
+      .filter((r: any) => r.class_id === c.id)
+      .map((r: any) => r.student_id);
+
+    const students: StudentRow[] = enrolledIds
+      .map((sid: string) => {
+        const u = userMap[sid];
+        if (!u) return null;
+        return {
+          id: u.id,
+          name: u.name || u.username || '',
+          email: u.email || '',
+          username: u.username || '',
+          password: pwCache[u.username] || '',
+          section: u.section || '',
+          hasLoggedIn: false,
+        } as StudentRow;
+      })
+      .filter(Boolean) as StudentRow[];
+
+    const nameParts = c.name?.split(' - ') || [];
+    const section = nameParts.length >= 2 ? nameParts.slice(1).join(' - ') : c.name;
+    return {
+      id: c.id,
+      name: c.name,
+      grade: c.grade || '',
+      section,
+      teacher_id: c.teacher_id,
+      students,
+    } as ClassRow;
+  });
+};
+
+export const getAllClasses = async (): Promise<ClassRow[]> => {
+  const { data: classRows, error } = await supabase
+    .from('classes')
+    .select('id, name, grade, teacher_id')
+    .order('created_at');
+
+  if (error) {
+    console.error('[classService] getAllClasses error', error);
+    return [];
+  }
+  if (!classRows || classRows.length === 0) return [];
+
+  const classIds = classRows.map((c: any) => c.id);
+
+  const { data: csRows } = await supabase
+    .from('class_students')
+    .select('class_id, student_id')
+    .in('class_id', classIds);
+
+  const studentIds = [...new Set((csRows || []).map((r: any) => r.student_id))];
+
+  let userMap: Record<string, any> = {};
+  if (studentIds.length > 0) {
+    const { data: userRows } = await supabase
+      .from('users')
+      .select('id, name, email, username, section')
+      .in('id', studentIds);
+    (userRows || []).forEach((u: any) => { userMap[u.id] = u; });
+  }
+
+  const pwCache = getPasswordCache();
+
+  return classRows.map((c: any) => {
+    const enrolledIds = (csRows || [])
+      .filter((r: any) => r.class_id === c.id)
+      .map((r: any) => r.student_id);
+
+    const students: StudentRow[] = enrolledIds
+      .map((sid: string) => {
+        const u = userMap[sid];
+        if (!u) return null;
+        return {
+          id: u.id,
+          name: u.name || u.username || '',
+          email: u.email || '',
+          username: u.username || '',
+          password: pwCache[u.username] || '',
+          section: u.section || '',
+          hasLoggedIn: false,
+        } as StudentRow;
+      })
+      .filter(Boolean) as StudentRow[];
+
+    const nameParts = c.name?.split(' - ') || [];
+    const section = nameParts.length >= 2 ? nameParts.slice(1).join(' - ') : c.name;
+    return {
+      id: c.id,
+      name: c.name,
+      grade: c.grade || '',
+      section,
+      teacher_id: c.teacher_id,
+      students,
+    } as ClassRow;
+  });
+};
+
+export const deleteClassFromSupabase = async (classId: string): Promise<void> => {
+  // class_students rows cascade-delete automatically
+  const { error } = await supabase.from('classes').delete().eq('id', classId);
+  if (error) console.error('[classService] deleteClass error', error);
+};
+
+// ─── Student enrollment ───────────────────────────────────────────────────────
+
+export const registerStudentToClass = async (
+  studentId: string,
+  classId: string
+): Promise<void> => {
+  const { error } = await supabase
+    .from('class_students')
+    .upsert({ class_id: classId, student_id: studentId }, { onConflict: 'class_id,student_id' });
+  if (error) console.error('[classService] registerStudentToClass error', error);
+};
+
+export const removeStudentFromClass = async (
+  studentId: string,
+  classId: string
+): Promise<void> => {
+  const { error } = await supabase
+    .from('class_students')
+    .delete()
+    .eq('class_id', classId)
+    .eq('student_id', studentId);
+  if (error) console.error('[classService] removeStudentFromClass error', error);
+};
+
+// ─── Legacy localStorage stubs (kept for backward compat during transition) ──
+
 const STUDENT_CLASS_MAP_KEY = 'studentClassMap';
 
 interface StudentClassMap {
-  [username: string]: string; // username -> classId
+  [username: string]: string;
 }
 
 export const getStudentClassMap = (): StudentClassMap => {
-  const stored = localStorage.getItem(STUDENT_CLASS_MAP_KEY);
-  return stored ? JSON.parse(stored) : {};
+  try {
+    const stored = localStorage.getItem(STUDENT_CLASS_MAP_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
 };
 
 export const saveStudentClassMap = (map: StudentClassMap) => {
-  localStorage.setItem(STUDENT_CLASS_MAP_KEY, JSON.stringify(map));
-};
-
-export const registerStudentToClass = (username: string, classId: string) => {
-  const map = getStudentClassMap();
-  map[username] = classId;
-  saveStudentClassMap(map);
+  try { localStorage.setItem(STUDENT_CLASS_MAP_KEY, JSON.stringify(map)); } catch {}
 };
 
 export const getStudentClassId = (username: string): string | null => {
-  const map = getStudentClassMap();
-  return map[username] || null;
-};
-
-export const removeStudentFromMap = (username: string) => {
-  const map = getStudentClassMap();
-  delete map[username];
-  saveStudentClassMap(map);
+  return getStudentClassMap()[username] || null;
 };
 
 export const deleteClassAndStudents = (_classId: string, studentUsernames: string[]) => {
-  // Remove all students in this class from the map
   const map = getStudentClassMap();
-  studentUsernames.forEach(username => {
-    delete map[username];
-  });
+  studentUsernames.forEach(u => { delete map[u]; });
   saveStudentClassMap(map);
 };
-

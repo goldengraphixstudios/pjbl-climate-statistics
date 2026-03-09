@@ -32,8 +32,9 @@ export async function upsertResponse(payload: {
         activity_type: payload.activity_type,
         answers: payload.answers,
         correctness: payload.correctness || null,
+        updated_at: new Date().toISOString(),
       },
-      { onConflict: 'student_id, activity_type' }
+      { onConflict: 'student_id,activity_type' }
     )
     .select()
     .maybeSingle();

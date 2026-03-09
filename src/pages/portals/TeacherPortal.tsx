@@ -6,6 +6,7 @@ import PerformanceSummary from './PerformanceSummary';
 import '../../styles/TeacherPortal.css';
 
 interface AuthUser {
+  id?: string;
   username: string;
   role: 'student' | 'teacher' | 'admin' | null;
 }
@@ -42,7 +43,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
   onUpdateStudents,
   onDeleteClass
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'list' | 'performance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'list' | 'masterlist' | 'performance'>('overview');
 
   const handleDeleteClass = (classId: string) => {
     if (onDeleteClass) {
@@ -85,6 +86,12 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
             onClick={() => setActiveTab('list')}
           >
             List of Classes
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'masterlist' ? 'active' : ''}`}
+            onClick={() => setActiveTab('masterlist')}
+          >
+            Masterlist
           </button>
           <button
             className={`tab-button ${activeTab === 'performance' ? 'active' : ''}`}
@@ -185,7 +192,48 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
         {activeTab === 'list' && (
           <StudentList classes={classes} onUpdateStudents={onUpdateStudents} />
         )}
-        
+
+        {activeTab === 'masterlist' && (
+          <section className="masterlist-section">
+            <h2>Masterlist of All Students</h2>
+            {classes.length === 0 ? (
+              <p className="no-data">No classes created yet.</p>
+            ) : (
+              <table className="students-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Username</th>
+                    <th>Grade &amp; Section</th>
+                    <th>Login Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classes.flatMap(cls =>
+                    cls.students.map((s, idx) => (
+                      <tr key={s.id}>
+                        <td>{idx + 1}</td>
+                        <td>{s.name}</td>
+                        <td className="code">{s.username}</td>
+                        <td>Grade {cls.grade} – {cls.section}</td>
+                        <td>
+                          <span className={`status-badge ${s.hasLoggedIn ? 'active' : 'inactive'}`}>
+                            {s.hasLoggedIn ? '✓ Logged In' : '⏳ Pending'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  {classes.flatMap(c => c.students).length === 0 && (
+                    <tr><td colSpan={5} className="no-data">No students enrolled yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </section>
+        )}
+
         {activeTab === 'performance' && (
           <PerformanceSummary classes={classes} />
         )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { deleteClassAndStudents, registerStudentToClass } from '../../services/classService';
+import { deleteClassAndStudents, registerStudentToClass, cacheStudentPassword } from '../../services/classService';
 import { generateStudentCredentials, registerStudent } from '../../services/authService';
 import * as XLSX from 'xlsx';
 import LoginStatusChart from './LoginStatusChart';
@@ -78,40 +78,50 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ onCreateClass, classe
         const uniqueNum = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
         const { username, password } = generateStudentCredentials(firstName, lastName, uniqueNum);
 
-        // Register in credential store (prevents duplicates)
+        // Register in Supabase (with duplicate username handling)
+        let finalUsername = username;
+        let finalPassword = password;
+        let registeredId: string | undefined;
+
         const res = await registerStudent(name, username, password);
         if (!res.success) {
           if (res.reason === 'exists') {
-            // Try multiple alternate suffixes before giving up
             let registered = false;
-            let finalCred: { username: string; password: string } | null = null;
             for (let attempt = 0; attempt < 10; attempt++) {
               const altUnique = String(Math.floor(Math.random() * 90000) + 1000);
               const altCred = generateStudentCredentials(firstName, lastName, altUnique);
               const altRes = await registerStudent(name, altCred.username, altCred.password);
               if (altRes.success) {
                 registered = true;
-                finalCred = altCred;
+                finalUsername = altCred.username;
+                finalPassword = altCred.password;
+                registeredId = altRes.userId;
                 break;
               }
-              if (altRes.reason === 'quota') {
-                throw new Error('localStorage_quota');
-              }
             }
-            if (!registered || !finalCred) {
-              throw new Error('register_failed');
-            }
-            newStudents.push({ id: Date.now().toString() + Math.random(), name, username: finalCred.username, password: finalCred.password, hasLoggedIn: false });
-            registerStudentToClass(finalCred.username, classItem.id);
-          } else if (res.reason === 'quota') {
-            throw new Error('localStorage_quota');
+            if (!registered) throw new Error('register_failed');
           } else {
             throw new Error('register_failed');
           }
         } else {
-          newStudents.push({ id: Date.now().toString() + Math.random(), name, username, password, hasLoggedIn: false });
-          registerStudentToClass(username, classItem.id);
+          registeredId = res.userId;
         }
+
+        // Cache the plaintext password locally (for credential display)
+        cacheStudentPassword(finalUsername, finalPassword);
+
+        // Link student to class in Supabase
+        if (registeredId) {
+          await registerStudentToClass(registeredId, classItem.id);
+        }
+
+        newStudents.push({
+          id: registeredId || (Date.now().toString() + Math.random()),
+          name,
+          username: finalUsername,
+          password: finalPassword,
+          hasLoggedIn: false
+        });
       }
 
       const updatedStudents = [...classItem.students, ...newStudents];

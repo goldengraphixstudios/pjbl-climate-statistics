@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HeaderAdminIcon } from '../../components/RoleIcons';
 import AnalyticsChart from '../../components/admin/AnalyticsChart';
 import FeedbackPanel from '../../components/teacher/FeedbackPanel';
 import { getPreAssessmentSummary, getInitialSurveySummary, getAssessmentScores, getPostAssessmentSummary, getEndOfLessonSurveySummary } from '../../services/progressService';
+import { getPreAssessmentSummaryFromDB, getInitialSurveySummaryFromDB, getPostAssessmentSummaryFromDB, getEndOfLessonSurveySummaryFromDB, getClassRecordForExport } from '../../services/analyticsService';
+import { getClassRecord } from '../../services/submissionsService';
+import * as XLSX from 'xlsx';
 import '../../styles/AdminPortal.css';
 
 interface AuthUser {
+  id?: string;
   username: string;
   role: 'student' | 'teacher' | 'admin' | null;
 }
@@ -27,13 +31,29 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
   const [activeTab, setActiveTab] = useState<string>('pre-assessment');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
   const [feedbackStudent, setFeedbackStudent] = useState<{id: string, name: string, activity: any} | null>(null);
+  const [classRecord, setClassRecord] = useState<any[]>([]);
+  const [classRecordLoading, setClassRecordLoading] = useState(false);
 
   const tabs = [
     { id: 'pre-assessment', label: 'Pre-Assessment Results', icon: '📋' },
     { id: 'initial-survey', label: 'Initial Survey Results', icon: '📝' },
     { id: 'post-assessment', label: 'Post-Assessment Results', icon: '✅' },
-    { id: 'end-survey', label: 'End-of-Lesson Survey', icon: '📋' }
+    { id: 'end-survey', label: 'End-of-Lesson Survey', icon: '📋' },
+    { id: 'class-record', label: 'Class Record', icon: '📊' }
   ];
+
+  // Load class record from Supabase when the tab is active
+  useEffect(() => {
+    if (activeTab !== 'class-record') return;
+    setClassRecordLoading(true);
+    const classId = sectionFilter === 'ALL'
+      ? 'all'
+      : classes.find(c => `Section ${c.section}` === sectionFilter)?.id || 'all';
+    getClassRecord(classId)
+      .then(rows => setClassRecord(rows))
+      .catch(e => console.error('[AdminPortal] classRecord error', e))
+      .finally(() => setClassRecordLoading(false));
+  }, [activeTab, sectionFilter, classes]);
 
   const sectionOptions = ['ALL', ...classes.map(c => `Section ${c.section}`)];
   const filteredStudents = sectionFilter === 'ALL'
@@ -1421,7 +1441,70 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes }) =>
             </div>
           )}
 
-          {/* Class Breakdown removed per requirements */}
+          {/* Class Record Tab — reads from Supabase */}
+          {activeTab === 'class-record' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ margin: 0 }}>Class Record (Supabase)</h3>
+                <button
+                  className="download-btn"
+                  onClick={() => {
+                    if (!classRecord.length) return;
+                    const header = ['Name', 'Username', 'Section', 'Pre-Assessment', 'Lesson 1', 'Lesson 2', 'Lesson 3', 'Post-Assessment'];
+                    const rows = classRecord.map(r => [
+                      r.student_name, r.student_username, r.section,
+                      r.pre_score ?? '', r.lesson1_score ?? '', r.lesson2_score ?? '',
+                      r.lesson3_score ?? '', r.post_score ?? ''
+                    ]);
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+                    XLSX.utils.book_append_sheet(wb, ws, 'Class Record');
+                    XLSX.writeFile(wb, `class_record_${sectionFilter.replace(/\s+/g,'_')}.xlsx`);
+                  }}
+                  disabled={classRecord.length === 0}
+                >
+                  Download Excel
+                </button>
+              </div>
+              {classRecordLoading ? (
+                <p>Loading...</p>
+              ) : classRecord.length === 0 ? (
+                <p className="no-data">No data yet. Students must submit activities and teachers must score them.</p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left' }}>Name</th>
+                        <th>Username</th>
+                        <th>Section</th>
+                        <th>Pre-Assessment</th>
+                        <th>Lesson 1</th>
+                        <th>Lesson 2</th>
+                        <th>Lesson 3</th>
+                        <th>Post-Assessment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classRecord.map((r: any, i: number) => (
+                        <tr key={r.student_id || i}>
+                          <td style={{ textAlign: 'left' }}>{r.student_name}</td>
+                          <td className="code">{r.student_username}</td>
+                          <td>{r.section}</td>
+                          <td>{r.pre_score !== null ? r.pre_score : <em style={{ color: '#999' }}>—</em>}</td>
+                          <td>{r.lesson1_score !== null ? r.lesson1_score : <em style={{ color: '#999' }}>—</em>}</td>
+                          <td>{r.lesson2_score !== null ? r.lesson2_score : <em style={{ color: '#999' }}>—</em>}</td>
+                          <td>{r.lesson3_score !== null ? r.lesson3_score : <em style={{ color: '#999' }}>—</em>}</td>
+                          <td>{r.post_score !== null ? r.post_score : <em style={{ color: '#999' }}>—</em>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
         {feedbackStudent && (
           <FeedbackPanel

@@ -8,6 +8,7 @@ import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
+  id?: string;
   username: string;
   role: 'student' | 'teacher' | 'admin' | null;
 }
@@ -38,10 +39,11 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
   const loadData = async () => {
     try {
-      let studentId = '';
-      const prof = await getMyProfile();
-      if (prof?.id) studentId = prof.id;
-      // fallback: nothing
+      let studentId = (user as any).id || '';
+      if (!studentId) {
+        const prof = await getMyProfile();
+        if (prof?.id) studentId = prof.id;
+      }
       if (!studentId) return;
       const resps = await getResponsesForStudent(studentId);
       setResponseRows(resps);
@@ -122,56 +124,24 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
                   </div>
                   {
                     (() => {
-                      const resp = responseRows.find((r: any) => r.activity_type === (item.id===1 ? 'pre' : item.id===2 ? 'lesson1' : item.id===3 ? 'lesson2' : item.id===4 ? 'lesson3' : item.id===5 ? 'post' : ''));
-                      const fb = feedbackRows.find((f: any) => f.activity_type === (item.id===1 ? 'pre' : item.id===2 ? 'lesson1' : item.id===3 ? 'lesson2' : item.id===4 ? 'lesson3' : item.id===5 ? 'post' : ''));
-                      if (item.id === 1) {
-                        const score = resp?.answers?.part1Score || resp?.teacher_score;
-                        const hasScore = typeof score === 'number';
-                        return (
-                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${score} out of 15` : <em>pending</em>}
-                          </div>
-                        );
-                      }
-                      if (item.id === 2) {
-                        const score = resp?.teacher_score;
-                        const hasScore = typeof score === 'number';
-                        return (
-                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${score} out of 32` : <em>pending</em>}
-                          </div>
-                        );
-                      }
-                      if (item.id === 3) {
-                        const score = resp?.teacher_score;
-                        const hasScore = typeof score === 'number';
-                        return (
-                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${score} out of 32` : <em>pending</em>}
-                          </div>
-                        );
-                      }
-                      if (item.id === 4) {
-                        const score = resp?.teacher_score;
-                        const hasScore = typeof score === 'number';
-                        return (
-                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${score} out of 32` : <em>pending</em>}
-                          </div>
-                        );
-                      }
-                      if (item.id === 5) {
-                        const score = resp?.answers?.part1Score || resp?.teacher_score;
-                        const hasScore = typeof score === 'number';
-                        return (
-                          <div style={{ marginRight: 10, fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : 'inherit' }}>
-                            {hasScore ? `${score} out of 15` : <em>pending</em>}
-                          </div>
-                        );
-                      }
+                      const actMap: Record<number,string> = {1:'pre',2:'lesson1',3:'lesson2',4:'lesson3',5:'post'};
+                      const actKey = actMap[item.id] || '';
+                      const resp = responseRows.find((r: any) => r.activity_type === actKey);
+                      const fb = feedbackRows.find((f: any) => f.activity_type === actKey);
+                      const maxScores: Record<number,number> = {1:15, 2:32, 3:32, 4:32, 5:15};
+                      const max = maxScores[item.id] || '—';
+                      const score = (item.id===1||item.id===5) ? (resp?.answers?.part1Score ?? resp?.teacher_score ?? null) : (resp?.teacher_score ?? null);
+                      const hasScore = typeof score === 'number' && score !== null;
                       return (
-                        <div style={{ marginRight: 10, fontWeight: 700 }}>
-                          <em>pending</em>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : '#999' }}>
+                            {hasScore ? `${score} / ${max}` : <em style={{ fontWeight: 400, color: '#999' }}>pending</em>}
+                          </div>
+                          {fb?.feedback_text && (
+                            <div style={{ fontSize: '0.8rem', color: '#555', marginTop: 4, maxWidth: 260, textAlign: 'right' }}>
+                              <em>"{fb.feedback_text}"</em>
+                            </div>
+                          )}
                         </div>
                       );
                     })()

@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { TeacherCalendarIcon } from '../../components/RoleIcons';
 import '../../styles/Auth.css';
 import { signIn, signUp, supabase } from '../../services/supabaseClient';
-import { getUserProfileByIdentifier } from '../../services/supabaseClient';
 
 interface TeacherLoginProps {
-  onLogin: (username: string, role: 'teacher') => void;
+  onLogin: (username: string, role: 'teacher', id?: string) => void;
   onBack: () => void;
 }
 
@@ -23,58 +22,37 @@ const TeacherLogin: React.FC<TeacherLoginProps> = ({ onLogin, onBack }) => {
   const [regConfirm, setRegConfirm] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
-  const TEACHER_CREDENTIALS = {
-    username: 'teacher01',
-    password: 'cbnhs'
-  };
-
-  const ADMIN_TEACHER_CREDENTIALS = {
-    username: 'sirmarco',
-    password: '101997'
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    // If username is an email, try Supabase sign-in
     (async () => {
       try {
-        if (username.includes('@')) {
-          const res = await signIn(username, password);
-          if (res.error) {
-            setError('Invalid credentials. Please try again.');
-          } else {
-            onLogin(username, 'teacher');
-          }
-        } else {
-          // Try to resolve username -> email in `users` profile table and sign in by email
-          try {
-            const profileRes = await supabase.from('users').select('email, username, role').eq('username', username).maybeSingle();
-            if (!profileRes.error && profileRes.data && profileRes.data.email) {
-              const email = profileRes.data.email;
-              const res = await signIn(email, password);
-              if (res.error) {
-                setError('Invalid credentials. Please try again.');
-              } else {
-                // use the registered username for UI
-                onLogin(profileRes.data.username || email, 'teacher');
-              }
-            } else {
-              // fallback to local static credentials for teachers
-              await new Promise(r => setTimeout(r, 500));
-              if ((username === TEACHER_CREDENTIALS.username && password === TEACHER_CREDENTIALS.password) ||
-                  (username === ADMIN_TEACHER_CREDENTIALS.username && password === ADMIN_TEACHER_CREDENTIALS.password)) {
-                onLogin(username, 'teacher');
-              } else {
-                setError('Invalid credentials. Please try again.');
-              }
-            }
-          } catch (innerErr) {
-            console.error('Login lookup failed', innerErr);
-            setError('Login failed. Please try again.');
-          }
+        // Resolve username → email via users table, then Supabase signIn
+        const profileRes = await supabase
+          .from('users')
+          .select('id, email, username, role')
+          .eq('username', username)
+          .maybeSingle();
+
+        const email = username.includes('@')
+          ? username
+          : profileRes.data?.email || null;
+
+        if (!email) {
+          setError('Account not found. Please check your username or register.');
+          return;
         }
+
+        const res = await signIn(email, password);
+        if (res.error) {
+          setError('Invalid credentials. Please try again.');
+          return;
+        }
+
+        const sessionUserId = res.data?.session?.user?.id;
+        const displayUsername = profileRes.data?.username || username;
+        onLogin(displayUsername, 'teacher', sessionUserId);
       } catch (e) {
         setError('Login failed. Please try again.');
         console.error(e);
@@ -124,7 +102,7 @@ const TeacherLogin: React.FC<TeacherLoginProps> = ({ onLogin, onBack }) => {
       // Optionally auto-login user (attempt sign-in)
       const login = await signIn(regEmail, regPassword);
       if (!login.error) {
-        onLogin(regUsername, 'teacher');
+        onLogin(regUsername, 'teacher', login.data?.session?.user?.id);
         return;
       }
 

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { AdminShieldIcon } from '../../components/RoleIcons';
 import '../../styles/Auth.css';
-import { signIn } from '../../services/supabaseClient';
-import { getUserProfileByIdentifier } from '../../services/supabaseClient';
+import { signIn, supabase } from '../../services/supabaseClient';
 
 interface AdminLoginProps {
-  onLogin: (username: string, role: 'admin') => void;
+  onLogin: (username: string, role: 'admin', id?: string) => void;
   onBack: () => void;
 }
 
@@ -16,33 +15,44 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const ADMIN_CREDENTIALS = {
-    username: 'sirmarco',
-    password: '101997'
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     (async () => {
       try {
-        if (username.includes('@')) {
-          const res = await signIn(username, password);
-          if (res.error) {
-            setError('Invalid credentials. Please try again.');
-          } else {
-            const profile = await getUserProfileByIdentifier(username);
-            onLogin(username, profile?.role === 'admin' ? 'admin' : 'admin');
-          }
-        } else {
-          await new Promise(r => setTimeout(r, 500));
-          if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-            onLogin(username, 'admin');
-          } else {
-            setError('Invalid credentials. Please try again.');
-          }
+        // Resolve username → email via users table, then Supabase signIn
+        const profileRes = await supabase
+          .from('users')
+          .select('id, email, username, role')
+          .eq('username', username)
+          .maybeSingle();
+
+        const email = username.includes('@')
+          ? username
+          : profileRes.data?.email || null;
+
+        if (!email) {
+          setError('Account not found. Please check your username.');
+          return;
         }
+
+        const res = await signIn(email, password);
+        if (res.error) {
+          setError('Invalid credentials. Please try again.');
+          return;
+        }
+
+        // Verify the user has admin role
+        const role = profileRes.data?.role;
+        if (role && role !== 'admin') {
+          setError('This account does not have admin access.');
+          return;
+        }
+
+        const sessionUserId = res.data?.session?.user?.id;
+        const displayUsername = profileRes.data?.username || username;
+        onLogin(displayUsername, 'admin', sessionUserId);
       } catch (e) {
         setError('Login failed. Please try again.');
         console.error(e);
