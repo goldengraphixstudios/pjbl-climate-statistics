@@ -309,3 +309,15 @@ How To Use Going Forward
   - legacy inactive teacher portal file `src/pages/portals/PerformanceSummary.tsx` still contains old localStorage-era logic, but it is not the active combined portal path currently being used
 - Commit: not yet committed
 - Push: not yet pushed
+
+[2026-03-10 11:41] Checkpoint committed and pushed
+- Saved the current bug-sweep fixes in git and pushed them to `origin/main`.
+- Commit:
+  - `05013b7` `Fix student reopening and admin analytics data sources`
+- Included in that commit:
+  - Student dashboard reopening fix for submitted sections awaiting feedback acknowledgment
+  - Admin portal survey/assessment table and print/report data-source cleanup to use live Supabase response rows
+  - bug log update
+  - work log update
+- Git status after push:
+  - clean working tree
