@@ -339,6 +339,12 @@ How To Use Going Forward
 - Commit: pending
 - Push: pending
 
+[2026-03-10 14:22] README credentials refresh
+- Updated `README.md` to include the current confirmed test credentials.
+- Added live student credentials from the class list:
+  - `gabriel_labriaga / labriaga066`
+  - `thandie_arevalo / arevalo276`
+
 [2026-03-10 14:13] Password reissue workflow + README refresh
 - Confirmed from Supabase CSV exports that `public.users.hashed_password` stores bcrypt hashes only.
 - Conclusion:

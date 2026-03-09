@@ -58,6 +58,25 @@ That means:
 - the Teacher/Admin class list can only display a plaintext password if it still exists in the local browser credential cache
 - if the visible password is lost, it must be reissued/reset
 
+## Current Test Credentials
+
+### Teacher
+
+- Username: `teacher01`
+- Password: `cbnhs`
+
+### Admin
+
+- Username: `sirmarco`
+- Password: `101997`
+
+### Students
+
+- Username: `gabriel_labriaga`
+- Password: `labriaga066`
+- Username: `thandie_arevalo`
+- Password: `arevalo276`
+
 ## Password Reissue
 
 There are two local browser caches used for compatibility:
