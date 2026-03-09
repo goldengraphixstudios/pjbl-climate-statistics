@@ -1,45 +1,49 @@
-Supabase integration — quick setup
+Supabase integration quick setup
 
-1) Create a Supabase project
+1. Create a Supabase project
    - Visit https://app.supabase.com and create a new project.
 
-2) Run the SQL schema
-   - Open the SQL editor in Supabase and run the contents of `supabase/schema.sql` in this repo.
+2. Run the schema SQL
+   - Open the SQL editor in Supabase and run:
+     - `supabase/schema.sql`
 
-3) Environment variables (frontend)
-   - Add to your local `.env` (Vite) file at project root.
-     Make sure the URL matches the *current* project ref you are viewing in
-     the Supabase dashboard; in this repo the working project is
-     `rvucxfhufdgbkgwyodff` (not the old empty one).
+3. Run the student-auth RPC SQL if not already present
+   - The current app expects:
+     - `register_student`
+     - `verify_student`
+
+4. Run the password reset helper SQL if you want Teacher/Admin reissue support
+   - Run:
+     - `SUPABASE_PASSWORD_RESET_SQL.sql`
+
+5. Add environment variables
+   - Create `.env` in the project root:
 
 ```dotenv
-# DO NOT commit actual credentials!
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-4) Install the client in this project
+6. Install dependencies
 
 ```bash
-npm install @supabase/supabase-js
+npm install
 ```
 
-5) Usage in the app
-   - The client wrapper is provided at `src/services/supabaseClient.ts`.
-   - Example:
+7. Start the app
 
-```ts
-import { getProgressForStudent, saveProgress } from './src/services/supabaseClient';
-
-const { data, error } = await getProgressForStudent('student-uuid');
+```bash
+npm run dev
 ```
 
-6) Server-side considerations
-   - For privileged operations (creating users, exporting analytics) use Supabase Edge Functions or a private server with the service_role key — never embed service_role in the frontend.
+Important note on student passwords
 
-7) Migrations
-   - Supabase provides migration tools (supabase cli) or run the SQL once via the dashboard.
+- Student passwords are stored as bcrypt hashes in `public.users.hashed_password`.
+- Supabase does not keep a recoverable plaintext copy.
+- The teacher/admin class list can only display plaintext passwords if they still exist in local browser credential cache.
+- If the displayed password is blank, reissue it through the UI after running `SUPABASE_PASSWORD_RESET_SQL.sql`.
 
-If you want, I can:
-- Add simple hooks into `src/services` to replace the current mock `authService.ts` and `progressService.ts` with Supabase calls.
-- Add a basic serverless function template for privileged analytics queries.
+Important note on project ref
+
+- Make sure the frontend `.env` points to the current active Supabase project.
+- This repo was worked against the project ref `rvucxfhufdgbkgwyodff`, not the older empty project.

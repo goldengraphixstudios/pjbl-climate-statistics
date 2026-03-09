@@ -339,6 +339,23 @@ How To Use Going Forward
 - Commit: pending
 - Push: pending
 
+[2026-03-10 14:13] Password reissue workflow + README refresh
+- Confirmed from Supabase CSV exports that `public.users.hashed_password` stores bcrypt hashes only.
+- Conclusion:
+  - plaintext student passwords cannot be reconstructed from Supabase
+  - blank password cells in the class list must be handled as credential reissue, not data re-read
+- Added password reset/reissue support:
+  - `src/services/classService.ts`
+  - `src/components/teacher/StudentList.tsx`
+  - `SUPABASE_PASSWORD_RESET_SQL.sql`
+- Updated documentation:
+  - `README.md`
+  - `SUPABASE_SETUP.md`
+- Purpose:
+  - allow teacher/admin users to reissue a student password from the class list
+  - keep local credential caches in sync after reset
+  - document that lost plaintext passwords are not recoverable from Supabase
+
 [2026-03-10 13:28] Final handover scope/problem/recommendation documents
 - Added a client-facing summary text file:
   - `CLIENT_SCOPE_AND_RECOMMENDATIONS.txt`

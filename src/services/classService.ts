@@ -73,10 +73,34 @@ export const cacheStudentPassword = (username: string, password: string) => {
   const cache = getPasswordCache();
   cache[username] = password;
   savePasswordCache(cache);
+  try {
+    const legacy = getLegacyStudentDb();
+    legacy[username] = password;
+    localStorage.setItem(LEGACY_STUDENT_DB_KEY, JSON.stringify(legacy));
+  } catch {}
 };
 
 export const getStudentPassword = (username: string): string => {
   return getPasswordCache()[username] || '';
+};
+
+export const resetStudentPassword = async (
+  studentId: string,
+  username: string,
+  newPassword: string
+): Promise<boolean> => {
+  const { data, error } = await supabase.rpc('reset_student_password', {
+    p_student_id: studentId,
+    p_new_password: newPassword
+  });
+
+  if (error || data?.error) {
+    console.error('[classService] resetStudentPassword error', error || data?.error);
+    return false;
+  }
+
+  cacheStudentPassword(username, newPassword);
+  return true;
 };
 
 // ─── Class CRUD ───────────────────────────────────────────────────────────────
