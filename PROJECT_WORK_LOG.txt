@@ -83,3 +83,21 @@ How To Use Going Forward
 - Push: not yet pushed
 - Open issues:
   - RLS in Supabase may still assume `public.users.id = auth.uid()` in multiple policies. If feedback still fails after this frontend patch, the next check is the live SQL policies.
+
+[2026-03-09 23:29] Fix: student section locking and status display aligned with actual workflow
+- Student dashboard gating was still requiring feedback acknowledgement before unlocking the next section.
+- Performance summary was showing `pending` whenever no numeric score existed, even if the activity had already been submitted and feedback had already been sent.
+- Pre-assessment and post-assessment pages could still be reopened after a final response existed, which allowed accidental resubmission.
+- Updated dashboard gating so the next lesson unlocks after the previous section has both a submission and teacher feedback.
+- Updated dashboard labels to show `Feedback ready` when feedback exists but has not yet been acknowledged.
+- Updated performance summary to show lifecycle state (`submitted`, `feedback ready`, `completed`) when no numeric score exists yet.
+- Updated pre/post assessment pages to poll for feedback and become read-only after a final response already exists.
+- Files:
+  - src/pages/portals/StudentPortal.tsx
+  - src/pages/student_sections/PerformanceSummary.tsx
+  - src/pages/student_sections/PreAssessment.tsx
+  - src/pages/student_sections/PostAssessment.tsx
+- Commit: not yet committed
+- Push: not yet pushed
+- Open issues:
+  - Lesson 1/2/3 final-output pages may still allow re-entry after submission depending on how each lesson persists its final state. Pre/post are now guarded explicitly.

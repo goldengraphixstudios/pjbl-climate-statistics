@@ -7,6 +7,7 @@ import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../servic
 import { getMyProfile } from '../../services/profilesService';
 
 interface AuthUser {
+  id?: string;
   username: string;
   role: 'student' | 'teacher' | 'admin' | null;
 }
@@ -84,6 +85,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [part2Submitted, setPart2Submitted] = useState(false);
   const [serverFeedback, setServerFeedback] = useState<any>(null);
   const [existingResponse, setExistingResponse] = useState<any>(null);
+  const isLockedAfterSubmit = !!existingResponse && user.role !== 'admin';
 
   // fetch existing response and feedback once
   useEffect(() => {
@@ -109,6 +111,8 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       }
     };
     load();
+    const pollId = setInterval(load, 10000);
+    return () => clearInterval(pollId);
   }, []);
 
   const globalIndexStartForSet = (setIdx: number) => setQuestionCounts.slice(0, setIdx).reduce((a,b)=>a+b, 0);
@@ -130,6 +134,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   };
 
   const nextSet = async () => {
+    if (isLockedAfterSubmit) return;
     if (user.role !== 'admin' && !isSetComplete(currentSet)) return;
     const isLast = currentSet === setQuestionCounts.length - 1;
       if (isLast) {
@@ -177,6 +182,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   };
 
   const submitPart2 = async () => {
+    if (isLockedAfterSubmit) return;
     if (user.role !== 'admin' && part2Responses.some(v => v === 0)) return; // must answer all 17 unless admin
     try {
       console.log('saving part2 responses', part2Responses);
@@ -793,7 +799,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       </div>
 
       <div className="part2-actions">
-        <button className="submit-button" disabled={user.role!=='admin' && part2Responses.some(v=>v===0)} onClick={submitPart2}>Submit</button>
+        <button className="submit-button" disabled={isLockedAfterSubmit || (user.role!=='admin' && part2Responses.some(v=>v===0))} onClick={submitPart2}>Submit</button>
       </div>
     </section>
   );
@@ -813,7 +819,15 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         </div>
       </header>
       <main className="portal-content">
-        {phase==='part1' ? renderPart1() : (
+        {isLockedAfterSubmit ? (
+          <section className="pre-assessment-part2">
+            <h2>Pre-Assessment Submitted</h2>
+            <p className="scale-note">Your response has already been recorded. You cannot submit this section again.</p>
+            <div className="part2-actions">
+              <button className="submit-button" onClick={onBack}>Back to Dashboard</button>
+            </div>
+          </section>
+        ) : phase==='part1' ? renderPart1() : (
           part2Submitted ? (
             <section className="pre-assessment-part2">
               <h2>Pre-Assessment Completed</h2>

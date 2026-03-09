@@ -47,6 +47,17 @@ const sections = [
   { id: 6, title: 'Performance Summary', icon: '📚' }
 ];
 
+const getActivityStatusLabel = (status?: {
+  submitted: boolean;
+  feedback?: any;
+  acknowledged: boolean;
+}) => {
+  if (!status?.submitted) return 'Not started';
+  if (!status.feedback) return 'Submitted';
+  if (!status.acknowledged) return 'Feedback ready';
+  return 'Completed';
+};
+
 const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, onOpenSection, initialTab }) => {
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'sections'>('overview');
@@ -74,6 +85,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
   useEffect(() => {
     let studentId = '';
     let realtimeSub: any = null;
+    let pollId: ReturnType<typeof setInterval> | null = null;
 
     const load = async (sid?: string) => {
       try {
@@ -114,6 +126,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
       }
       if (!studentId) return;
       await load(studentId);
+      pollId = setInterval(() => load(studentId), 10000);
 
       // Subscribe to real-time feedback changes for this student
       realtimeSub = supabase
@@ -137,6 +150,9 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
     init();
 
     return () => {
+      if (pollId) {
+        clearInterval(pollId);
+      }
       if (realtimeSub) {
         supabase.removeChannel(realtimeSub);
       }
@@ -162,14 +178,14 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
       const prevType = activityTypeForId(sectionId - 1);
       if (prevType) {
         const prev = activityStatuses[prevType];
-        if (!prev.submitted || !prev.feedback || !prev.acknowledged) {
+        if (!prev.submitted || !prev.feedback) {
           return true;
         }
       }
     }
-    // optionally prevent revisit after completion
+    // prevent pre/post resubmission after a final submission exists
     const myStatus = activityStatuses[current];
-    if ((sectionId === 1 || sectionId === 5) && myStatus?.submitted && myStatus?.feedback && myStatus?.acknowledged) {
+    if ((sectionId === 1 || sectionId === 5) && myStatus?.submitted) {
       return true;
     }
     return false;
@@ -321,13 +337,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
                     const type = activityTypeForId(section.id);
                     if (!type) return null;
                     const st = activityStatuses[type];
-                    let label = 'Not started';
-                    if (st) {
-                      if (!st.submitted) label = 'Not started';
-                      else if (st.submitted && !st.feedback) label = 'Submitted';
-                      else if (st.feedback && !st.acknowledged) label = 'Waiting feedback';
-                      else if (st.feedback && st.acknowledged) label = 'Completed';
-                    }
+                    const label = getActivityStatusLabel(st);
                     return <p className="progress-text">{label}</p>;
                   })()}
                 </div>

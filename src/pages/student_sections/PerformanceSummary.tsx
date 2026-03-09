@@ -37,6 +37,13 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [responseRows, setResponseRows] = useState<any[]>([]);
   const [feedbackRows, setFeedbackRows] = useState<any[]>([]);
 
+  const getSummaryStatus = (resp: any, fb: any) => {
+    if (!resp) return { text: 'pending', tone: '#999' };
+    if (!fb) return { text: 'submitted', tone: 'var(--primary-blue)' };
+    if (!fb.acknowledged) return { text: 'feedback ready', tone: '#d97706' };
+    return { text: 'completed', tone: '#15803d' };
+  };
+
   const loadData = async () => {
     try {
       let studentId = (user as any).id || '';
@@ -132,10 +139,11 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
                       const max = maxScores[item.id] || '—';
                       const score = (item.id===1||item.id===5) ? (resp?.answers?.part1Score ?? resp?.teacher_score ?? null) : (resp?.teacher_score ?? null);
                       const hasScore = typeof score === 'number' && score !== null;
+                      const summaryStatus = getSummaryStatus(resp, fb);
                       return (
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : '#999' }}>
-                            {hasScore ? `${score} / ${max}` : <em style={{ fontWeight: 400, color: '#999' }}>pending</em>}
+                          <div style={{ fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : summaryStatus.tone }}>
+                            {hasScore ? `${score} / ${max}` : <em style={{ fontWeight: 400, color: summaryStatus.tone }}>{summaryStatus.text}</em>}
                           </div>
                           {fb?.feedback_text && (
                             <div style={{ fontSize: '0.8rem', color: '#555', marginTop: 4, maxWidth: 260, textAlign: 'right' }}>
