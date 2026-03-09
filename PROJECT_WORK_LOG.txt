@@ -138,3 +138,26 @@ How To Use Going Forward
 - Push: not yet pushed
 - Verification limits:
   - `npm run build` could not complete in this shell because `tsc` is not available on PATH
+
+[2026-03-10 00:23] Fix: pre/post analytics UI for very small class sizes
+- Pre/post analytics cards now derive tested counts, scores, and competency groups from live Supabase `responses` rows instead of old local browser score state.
+- Frequency-of-responses charts now hide zero-width labels and render as rounded pill bars, which prevents the stray `0` labels seen at the far right when only one student has answered.
+- Boxplot sections now render a cleaner single-point marker for `n=1` instead of a nearly invisible collapsed box, and show a short `n / median` caption.
+- Files:
+  - src/pages/portals/AdminPortal.tsx
+  - src/styles/AdminPortal.css
+- Commit: not yet committed
+- Push: not yet pushed
+
+[2026-03-10 00:41] Feature: active combined portal lesson scoring scaffold
+- Added dedicated Teacher/Admin tabs for `Lesson 1 Outputs`, `Lesson 2 Outputs`, and `Lesson 3 Outputs` in the active combined `AdminPortal`.
+- Each lesson tab now reads live Supabase `responses` rows, shows a simple submission preview, supports score entry, and saves teacher scores back through `responses.teacher_score`.
+- Saving a score reuses the existing response refresh path so class record and student performance summary can pick up the updated lesson score from the same backend field.
+- Added lesson-specific table styling for submission metadata, score inputs, and feedback status.
+- Files:
+  - src/pages/portals/AdminPortal.tsx
+  - src/styles/AdminPortal.css
+- Commit: not yet committed
+- Push: not yet pushed
+- Verification limits:
+  - `npm run build` still not verified in this shell because `tsc` is unavailable on PATH

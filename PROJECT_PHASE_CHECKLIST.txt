@@ -1,0 +1,90 @@
+PJBL Climate Statistics - Delivery Checklist
+Date: 2026-03-10
+
+PHASE 1 - Database & Form Collection
+[x] Supabase project setup and configuration
+[x] Form data collection stores student answers
+[x] Pre-assessment rows include answers and correctness
+[x] Post-assessment rows include answers and correctness
+[~] Lesson 1/2/3 submissions stored in Supabase responses
+[~] Support registered and unregistered student submission flow
+[ ] Standardize row structure across all assessments and lessons
+[ ] Confirm session-detail requirements and add missing fields if needed
+
+PHASE 2 - Student Portal
+[x] Student can submit pre-assessment
+[x] Student can submit post-assessment
+[x] Student can submit Lesson 1 final output
+[x] Student can submit Lesson 2 final output
+[x] Student can submit Lesson 3 final output
+[x] Student can view teacher feedback on pre/post
+[x] Student can view teacher feedback on Lesson 1/2/3 pages
+[x] Student can view performance summary
+[~] Performance summary reflects pre/post scoring correctly
+[ ] Performance summary reflects Lesson 1 teacher score
+[ ] Performance summary reflects Lesson 2 teacher score
+[ ] Performance summary reflects Lesson 3 teacher score
+[ ] Require feedback acknowledgment before unlocking next activity
+[ ] Re-test locking flow after acknowledgment requirement is restored
+
+PHASE 3 - Teacher / Admin Combined Portal
+[x] Single combined Teacher/Admin portal
+[x] Masterlist of all enrolled students
+[x] Per-section student listing
+[x] Written feedback on pre-assessment
+[x] Written feedback on post-assessment
+[~] Written feedback on Lesson 1/2/3 exists on student side, but active teacher workflow needs full audit
+[x] Class record tab exists
+[x] CSV/download support exists
+[x] Overview dashboard exists
+[x] Pre/post data visualization exists
+[ ] Add Lesson 1 final output review table to active combined portal
+[ ] Add Lesson 2 final output review table to active combined portal
+[ ] Add Lesson 3 final output review table to active combined portal
+[ ] Add teacher scoring UI for Lesson 1 final outputs
+[ ] Add teacher scoring UI for Lesson 2 final outputs
+[ ] Add teacher scoring UI for Lesson 3 final outputs
+[ ] Save Lesson 1 scores to responses.teacher_score
+[ ] Save Lesson 2 scores to responses.teacher_score
+[ ] Save Lesson 3 scores to responses.teacher_score
+[ ] Show live saved lesson scores in student performance summary
+[ ] Show live saved lesson scores in class record
+[ ] Add lesson analytics/visualization to combined portal
+[ ] Remove or retire old localStorage-only teacher scoring paths
+
+PHASE 4 - Integration & Deployment
+[x] GitHub repo connected
+[x] Work log file created
+[~] Supabase integration active, but some legacy localStorage paths remain
+[x] Role-based staff access exists
+[~] Student auth works through custom RPC flow
+[ ] Final cross-role testing
+[ ] Teacher workflow QA
+[ ] Student workflow QA
+[ ] Admin workflow QA
+[ ] Push final code to client repository
+[ ] Final handover documentation
+
+NEXT EXECUTION ORDER
+1. Audit Lesson 1/2/3 final submission payloads and current storage shape
+2. Build active combined-portal review/scoring UI for Lesson 1/2/3
+3. Persist teacher lesson scores to responses.teacher_score
+4. Reflect lesson scores in student performance summary and class record
+5. Restore acknowledgment-required unlocking logic
+6. Finish lesson analytics and downloadable reports
+7. Final QA pass across Student / Teacher / Admin
+8. Prepare handover notes and push final state
+
+CURRENT LESSON STORAGE FINDINGS
+- Lesson 1 final output currently upserts a responses row with:
+  activity_type = lesson1
+  answers = { lesson1State: <full lesson state> }
+- Lesson 2 final output currently upserts a responses row with:
+  activity_type = lesson2
+  answers = { phase4_upload: <data url or file reference> }
+- Lesson 3 final output currently upserts a responses row with:
+  activity_type = lesson3
+  answers = { phase4_reflection: <data url or file reference> }
+
+CURRENT BLOCKER
+- Teacher scoring backend exists, but the active combined portal still lacks a complete Supabase-backed scoring workflow for Lesson 1/2/3 final outputs.

@@ -5,7 +5,7 @@ import FeedbackPanel from '../../components/teacher/FeedbackPanel';
 import ClassManagement from '../../components/teacher/ClassManagement';
 import StudentList from '../../components/teacher/StudentList';
 import { FeedbackRow, getFeedbackForStudents } from '../../services/feedbackService';
-import { ActivityType, ResponseRow, getResponsesForStudents } from '../../services/responsesService';
+import { ActivityType, ResponseRow, getResponsesForStudents, teacherUpdateScore } from '../../services/responsesService';
 import { getPreAssessmentSummary, getInitialSurveySummary, getAssessmentScores, getPostAssessmentSummary, getEndOfLessonSurveySummary } from '../../services/progressService';
 import { getPreAssessmentSummaryFromDB, getInitialSurveySummaryFromDB, getPostAssessmentSummaryFromDB, getEndOfLessonSurveySummaryFromDB, getClassRecordForExport } from '../../services/analyticsService';
 import { getClassRecord } from '../../services/submissionsService';
@@ -35,6 +35,122 @@ interface AdminPortalProps {
   onDeleteClass?: (classId: string) => void;
 }
 
+const ASSESSMENT_ANSWER_KEY = ['C','A','C','D','A','B','A','B','A','C','B','A','C','D','A'];
+const RESPONSE_COLOR_MAP: Record<string, string> = {
+  A: '#FFF6C2',
+  B: '#FFDDE6',
+  C: '#E9D9FF',
+  D: '#DFFFE1'
+};
+const CORRECT_COLOR = '#7FA8FF';
+
+function deriveAssessmentScore(response?: ResponseRow | null) {
+  if (!response) return null;
+  if (typeof response.answers?.part1Score === 'number') return response.answers.part1Score;
+  if (Array.isArray(response.correctness?.part1)) return response.correctness.part1.filter(Boolean).length;
+  if (typeof response.teacher_score === 'number') return response.teacher_score;
+  return null;
+}
+
+function deriveGroupScores(response?: ResponseRow | null) {
+  if (!response) return null;
+  if (response.answers?.part1GroupScores) return response.answers.part1GroupScores;
+  if (Array.isArray(response.correctness?.part1)) {
+    const itemCorrect = response.correctness.part1 as boolean[];
+    return {
+      lc12: itemCorrect.slice(0, 5).filter(Boolean).length,
+      lc34: itemCorrect.slice(5, 10).filter(Boolean).length,
+      lc56: itemCorrect.slice(10, 15).filter(Boolean).length
+    };
+  }
+  return null;
+}
+
+function buildFrequencyItems(rows: ResponseRow[]) {
+  const items = Array.from({ length: 15 }, () => ({ A: 0, B: 0, C: 0, D: 0 } as Record<string, number>));
+  rows.forEach((row) => {
+    const answers = Array.isArray(row.answers?.part1) ? row.answers.part1 : null;
+    if (!answers) return;
+    answers.forEach((answer: string | null, idx: number) => {
+      const normalized = (answer || '').toUpperCase();
+      if (normalized === 'A' || normalized === 'B' || normalized === 'C' || normalized === 'D') {
+        items[idx][normalized] = (items[idx][normalized] || 0) + 1;
+      }
+    });
+  });
+  return items;
+}
+
+function getQuartileStats(values: number[]) {
+  if (values.length === 0) return { min: 0, q1: 0, med: 0, q3: 0, max: 0 };
+  const sorted = [...values].sort((a, b) => a - b);
+  const q = (p: number) => {
+    const pos = (sorted.length - 1) * p;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    return hi === lo ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+  };
+  return {
+    min: sorted[0],
+    q1: q(0.25),
+    med: q(0.5),
+    q3: q(0.75),
+    max: sorted[sorted.length - 1]
+  };
+}
+
+function formatDisplayName(full: string) {
+  const parts = (full || '').trim().split(/\s+/);
+  if (parts.length <= 1) return full;
+  const last = parts[parts.length - 1];
+  const first = parts.slice(0, parts.length - 1).join(' ');
+  return `${last}, ${first}`;
+}
+
+function getLessonSubmissionPreview(response?: ResponseRow | null) {
+  if (!response) return { summary: 'No submission yet', detail: '' };
+
+  if (response.activity_type === 'lesson1') {
+    const state = response.answers?.lesson1State;
+    if (state && typeof state === 'object') {
+      const completed = Object.entries(state).filter(([, value]) => {
+        if (Array.isArray(value)) return value.length > 0;
+        if (typeof value === 'string') return value.trim().length > 0;
+        if (typeof value === 'number') return true;
+        if (value && typeof value === 'object') return Object.keys(value).length > 0;
+        return !!value;
+      }).length;
+      return { summary: 'Final output submitted', detail: `${completed} saved lesson fields` };
+    }
+    return { summary: 'Final output submitted', detail: 'Lesson state captured' };
+  }
+
+  if (response.activity_type === 'lesson2') {
+    const upload = response.answers?.phase4_upload;
+    if (typeof upload === 'string' && upload.trim()) {
+      const filename = upload.split('/').pop() || upload;
+      return {
+        summary: 'Upload submitted',
+        detail: filename.length > 40 ? `${filename.slice(0, 37)}...` : filename
+      };
+    }
+    return { summary: 'Upload submitted', detail: 'Phase 4 output saved' };
+  }
+
+  if (response.activity_type === 'lesson3') {
+    const reflection = response.answers?.phase4_reflection;
+    if (typeof reflection === 'string' && reflection.trim()) {
+      return {
+        summary: reflection.startsWith('data:') ? 'Reflection image submitted' : 'Reflection submitted',
+        detail: reflection.startsWith('data:') ? 'Canvas export captured' : reflection.slice(0, 80)
+      };
+    }
+    return { summary: 'Reflection submitted', detail: 'Phase 4 reflection saved' };
+  }
+
+  return { summary: 'Submitted', detail: '' };
+}
+
 const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCreateClass, onUpdateStudents, onDeleteClass }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
@@ -44,6 +160,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const [feedbackRows, setFeedbackRows] = useState<FeedbackRow[]>([]);
   const [responseRows, setResponseRows] = useState<ResponseRow[]>([]);
   const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0);
+  const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
+  const [scoreSavingKey, setScoreSavingKey] = useState<string | null>(null);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📘' },
@@ -57,7 +175,14 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
     { id: 'class-record', label: 'Class Record', icon: '🗂️' }
   ];
 
+  tabs.splice(5, 0,
+    { id: 'lesson1-results', label: 'Lesson 1 Outputs', icon: 'L1' },
+    { id: 'lesson2-results', label: 'Lesson 2 Outputs', icon: 'L2' },
+    { id: 'lesson3-results', label: 'Lesson 3 Outputs', icon: 'L3' }
+  );
+
   const analyticsTabIds = ['pre-assessment', 'initial-survey', 'post-assessment', 'end-survey', 'class-record'];
+  const filterTabIds = [...analyticsTabIds, 'lesson1-results', 'lesson2-results', 'lesson3-results'];
 
   // Load class record from Supabase when the tab is active
   useEffect(() => {
@@ -70,7 +195,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       .then(rows => setClassRecord(rows))
       .catch(e => console.error('[AdminPortal] classRecord error', e))
       .finally(() => setClassRecordLoading(false));
-  }, [activeTab, sectionFilter, classes]);
+  }, [activeTab, sectionFilter, classes, feedbackRefreshKey]);
 
   useEffect(() => {
     const loadFeedback = async () => {
@@ -117,15 +242,183 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const getLatestResponse = (studentId: string, activityType: ActivityType) =>
     responseRows.find((row) => row.student_id === studentId && row.activity_type === activityType);
 
+  const getScoreKey = (studentId: string, activityType: ActivityType) => `${studentId}::${activityType}`;
+
+  const getScoreDraft = (studentId: string, activityType: ActivityType, currentScore?: number | null) => {
+    const key = getScoreKey(studentId, activityType);
+    return scoreDrafts[key] ?? (typeof currentScore === 'number' ? String(currentScore) : '');
+  };
+
+  const setScoreDraft = (studentId: string, activityType: ActivityType, value: string) => {
+    const key = getScoreKey(studentId, activityType);
+    setScoreDrafts((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveLessonScore = async (studentId: string, activityType: ActivityType, currentScore?: number | null) => {
+    const key = getScoreKey(studentId, activityType);
+    const raw = (scoreDrafts[key] ?? (typeof currentScore === 'number' ? String(currentScore) : '')).trim();
+    if (raw === '') return;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      window.alert('Enter a valid score.');
+      return;
+    }
+
+    try {
+      setScoreSavingKey(key);
+      await teacherUpdateScore(studentId, activityType, parsed);
+      setFeedbackRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      console.error('[AdminPortal] score save error', error);
+      window.alert('Failed to save score. Please try again.');
+    } finally {
+      setScoreSavingKey(null);
+    }
+  };
+
   const sectionOptions = ['ALL', ...classes.map(c => `Section ${c.section}`)];
   const filteredStudents = sectionFilter === 'ALL'
     ? classes.flatMap(c => c.students)
     : classes.filter(c => `Section ${c.section}` === sectionFilter).flatMap(c => c.students);
+  const filteredStudentIds = filteredStudents.map((s: any) => s.id).filter(Boolean);
+  const filteredDbResponses = responseRows.filter((row) => filteredStudentIds.includes(row.student_id));
+  const preResponseRows = filteredDbResponses.filter((row) => row.activity_type === 'pre');
+  const lesson1ResponseRows = filteredDbResponses.filter((row) => row.activity_type === 'lesson1');
+  const lesson2ResponseRows = filteredDbResponses.filter((row) => row.activity_type === 'lesson2');
+  const lesson3ResponseRows = filteredDbResponses.filter((row) => row.activity_type === 'lesson3');
+  const postResponseRows = filteredDbResponses.filter((row) => row.activity_type === 'post');
+  const preSummary = {
+    total: filteredStudents.length,
+    tested: preResponseRows.length,
+    scores: preResponseRows.map((row) => deriveAssessmentScore(row)).filter((score): score is number => typeof score === 'number'),
+    groups: preResponseRows
+      .map((row) => deriveGroupScores(row))
+      .filter((group): group is { lc12: number; lc34: number; lc56: number } => !!group)
+  };
   const usernames = filteredStudents.map((s: any) => s.username).filter(Boolean);
-  const preSummary = getPreAssessmentSummary(usernames);
   const initSummary = getInitialSurveySummary(usernames);
-  const postSummary = getPostAssessmentSummary(usernames);
+  const postSummary = {
+    total: filteredStudents.length,
+    tested: postResponseRows.length,
+    scores: postResponseRows.map((row) => deriveAssessmentScore(row)).filter((score): score is number => typeof score === 'number'),
+    groups: postResponseRows
+      .map((row) => deriveGroupScores(row))
+      .filter((group): group is { lc12: number; lc34: number; lc56: number } => !!group)
+  };
   const endSummary = getEndOfLessonSurveySummary(usernames);
+
+  const renderLessonResultsTab = (activityType: 'lesson1' | 'lesson2' | 'lesson3', rows: ResponseRow[]) => {
+    const lessonLabelMap = {
+      lesson1: 'Lesson 1',
+      lesson2: 'Lesson 2',
+      lesson3: 'Lesson 3'
+    } as const;
+
+    const lessonRows = filteredStudents.map((s: any) => {
+      const response = getLatestResponse(s.id, activityType);
+      const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === activityType);
+      const preview = getLessonSubmissionPreview(response);
+      return {
+        id: s.id || '',
+        name: s.name || '',
+        username: s.username || '',
+        response,
+        feedback,
+        preview
+      };
+    }).filter((row) => row.response);
+
+    lessonRows.sort((a, b) => formatDisplayName(a.name).toLowerCase().localeCompare(formatDisplayName(b.name).toLowerCase()));
+
+    return (
+      <div className="chart-section table-section card-student-responses">
+        <h3>{lessonLabelMap[activityType]} Final Outputs</h3>
+        {lessonRows.length === 0 ? (
+          <p className="no-data">No submitted outputs yet for this section filter.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table lesson-results-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Submission</th>
+                  <th>Teacher Score</th>
+                  <th>Feedback</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lessonRows.map((row) => {
+                  const response = row.response!;
+                  const key = getScoreKey(row.id, activityType);
+                  const scoreValue = getScoreDraft(row.id, activityType, response.teacher_score ?? null);
+                  return (
+                    <tr key={key}>
+                      <td style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>
+                        <div>{formatDisplayName(row.name)}</div>
+                        <div className="lesson-meta">{row.username}</div>
+                      </td>
+                      <td style={{ textAlign: 'left', minWidth: 260 }}>
+                        <div className="lesson-preview-title">{row.preview.summary}</div>
+                        {row.preview.detail && <div className="lesson-meta">{row.preview.detail}</div>}
+                        <div className="lesson-meta">
+                          Submitted {new Date(response.updated_at).toLocaleString()}
+                        </div>
+                      </td>
+                      <td style={{ minWidth: 180 }}>
+                        <div className="lesson-score-cell">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={scoreValue}
+                            onChange={(e) => setScoreDraft(row.id, activityType, e.target.value)}
+                            className="lesson-score-input"
+                            placeholder="Enter score"
+                          />
+                          <button
+                            type="button"
+                            className="download-btn lesson-score-save"
+                            disabled={scoreSavingKey === key || scoreValue.trim() === ''}
+                            onClick={() => handleSaveLessonScore(row.id, activityType, response.teacher_score ?? null)}
+                          >
+                            {scoreSavingKey === key ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                        {typeof response.teacher_score === 'number' && (
+                          <div className="lesson-meta">
+                            Current score: {response.teacher_score}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'left', minWidth: 220 }}>
+                        <div>{row.feedback?.feedback_text || 'No feedback yet'}</div>
+                        {row.feedback?.acknowledged && (
+                          <div className="lesson-feedback-state">Acknowledged</div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={() => setFeedbackStudent({ id: row.id, name: row.name, activity: activityType })}
+                          className="download-btn lesson-feedback-button"
+                        >
+                          Feedback
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="lesson-results-summary">
+          <span>Submitted outputs: {rows.length}</span>
+          <span>Scored outputs: {rows.filter((row) => typeof row.teacher_score === 'number').length}</span>
+        </div>
+      </div>
+    );
+  };
 
   // Calculate statistics from actual classes
   // totals moved into filtered context
@@ -801,18 +1094,18 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
           ))}
         </div>
         <div className="admin-section">
-          {analyticsTabIds.includes(activeTab) && (
+          {filterTabIds.includes(activeTab) && (
             <>
               <div className="section-header">
                 <h2>{tabs.find(t => t.id === activeTab)?.label}</h2>
-                <div className="download-buttons">
+                {analyticsTabIds.includes(activeTab) && <div className="download-buttons">
                   <button className="download-btn" onClick={() => handleDownloadReport('pdf')}>
                     📥 Download PDF
                   </button>
                   <button className="download-btn" onClick={() => handleDownloadReport('csv')}>
                     📥 Download CSV
                   </button>
-                </div>
+                </div>}
               </div>
               <div className="admin-filters">
                 <label>
@@ -1019,51 +1312,49 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                 <div className="chart-section wide card-histogram">
                   <h3>Frequency of Responses</h3>
                   {(() => {
-                      // Stacked column: frequency of A/B/C/D for each item (1..15)
-                      const all = getAssessmentScores();
-                      const items = Array.from({ length: 15 }, () => ({ A: 0, B: 0, C: 0, D: 0 } as Record<string, number>));
-                      filteredStudents.forEach((s: any) => {
-                        const entry = all[s.username] || {} as any;
-                        const answers = Array.isArray(entry.prePart1Responses) && entry.prePart1Responses.length === 15 ? entry.prePart1Responses : null;
-                        if (!answers) return;
-                        answers.forEach((ans: string, idx: number) => {
-                          const a = (ans || '').toUpperCase();
-                          if (a === 'A' || a === 'B' || a === 'C' || a === 'D') items[idx][a] = (items[idx][a] || 0) + 1;
-                        });
-                      });
+                      const items = buildFrequencyItems(preResponseRows);
                       const totals = items.map(it => it.A + it.B + it.C + it.D);
                       const maxTotal = Math.max(1, ...totals);
-                      // answer key for items (match Pre/Post answer keys)
-                      const answerKey = ['C','A','C','D','A','B','A','B','A','C','B','A','C','D','A'];
-                      const colorMap: Record<string,string> = { A: '#FFF6C2', B: '#FFDDE6', C: '#E9D9FF', D: '#DFFFE1' };
-                      const correctColor = '#7FA8FF';
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
                           <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingLeft: 40 }}>
                             <div style={{ fontWeight: 700 }}>Legend:</div>
                             {(['A','B','C','D'] as string[]).map(letter => (
                               <div key={letter} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ width: 14, height: 14, background: colorMap[letter], borderRadius: 3, border: '1px solid #e6e6e6' }} />
+                                <div style={{ width: 14, height: 14, background: RESPONSE_COLOR_MAP[letter], borderRadius: 3, border: '1px solid #e6e6e6' }} />
                                 <div style={{ fontSize: 13 }}>{letter}</div>
                               </div>
                             ))}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <div style={{ width: 14, height: 14, background: correctColor, borderRadius: 3, border: '1px solid #e6e6e6' }} />
+                              <div style={{ width: 14, height: 14, background: CORRECT_COLOR, borderRadius: 3, border: '1px solid #e6e6e6' }} />
                               <div style={{ fontSize: 13 }}>Correct</div>
                             </div>
                           </div>
                           {items.map((it, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ width: 40, textAlign: 'right', fontSize: 12 }}>Q{i+1}</div>
-                              <div style={{ flex: '1 1 auto', display: 'flex', height: 28, border: '1px solid #eef2ff', borderRadius: 4, overflow: 'hidden' }}>
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div style={{ width: 44, textAlign: 'right', fontSize: 12, fontWeight: 600 }}>Q{i+1}</div>
+                              <div style={{ flex: '1 1 auto', display: 'flex', height: 30, border: '1px solid #dbe7fb', borderRadius: 999, overflow: 'hidden', background: '#f8fbff' }}>
                                 {(['A','B','C','D'] as string[]).map(letter => {
                                   const cnt = it[letter] || 0;
                                   const w = (cnt / maxTotal) * 100;
-                                  const isCorrect = answerKey[i] === letter;
-                                  const bg = isCorrect ? correctColor : colorMap[letter];
+                                  const isCorrect = ASSESSMENT_ANSWER_KEY[i] === letter;
+                                  const bg = isCorrect ? CORRECT_COLOR : RESPONSE_COLOR_MAP[letter];
                                   return (
-                                    <div key={letter} style={{ width: `${w}%`, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: isCorrect ? '#fff' : '#111' }}>
-                                      {cnt}
+                                    <div
+                                      key={letter}
+                                      style={{
+                                        width: `${w}%`,
+                                        minWidth: cnt > 0 ? 34 : 0,
+                                        background: bg,
+                                        display: cnt > 0 ? 'flex' : 'none',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: isCorrect ? '#fff' : '#334155'
+                                      }}
+                                    >
+                                      {cnt > 0 ? cnt : ''}
                                     </div>
                                   );
                                 })}
@@ -1081,35 +1372,41 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                     const arr12 = g.map(x=>x.lc12);
                     const arr34 = g.map(x=>x.lc34);
                     const arr56 = g.map(x=>x.lc56);
-                    const qStats = (arr: number[]) => {
-                      if (arr.length===0) return {min:0,q1:0,med:0,q3:0,max:0};
-                      const sorted = [...arr].sort((a,b)=>a-b);
-                      const q = (p:number) => {
-                        const pos = (sorted.length-1)*p;
-                        const lo = Math.floor(pos), hi = Math.ceil(pos);
-                        return hi===lo ? sorted[lo] : sorted[lo] + (sorted[hi]-sorted[lo])*(pos-lo);
-                      };
-                      return {min:sorted[0], q1:q(0.25), med:q(0.5), q3:q(0.75), max:sorted[sorted.length-1]};
-                    };
-                    const s12 = qStats(arr12), s34 = qStats(arr34), s56 = qStats(arr56);
-                    const renderBox = (s:any, label:string) => {
-                      const scale = (v:number)=> (v/5)*260; // 0..5 to width in px
+                    const renderBox = (values: number[], label:string) => {
+                      const s = getQuartileStats(values);
+                      const scale = (v:number)=> 24 + (v / 5) * 252;
+                      const singlePoint = values.length <= 1;
                       return (
                         <div className="boxplot" key={label}>
                           <div className="boxplot-label">{label}</div>
-                          <svg viewBox="0 0 300 60" className="boxplot-svg">
-                            <line x1={20+scale(s.min)} y1={30} x2={20+scale(s.max)} y2={30} stroke="#9fb7df" strokeWidth={2} />
-                            <rect x={20+scale(s.q1)} y={18} width={Math.max(2, scale(s.q3)-scale(s.q1))} height={24} fill="#f0f6ff" stroke="#2C4795" />
-                            <line x1={20+scale(s.med)} y1={18} x2={20+scale(s.med)} y2={42} stroke="#43A047" strokeWidth={2} />
-                          </svg>
+                          <div className="boxplot-track">
+                            <svg viewBox="0 0 320 64" className="boxplot-svg">
+                              <line x1={24} y1={32} x2={296} y2={32} stroke="#d7e3f7" strokeWidth={8} strokeLinecap="round" />
+                              {singlePoint ? (
+                                <>
+                                  <circle cx={scale(s.med)} cy={32} r={8} fill="#2C4795" />
+                                  <circle cx={scale(s.med)} cy={32} r={3} fill="#ffffff" />
+                                </>
+                              ) : (
+                                <>
+                                  <line x1={scale(s.min)} y1={32} x2={scale(s.max)} y2={32} stroke="#9fb7df" strokeWidth={3} />
+                                  <rect x={scale(s.q1)} y={20} width={Math.max(12, scale(s.q3)-scale(s.q1))} height={24} fill="#f0f6ff" stroke="#2C4795" rx={8} />
+                                  <line x1={scale(s.med)} y1={18} x2={scale(s.med)} y2={46} stroke="#43A047" strokeWidth={3} />
+                                </>
+                              )}
+                            </svg>
+                            <div className="boxplot-meta">
+                              {values.length === 0 ? 'No data yet' : `n=${values.length} | median ${s.med.toFixed(1)} / 5`}
+                            </div>
+                          </div>
                         </div>
                       );
                     };
                     return (
                       <div className="boxplots">
-                        {renderBox(s12, 'LC1-2 (Items 1–5)')}
-                        {renderBox(s34, 'LC3-4 (Items 6–10)')}
-                        {renderBox(s56, 'LC5-6 (Items 11–15)')}
+                        {renderBox(arr12, 'LC1-2 (Items 1-5)')}
+                        {renderBox(arr34, 'LC3-4 (Items 6-10)')}
+                        {renderBox(arr56, 'LC5-6 (Items 11-15)')}
                       </div>
                     );
                   })()}
@@ -1203,6 +1500,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
               </div>
             </div>
           )}
+
+          {activeTab === 'lesson1-results' && renderLessonResultsTab('lesson1', lesson1ResponseRows)}
+
+          {activeTab === 'lesson2-results' && renderLessonResultsTab('lesson2', lesson2ResponseRows)}
+
+          {activeTab === 'lesson3-results' && renderLessonResultsTab('lesson3', lesson3ResponseRows)}
 
           {activeTab === 'initial-survey' && (
             <div className="initial-survey-layout">
@@ -1379,50 +1682,49 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                 <div className="chart-section wide card-histogram">
                   <h3>Frequency of Responses</h3>
                   {(() => {
-                      // Stacked column: frequency of A/B/C/D for each item (1..15)
-                      const all = getAssessmentScores();
-                      const items = Array.from({ length: 15 }, () => ({ A: 0, B: 0, C: 0, D: 0 } as Record<string, number>));
-                      filteredStudents.forEach((s: any) => {
-                        const entry = all[s.username] || {} as any;
-                        const answers = Array.isArray(entry.postPart1Responses) && entry.postPart1Responses.length === 15 ? entry.postPart1Responses : null;
-                        if (!answers) return;
-                        answers.forEach((ans: string, idx: number) => {
-                          const a = (ans || '').toUpperCase();
-                          if (a === 'A' || a === 'B' || a === 'C' || a === 'D') items[idx][a] = (items[idx][a] || 0) + 1;
-                        });
-                      });
+                      const items = buildFrequencyItems(postResponseRows);
                       const totals = items.map(it => it.A + it.B + it.C + it.D);
                       const maxTotal = Math.max(1, ...totals);
-                      const answerKey = ['C','A','C','D','A','B','A','B','A','C','B','A','C','D','A'];
-                      const colorMap: Record<string,string> = { A: '#FFF6C2', B: '#FFDDE6', C: '#E9D9FF', D: '#DFFFE1' };
-                      const correctColor = '#7FA8FF';
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
                           <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingLeft: 40 }}>
                             <div style={{ fontWeight: 700 }}>Legend:</div>
                             {(['A','B','C','D'] as string[]).map(letter => (
                               <div key={letter} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ width: 14, height: 14, background: colorMap[letter], borderRadius: 3, border: '1px solid #e6e6e6' }} />
+                                <div style={{ width: 14, height: 14, background: RESPONSE_COLOR_MAP[letter], borderRadius: 3, border: '1px solid #e6e6e6' }} />
                                 <div style={{ fontSize: 13 }}>{letter}</div>
                               </div>
                             ))}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <div style={{ width: 14, height: 14, background: correctColor, borderRadius: 3, border: '1px solid #e6e6e6' }} />
+                              <div style={{ width: 14, height: 14, background: CORRECT_COLOR, borderRadius: 3, border: '1px solid #e6e6e6' }} />
                               <div style={{ fontSize: 13 }}>Correct</div>
                             </div>
                           </div>
                           {items.map((it, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ width: 40, textAlign: 'right', fontSize: 12 }}>Q{i+1}</div>
-                              <div style={{ flex: '1 1 auto', display: 'flex', height: 28, border: '1px solid #eef2ff', borderRadius: 4, overflow: 'hidden' }}>
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div style={{ width: 44, textAlign: 'right', fontSize: 12, fontWeight: 600 }}>Q{i+1}</div>
+                              <div style={{ flex: '1 1 auto', display: 'flex', height: 30, border: '1px solid #dbe7fb', borderRadius: 999, overflow: 'hidden', background: '#f8fbff' }}>
                                 {(['A','B','C','D'] as string[]).map(letter => {
                                   const cnt = it[letter] || 0;
                                   const w = (cnt / maxTotal) * 100;
-                                  const isCorrect = answerKey[i] === letter;
-                                  const bg = isCorrect ? correctColor : colorMap[letter];
+                                  const isCorrect = ASSESSMENT_ANSWER_KEY[i] === letter;
+                                  const bg = isCorrect ? CORRECT_COLOR : RESPONSE_COLOR_MAP[letter];
                                   return (
-                                    <div key={letter} style={{ width: `${w}%`, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: isCorrect ? '#fff' : '#111' }}>
-                                      {cnt}
+                                    <div
+                                      key={letter}
+                                      style={{
+                                        width: `${w}%`,
+                                        minWidth: cnt > 0 ? 34 : 0,
+                                        background: bg,
+                                        display: cnt > 0 ? 'flex' : 'none',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: isCorrect ? '#fff' : '#334155'
+                                      }}
+                                    >
+                                      {cnt > 0 ? cnt : ''}
                                     </div>
                                   );
                                 })}
@@ -1440,34 +1742,41 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                     const arr12 = g.map(x=>x.lc12);
                     const arr34 = g.map(x=>x.lc34);
                     const arr56 = g.map(x=>x.lc56);
-                    const qStats = (arr: number[]) => {
-                      if (arr.length===0) return {min:0,q1:0,med:0,q3:0,max:0};
-                      const sorted = [...arr].sort((a,b)=>a-b);
-                      const q = (p:number) => {
-                        const pos = (sorted.length-1)*p; const lo = Math.floor(pos), hi = Math.ceil(pos);
-                        return hi===lo ? sorted[lo] : sorted[lo] + (sorted[hi]-sorted[lo])*(pos-lo);
-                      };
-                      return {min:sorted[0], q1:q(0.25), med:q(0.5), q3:q(0.75), max:sorted[sorted.length-1]};
-                    };
-                    const s12 = qStats(arr12), s34 = qStats(arr34), s56 = qStats(arr56);
-                    const renderBox = (s:any, label:string) => {
-                      const scale = (v:number)=> (v/5)*260;
+                    const renderBox = (values: number[], label:string) => {
+                      const s = getQuartileStats(values);
+                      const scale = (v:number)=> 24 + (v / 5) * 252;
+                      const singlePoint = values.length <= 1;
                       return (
                         <div className="boxplot" key={label}>
                           <div className="boxplot-label">{label}</div>
-                          <svg viewBox="0 0 300 60" className="boxplot-svg">
-                            <line x1={20+scale(s.min)} y1={30} x2={20+scale(s.max)} y2={30} stroke="#9fb7df" strokeWidth={2} />
-                            <rect x={20+scale(s.q1)} y={18} width={Math.max(2, scale(s.q3)-scale(s.q1))} height={24} fill="#f0f6ff" stroke="#2C4795" />
-                            <line x1={20+scale(s.med)} y1={18} x2={20+scale(s.med)} y2={42} stroke="#43A047" strokeWidth={2} />
-                          </svg>
+                          <div className="boxplot-track">
+                            <svg viewBox="0 0 320 64" className="boxplot-svg">
+                              <line x1={24} y1={32} x2={296} y2={32} stroke="#d7e3f7" strokeWidth={8} strokeLinecap="round" />
+                              {singlePoint ? (
+                                <>
+                                  <circle cx={scale(s.med)} cy={32} r={8} fill="#2C4795" />
+                                  <circle cx={scale(s.med)} cy={32} r={3} fill="#ffffff" />
+                                </>
+                              ) : (
+                                <>
+                                  <line x1={scale(s.min)} y1={32} x2={scale(s.max)} y2={32} stroke="#9fb7df" strokeWidth={3} />
+                                  <rect x={scale(s.q1)} y={20} width={Math.max(12, scale(s.q3)-scale(s.q1))} height={24} fill="#f0f6ff" stroke="#2C4795" rx={8} />
+                                  <line x1={scale(s.med)} y1={18} x2={scale(s.med)} y2={46} stroke="#43A047" strokeWidth={3} />
+                                </>
+                              )}
+                            </svg>
+                            <div className="boxplot-meta">
+                              {values.length === 0 ? 'No data yet' : `n=${values.length} | median ${s.med.toFixed(1)} / 5`}
+                            </div>
+                          </div>
                         </div>
                       );
                     };
                     return (
                       <div className="boxplots">
-                        {renderBox(s12, 'LC1-2 (Items 1–5)')}
-                        {renderBox(s34, 'LC3-4 (Items 6–10)')}
-                        {renderBox(s56, 'LC5-6 (Items 11–15)')}
+                        {renderBox(arr12, 'LC1-2 (Items 1-5)')}
+                        {renderBox(arr34, 'LC3-4 (Items 6-10)')}
+                        {renderBox(arr56, 'LC5-6 (Items 11-15)')}
                       </div>
                     );
                   })()}

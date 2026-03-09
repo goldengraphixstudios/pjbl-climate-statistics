@@ -119,6 +119,8 @@
 .boxplots { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .boxplot { display: flex; align-items: center; gap: 12px; }
 .boxplot-label { min-width: 220px; color: #374151; font-weight: 600; }
+.boxplot-track { flex: 1 1 auto; }
+.boxplot-meta { margin-top: 6px; color: #64748b; font-size: 0.85rem; }
 
 /* keep bar labels on one line in the Achievement chart */
 .card-levels .bar-item { grid-template-columns: 200px 1fr 50px; }
@@ -176,6 +178,58 @@
   background-color: rgba(0, 102, 204, 0.05);
 }
 
+.lesson-results-table td {
+  vertical-align: top;
+}
+
+.lesson-preview-title {
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 4px;
+}
+
+.lesson-meta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.lesson-score-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lesson-score-input {
+  width: 96px;
+  padding: 8px 10px;
+  border: 1px solid #c7daf7;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.lesson-score-save,
+.lesson-feedback-button {
+  white-space: nowrap;
+}
+
+.lesson-feedback-state {
+  color: #15803d;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lesson-results-summary {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .analytics-container {
     grid-template-columns: 1fr;
@@ -197,5 +251,23 @@
   .data-table th,
   .data-table td {
     padding: 10px;
+  }
+
+  .boxplot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .boxplot-label {
+    min-width: 0;
+  }
+
+  .lesson-score-cell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lesson-score-input {
+    width: 100%;
   }
 }
