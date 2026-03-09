@@ -75,9 +75,9 @@ export const registerStudent = async (
   email?: string
 ): Promise<{ success: boolean; userId?: string; reason?: 'exists' | 'quota' | 'supabase' }> => {
 
-  // Derive email: use provided email, or generate a @pjbl.local address so
+  // Derive email: use provided email, or generate a synthetic address so
   // Supabase Auth can create an account without requiring a real email.
-  const authEmail = email && email.includes('@') ? email : `${username}@pjbl.local`;
+  const authEmail = email && email.includes('@') ? email : `${username}@pjbl.edu.ph`;
 
   // Check if username already exists in users table
   try {
