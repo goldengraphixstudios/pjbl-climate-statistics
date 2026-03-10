@@ -320,3 +320,24 @@ Self-heal actions applied
 
 Files touched
 - src/pages/student_sections/Lesson2.tsx
+
+[2026-03-10 19:16] Lesson 2 draft response missing from admin outputs
+
+Observed issues
+- Student-side Lesson 2 save/update buttons could appear to work, but Teacher/Admin `Lesson 2 Outputs` still showed `0 submitted outputs`.
+- Some update-labeled Lesson 2 buttons still had leftover guard clauses that immediately returned and made the action effectively a no-op.
+
+Diagnosis
+- Admin results were driven by `responses.activity_type = 'lesson2'`, but Lesson 2 only wrote that row on the final Phase 4 submit.
+- Intermediate saves only persisted to local storage and `student_state`, so staff never saw a row until the end.
+- A couple of updateable actions still had stale `if (submitted) return` guards.
+
+Self-heal actions applied
+- Added draft `lesson2` response upsert from the student page so admin can see/save/review Lesson 2 work before final submission.
+- Updated the admin Lesson 2 preview to distinguish draft vs final state.
+- Added visible `Saved` / `Updated` button flash feedback on the main Lesson 2 save actions.
+- Removed remaining no-op guards on updateable Lesson 2 actions.
+
+Files touched
+- src/pages/student_sections/Lesson2.tsx
+- src/pages/portals/AdminPortal.tsx

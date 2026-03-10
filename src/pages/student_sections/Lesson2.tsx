@@ -22,6 +22,8 @@ interface SectionPageProps {
 const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const studentStateIdentifier = useRef<string>(user.username);
   const lesson2SnapshotLoaded = useRef(false);
+  const lesson2ResponseSyncTimeout = useRef<number | null>(null);
+  const actionFlashTimeouts = useRef<Record<string, number>>({});
   const displayName = (() => {
     const raw = localStorage.getItem('teacherClasses');
     if (raw) {
@@ -94,6 +96,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [previewURLP4, setPreviewURLP4] = useState<string | null>(null);
   const [submissionMessageP4, setSubmissionMessageP4] = useState<string>('');
   const [submitDisabledP4, setSubmitDisabledP4] = useState<boolean>(false);
+  const [actionFlash, setActionFlash] = useState<Record<string, 'saved' | 'updated'>>({});
   const [analysisInputs, setAnalysisInputs] = useState<{
     part1_researchQuestion: string;
     part1_regressionEquation: string;
@@ -668,6 +671,72 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
     persistSnapshot();
   }, [lesson2Snapshot, user.username]);
+
+  const flashAction = (key: string, mode: 'saved' | 'updated') => {
+    setActionFlash((prev) => ({ ...prev, [key]: mode }));
+    const existing = actionFlashTimeouts.current[key];
+    if (existing) window.clearTimeout(existing);
+    actionFlashTimeouts.current[key] = window.setTimeout(() => {
+      setActionFlash((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      delete actionFlashTimeouts.current[key];
+    }, 1800);
+  };
+
+  const getActionLabel = (key: string, idle: string) => {
+    const mode = actionFlash[key];
+    if (mode === 'saved') return 'Saved';
+    if (mode === 'updated') return 'Updated';
+    return idle;
+  };
+
+  const persistLesson2Response = async (
+    stage: 'draft' | 'final' = 'draft',
+    extraAnswers: Record<string, any> = {}
+  ) => {
+    const prof = await getMyProfile();
+    const studentId = prof?.id || await resolveStudentId(user.username);
+    if (!studentId) return;
+
+    await upsertResponse({
+      student_id: studentId,
+      activity_type: 'lesson2',
+      answers: {
+        __meta: {
+          schemaVersion: 1,
+          source: 'student-portal',
+          activityType: 'lesson2',
+          submittedAt: new Date().toISOString(),
+          username: user.username,
+          stage
+        },
+        lesson2State: lesson2Snapshot,
+        ...extraAnswers
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!lesson2SnapshotLoaded.current || submitDisabledP4) return;
+
+    if (lesson2ResponseSyncTimeout.current) {
+      window.clearTimeout(lesson2ResponseSyncTimeout.current);
+    }
+
+    lesson2ResponseSyncTimeout.current = window.setTimeout(() => {
+      persistLesson2Response('draft').catch((e) => console.error('persist lesson2 draft response failed', e));
+    }, 700);
+
+    return () => {
+      if (lesson2ResponseSyncTimeout.current) {
+        window.clearTimeout(lesson2ResponseSyncTimeout.current);
+        lesson2ResponseSyncTimeout.current = null;
+      }
+    };
+  }, [lesson2Snapshot, submitDisabledP4]);
   
 
   const canSubmitA3 = () => {
@@ -677,8 +746,10 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const submitA3 = () => {
     if (!canSubmitA3()) return;
     try {
+      const wasSubmitted = a3Submitted;
       saveLesson2Phase1Activity3(user.username, a3Var1, a3Var2, a3Reasoning, a3Prediction, a3ResearchQuestion);
       setA3Submitted(true);
+      flashAction('phase1-activity3', wasSubmitted ? 'updated' : 'saved');
     } catch (e) { /* ignore */ }
   }
   const climateScenarios = [
@@ -912,10 +983,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                           const cur = observations[scenario.id] || { obs: '', affected: '', causes: '' };
                                           if (!(cur.obs && cur.affected && cur.causes)) return;
                                           try {
+                                            const wasSubmitted = !!state.submitted;
                                             saveLesson2Phase1Activity1(user.username, scenario.id, cur.obs, cur.affected, cur.causes);
                                             setObservations(prev => ({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), submitted: true } }));
+                                            flashAction(`phase1-activity1-${scenario.id}`, wasSubmitted ? 'updated' : 'saved');
                                           } catch (e) { /* ignore */ }
-                                        }} disabled={!allFilled} style={{ background:'var(--submit-bg)', color:'var(--submit-text)' }}>{state.submitted ? 'Update Observations' : 'Submit Observations'}</button>
+                                        }} disabled={!allFilled} style={{ background:'var(--submit-bg)', color:'var(--submit-text)' }}>{getActionLabel(`phase1-activity1-${scenario.id}`, state.submitted ? 'Update Observations' : 'Submit Observations')}</button>
                                       </div>
                                     </div>
                                   </div>
@@ -939,10 +1012,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 <button className="save-btn" onClick={() => {
                                   if (!(activity1b.mostUrgent && activity1b.q1 && activity1b.q2)) return;
                                   try {
+                                    const wasSubmitted = !!activity1b.submitted;
                                     saveLesson2Phase1Activity1b(user.username, activity1b.mostUrgent, activity1b.q1, activity1b.q2, activity1b.q3);
                                     setActivity1b(prev => ({ ...prev, submitted: true }));
+                                    flashAction('phase1-activity1b', wasSubmitted ? 'updated' : 'saved');
                                   } catch (e) { /* ignore */ }
-                                }} disabled={!(activity1b.mostUrgent && activity1b.q1 && activity1b.q2)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{activity1b.submitted ? 'Update Answers' : 'Submit Answers'}</button>
+                                }} disabled={!(activity1b.mostUrgent && activity1b.q1 && activity1b.q2)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{getActionLabel('phase1-activity1b', activity1b.submitted ? 'Update Answers' : 'Submit Answers')}</button>
                               </div>
                             </div>
                             <div className="gap-3" />
@@ -1062,11 +1137,13 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               });
                               const score = checks.reduce((s, c) => s + (c ? 1 : 0), 0);
                               try {
+                                const wasSubmitted = videoSubmitted;
                                 saveLesson2Phase1Activity2Checkpoint(user.username, videoAnswers.slice(0,5), score);
                                 setVideoChecks(checks.map(c => c ? true : false));
                                 setVideoSubmitted(true);
+                                flashAction('phase1-activity2a', wasSubmitted ? 'updated' : 'saved');
                               } catch (e) { /* ignore */ }
-                            }} disabled={videoAnswers.slice(0,5).some(a => !a || a.trim() === '')} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{videoSubmitted ? 'Update Answers' : 'Submit Answers'}</button>
+                            }} disabled={videoAnswers.slice(0,5).some(a => !a || a.trim() === '')} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{getActionLabel('phase1-activity2a', videoSubmitted ? 'Update Answers' : 'Submit Answers')}</button>
                           </div>
                           <div className="gap-3" />
                           <div className="gap-3" />
@@ -1121,6 +1198,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 // require all predictors and responses filled
                                 if (pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)) return;
                                 try {
+                                  const wasSubmitted = pairSubmitted;
                                   saveLesson2Phase1Activity2b(user.username, pairAnswers.slice(0,5));
                                   // compute checks
                                   const checks = pairAnswers.slice(0,5).map((p, idx) => {
@@ -1135,8 +1213,9 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   });
                                   setPairChecks(checks.map(c => c ? true : false));
                                   setPairSubmitted(true);
+                                  flashAction('phase1-activity2b', wasSubmitted ? 'updated' : 'saved');
                                 } catch (e) { /* ignore */ }
-                              }} disabled={pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{pairSubmitted ? 'Update Answers' : 'Submit Answers'}</button>
+                              }} disabled={pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{getActionLabel('phase1-activity2b', pairSubmitted ? 'Update Answers' : 'Submit Answers')}</button>
                             </div>
                           </div>
                         </div>
@@ -1221,7 +1300,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <textarea rows={2} value={a3ResearchQuestion} onChange={(e) => setA3ResearchQuestion(e.target.value)} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:16 }} placeholder="Describe the potential impact" />
 
                           <div className="section-actions" style={{ justifyContent:'flex-end' }}>
-                            <button className="save-btn" onClick={() => submitA3()} disabled={!canSubmitA3()} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{a3Submitted ? 'Update Answers' : 'Submit Answers'}</button>
+                            <button className="save-btn" onClick={() => submitA3()} disabled={!canSubmitA3()} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{getActionLabel('phase1-activity3', a3Submitted ? 'Update Answers' : 'Submit Answers')}</button>
                           </div>
                         </div>
                       </div>
@@ -1290,13 +1369,14 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div className="section-actions" style={{ marginTop:20, justifyContent:'flex-end' }}>
                             <button className="save-btn" onClick={() => {
-                              if (exitSubmitted) return;
                               if (!exitText || !exitScale1 || !exitScale2 || !exitScale3) return;
                               try {
+                                const wasSubmitted = exitSubmitted;
                                 saveLesson2Phase1Activity4(user.username, exitText, exitScale1, exitScale2, exitScale3);
                                 setExitSubmitted(true);
+                                flashAction('phase1-activity4', wasSubmitted ? 'updated' : 'saved');
                               } catch (e) { /* ignore */ }
-                            }} disabled={!(exitText && exitScale1 && exitScale2 && exitScale3)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{exitSubmitted ? 'Update Exit Ticket' : 'Submit Exit Ticket'}</button>
+                            }} disabled={!(exitText && exitScale1 && exitScale2 && exitScale3)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{getActionLabel('phase1-activity4', exitSubmitted ? 'Update Exit Ticket' : 'Submit Exit Ticket')}</button>
                           </div>
                         </div>
                       </div>
@@ -1381,7 +1461,6 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               {[0,1,2,3].map((i)=> (
                                 <div key={`p2q-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   <input value={phase2A1Answers[i] || ''} onChange={(e) => {
-                                    if (phase2A1Submitted) return;
                                     const copy = phase2A1Answers.slice(); copy[i] = e.target.value; setPhase2A1Answers(copy);
                                   }} placeholder={`Answer ${i+1}`} style={{ flex: 1, padding:10, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9' }} />
                                   <div style={{ width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -1402,9 +1481,9 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               ))}
                               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                                 <button className="save-btn" onClick={() => {
-                                  if (phase2A1Submitted) return;
                                   if (phase2A1Answers.slice(0,4).some(a => !a || a.trim() === '')) return;
                                   try {
+                                    const wasSubmitted = phase2A1Submitted;
                                     const checks = phase2A1Answers.slice(0,4).map((ans, idx) => {
                                       try { const v = lesson2Phase2Activity1Validators[idx]; return v ? !!v(ans) : false; } catch (e) { return false; }
                                     });
@@ -1412,8 +1491,9 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     saveLesson2Phase2Activity1(user.username, phase2A1Answers.slice(0,4), score);
                                     setPhase2A1Checks(checks.map(c => c ? true : false));
                                     setPhase2A1Submitted(true);
+                                    flashAction('phase2-activity1', wasSubmitted ? 'updated' : 'saved');
                                   } catch (e) { /* ignore */ }
-                                }} disabled={phase2A1Answers.slice(0,4).some(a => !a || a.trim() === '')} style={{ background: '#E6B8CC', color: '#4D2038', borderColor: '#E6B8CC' }}>{phase2A1Submitted ? 'Update Answers' : 'Save Answers'}</button>
+                                }} disabled={phase2A1Answers.slice(0,4).some(a => !a || a.trim() === '')} style={{ background: '#E6B8CC', color: '#4D2038', borderColor: '#E6B8CC' }}>{getActionLabel('phase2-activity1', phase2A1Submitted ? 'Update Answers' : 'Save Answers')}</button>
                               </div>
                             </div>
                           </div>
@@ -1532,11 +1612,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     setSubmissionMessage('File submitted — preview saved.');
                                     // ensure preview displays persisted data URL
                                     setPreviewURL(data);
+                                    flashAction('phase2-activity2', 'saved');
                                     // progress will be recomputed by central effect
                                   } catch (e) { /* ignore */ }
                                 };
                                 reader.readAsDataURL(f);
-                              }}>{phase2A2Submitted ? 'Submitted' : 'Submit Output'}</button>
+                              }}>{getActionLabel('phase2-activity2', phase2A2Submitted ? 'Submitted' : 'Submit Output')}</button>
                             </div>
 
                             {submissionMessage && (
@@ -1968,13 +2049,15 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 <button className="save-btn phase3-submit" disabled={!allFilled} onClick={() => {
                                     if (!allFilled) return;
                                     try {
+                                      const wasSubmitted = analysisSubmitted;
                                       // Save answers and mark as submitted
                                       saveLesson2Phase3Activity1(user.username, { ...analysisInputs, _submitted: true, analysisSubmitted: true });
-                                        savePhase3FinishAnalysis(user.username);
+                                      savePhase3FinishAnalysis(user.username);
+                                      flashAction('phase3-activity1', wasSubmitted ? 'updated' : 'saved');
                                     } catch (e) { /* ignore */ }
                                     setAnalysisSubmitted(true);
                                   
-                                  }} style={{ background: allFilled ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled ? 'var(--submit-text)' : '#9CA3AF' }}>{analysisSubmitted ? 'Update Analysis' : 'Submit Analysis'}</button>
+                                  }} style={{ background: allFilled ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled ? 'var(--submit-text)' : '#9CA3AF' }}>{getActionLabel('phase3-activity1', analysisSubmitted ? 'Update Analysis' : 'Submit Analysis')}</button>
                               );
                             })()}
                           </div>
@@ -2061,11 +2144,13 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 <button className="save-btn phase3-submit" disabled={!allFilled} onClick={() => {
                                   if (!allFilled) return;
                                   try {
+                                    const wasSubmitted = analysis2Submitted;
                                     saveLesson2Phase3Activity2(user.username, analysis2Inputs);
                                     savePhase3SubmitWorksheet(user.username);
+                                    flashAction('phase3-activity2', wasSubmitted ? 'updated' : 'saved');
                                   } catch (e) { /* ignore */ }
                                   setAnalysis2Submitted(true);
-                                }} style={{ background: allFilled ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled ? 'var(--submit-text)' : '#9CA3AF' }}>{analysis2Submitted ? 'Update Worksheet' : 'Submit Worksheet'}</button>
+                                }} style={{ background: allFilled ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled ? 'var(--submit-text)' : '#9CA3AF' }}>{getActionLabel('phase3-activity2', analysis2Submitted ? 'Update Worksheet' : 'Submit Worksheet')}</button>
                               );
                             })()}
                           </div>
@@ -2174,25 +2259,9 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         const f = uploadedFileP4;
                         const finalize = async (uploadUrl?: string) => {
                           try {
-                            const prof = await getMyProfile();
-                            const studentId = prof?.id || await resolveStudentId(user.username);
-                            if (studentId) {
-                              await upsertResponse({
-                                student_id: studentId,
-                                activity_type: 'lesson2',
-                                answers: {
-                                  __meta: {
-                                    schemaVersion: 1,
-                                    source: 'student-portal',
-                                    activityType: 'lesson2',
-                                    submittedAt: new Date().toISOString(),
-                                    username: user.username,
-                                    stage: 'final'
-                                  },
-                                  phase4_upload: uploadUrl || previewURLP4
-                                }
-                              });
-                            }
+                            await persistLesson2Response('final', {
+                              phase4_upload: uploadUrl || previewURLP4
+                            });
                           } catch (e) {
                             console.error('upsert lesson2 response', e);
                           }
@@ -2207,6 +2276,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               setSubmissionMessageP4('Submitted — saved.');
                               setSubmitDisabledP4(true);
                               setPreviewURLP4(data);
+                              flashAction('phase4-final', 'saved');
                               setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
                               finalize(data);
                             } catch (e) { /* ignore */ }
@@ -2220,10 +2290,11 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           } catch (e) { /* ignore */ }
                           setSubmissionMessageP4('Submitted — saved.');
                           setSubmitDisabledP4(true);
+                          flashAction('phase4-final', 'saved');
                           setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
                           finalize();
                         }
-                      }}>{submitDisabledP4 ? 'Submitted' : 'Submit Output'}</button>
+                      }}>{getActionLabel('phase4-final', submitDisabledP4 ? 'Submitted' : 'Submit Output')}</button>
                     </div>
 
                     {submissionMessageP4 && (

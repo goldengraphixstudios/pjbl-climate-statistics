@@ -144,6 +144,14 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
         detail: filename.length > 40 ? `${filename.slice(0, 37)}...` : filename
       };
     }
+    const lesson2State = response.answers?.lesson2State;
+    if (lesson2State && typeof lesson2State === 'object') {
+      const progress = typeof lesson2State.displayProgress === 'number' ? `${lesson2State.displayProgress}% progress` : 'Draft saved';
+      return {
+        summary: response.answers?.__meta?.stage === 'final' ? 'Final output saved' : 'Draft saved',
+        detail: progress
+      };
+    }
     return { summary: 'Upload submitted', detail: 'Phase 4 output saved' };
   }
 

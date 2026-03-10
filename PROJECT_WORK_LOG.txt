@@ -625,3 +625,20 @@ How To Use Going Forward
   - `src/pages/student_sections/Lesson2.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 19:16] Lesson 2 draft response + button confirmation
+- Investigated why Lesson 2 student saves looked successful but Teacher/Admin `Lesson 2 Outputs` stayed empty.
+- Root cause: intermediate Lesson 2 saves only updated local storage + `student_state`; the admin tab was reading only `responses.activity_type = 'lesson2'`, which was previously written only at the final Phase 4 submit.
+- Fix applied:
+  - Lesson 2 now upserts a draft `responses.lesson2` row from the student page using the current `lesson2Snapshot`
+  - final Phase 4 submit now reuses the same lesson response row and upgrades it with final upload data
+  - admin Lesson 2 preview now shows `Draft saved` plus progress when only draft state exists
+  - main Lesson 2 save/update buttons now temporarily flip to `Saved` / `Updated`
+  - removed remaining no-op update guards on Phase 1 Activity 4 and Phase 2 Activity 1
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending
