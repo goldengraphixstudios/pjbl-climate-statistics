@@ -359,3 +359,22 @@ Self-heal actions applied
 
 Files touched
 - src/pages/portals/AdminPortal.tsx
+
+[2026-03-10 20:02] Pre-assessment Part 1 save was falsely ending the whole assessment
+
+Observed issues
+- Student could answer Part 1, proceed to Part 2, then suddenly see the assessment end before finishing the survey.
+- Because pre-assessment was not marked complete, Lesson 1 stayed correctly locked, but the student was blocked from continuing.
+
+Diagnosis
+- The pre-assessment page was using `!!existingResponse` as the lock condition for students.
+- As soon as Part 1 upserted a `responses.pre` row with `stage = part1`, the polling reload treated that partial row like a fully submitted assessment and switched the UI into the submitted state.
+
+Self-heal actions applied
+- Changed the lock condition to require a final-stage response or a complete Part 2 payload.
+- When only Part 1 exists, the page now continues/resumes in Part 2 instead of locking.
+- Restored saved correctness state from the existing response when available.
+- Tightened the visible Part 1 next-set disabled state through a dedicated guard.
+
+Files touched
+- src/pages/student_sections/PreAssessment.tsx

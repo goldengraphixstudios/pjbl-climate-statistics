@@ -92,7 +92,9 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [part2Submitted, setPart2Submitted] = useState(false);
   const [serverFeedback, setServerFeedback] = useState<any>(null);
   const [existingResponse, setExistingResponse] = useState<any>(null);
-  const isLockedAfterSubmit = !!existingResponse && user.role !== 'admin';
+  const existingStage = existingResponse?.answers?.__meta?.stage;
+  const hasSavedPart2 = Array.isArray(existingResponse?.answers?.part2) && existingResponse.answers.part2.length === 17;
+  const isLockedAfterSubmit = !!existingResponse && (existingStage === 'final' || hasSavedPart2) && user.role !== 'admin';
 
   // fetch existing response and feedback once
   useEffect(() => {
@@ -105,10 +107,20 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         if (resp) {
           setExistingResponse(resp);
           // prefill answers
-          if (resp.answers?.part1) setResponses(resp.answers.part1);
+          if (resp.answers?.part1) {
+            setResponses(resp.answers.part1);
+            if (Array.isArray(resp.correctness?.part1)) {
+              setItemCorrect(resp.correctness.part1);
+            } else {
+              setItemCorrect(resp.answers.part1.map((answer: Option | null, i: number) => answer === answerKey[i]));
+            }
+          }
           if (resp.answers?.part2) {
             setPart2Responses(resp.answers.part2);
             setPart2Submitted(true);
+            setPhase('part2');
+          } else if (resp.answers?.__meta?.stage === 'part1') {
+            setPhase('part2');
           }
         }
         const fb = await getFeedbackForStudentActivity(studentId, 'pre');
@@ -123,13 +135,16 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   }, []);
 
   const globalIndexStartForSet = (setIdx: number) => setQuestionCounts.slice(0, setIdx).reduce((a,b)=>a+b, 0);
-  const isSetComplete = (setIdx: number) => {
+  const isSetCompleteFromResponses = (responseList: (Option | null | string)[], setIdx: number) => {
     const start = globalIndexStartForSet(setIdx);
     const count = setQuestionCounts[setIdx];
-    for (let i=0;i<count;i++) {
-      if (!responses[start + i]) return false;
+    for (let i = 0; i < count; i++) {
+      if (!responseList[start + i]) return false;
     }
     return true;
+  };
+  const isSetComplete = (setIdx: number) => {
+    return isSetCompleteFromResponses(responses, setIdx);
   };
 
   const handleOptionSelect = (globalIndex: number, opt: Option) => {
@@ -753,7 +768,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
             </div>
           ))}
           <div className="set-actions">
-            <button className="submit-button" disabled={user.role!=='admin' && !isSetComplete(currentSet)} onClick={nextSet}>
+            <button className="submit-button" disabled={!canProceedCurrentSet} onClick={nextSet}>
               {currentSet === setQuestionCounts.length - 1 ? 'Proceed to Part 2' : 'Next Set'}
             </button>
             <p className="hint">You cannot go back to previous sets. Ensure choices before proceeding.</p>
@@ -838,6 +853,8 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       </div>
     </section>
   );
+
+  const canProceedCurrentSet = user.role === 'admin' || isSetComplete(currentSet);
 
   return (
     <div className="portal-container">

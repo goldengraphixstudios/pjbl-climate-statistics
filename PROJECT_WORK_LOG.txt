@@ -662,3 +662,18 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 20:02] Pre-assessment Part 2 premature lock fix
+- Investigated report that the pre-assessment could jump to an ended/submitted state while the student was still answering Part 2.
+- Root cause: the page treated any existing `pre` response row as a fully submitted assessment, even when the row only contained Part 1 and `__meta.stage = part1`.
+- Fix applied:
+  - pre-assessment now locks only when the response is truly final or contains a complete Part 2 payload
+  - when a saved Part 1 row exists, the page resumes/continues in Part 2 instead of switching to the submitted screen
+  - Part 1 correctness state is restored from the saved response when available
+  - tightened the set-navigation disabled guard through a dedicated `canProceedCurrentSet` flag
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/PreAssessment.tsx`
+- Commit: pending
+- Push: pending
