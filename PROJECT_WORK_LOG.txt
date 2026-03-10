@@ -599,3 +599,29 @@ How To Use Going Forward
   - `src/pages/student_sections/Lesson2.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 18:41] Lesson 2 phase-completion derivation fix
+- Identified that `completedPhases` in Lesson 2 was never recomputed from the actual activity booleans.
+- This meant scenario/worksheet saves could appear to work, but the lesson still kept stale completion state from the old snapshot payload.
+- Fix applied:
+  - derive `completedPhases` directly from the current phase contribution totals
+  - stop hydrating `completedPhases` and `displayProgress` from stale `student_state` snapshot values
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+- Commit: pending
+- Push: pending
+
+[2026-03-10 18:52] Lesson 2 backward-compatibility for old saved entries
+- Reviewed browser storage dump and found many older Lesson 2 entries existed without the newer `submitted` flag.
+- This caused progress/completion checks to miss legitimately completed saved work even though the text was present in local storage/student_state.
+- Fix applied:
+  - Lesson 2 loaders now treat older entries as completed when their required fields are fully filled, even if `submitted` is absent
+  - applied to observations, Activity 1b, video checkpoints, variable pairs, Activity 3, exit ticket, Phase 2 Activity 1, and Phase 3 analysis/worksheet
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+- Commit: pending
+- Push: pending

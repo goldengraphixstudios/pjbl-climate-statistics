@@ -158,7 +158,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           obs: d?.obs || '',
           affected: d?.affected || '',
           causes: d?.causes || '',
-          submitted: !!d?.submitted
+          submitted: !!(d?.submitted || (d?.obs && d?.affected && d?.causes))
         };
       }
       setObservations(map);
@@ -169,7 +169,13 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const allb = getLesson2Phase1Activity1bAll();
       const mineb = allb[user.username];
       if (mineb) {
-        setActivity1b({ mostUrgent: mineb.mostUrgent || '', q1: mineb.q1 || '', q2: mineb.q2 || '', q3: mineb.q3 || '', submitted: !!(mineb as any).submitted });
+        setActivity1b({
+          mostUrgent: mineb.mostUrgent || '',
+          q1: mineb.q1 || '',
+          q2: mineb.q2 || '',
+          q3: mineb.q3 || '',
+          submitted: !!((mineb as any).submitted || (mineb.mostUrgent && mineb.q1 && mineb.q2)),
+        });
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -196,7 +202,22 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           part4_confidenceEffect: mine.part4_confidenceEffect || ''
         });
         // lock UI if previously submitted
-        if (mine._finished || mine._submitted || mine.analysisSubmitted) {
+        if (mine._finished || mine._submitted || mine.analysisSubmitted || Object.values({
+          part1_researchQuestion: mine.part1_researchQuestion,
+          part1_regressionEquation: mine.part1_regressionEquation,
+          part1_interpretation: mine.part1_interpretation,
+          part2_possible1: mine.part2_possible1,
+          part2_evidence1: mine.part2_evidence1,
+          part2_possible2: mine.part2_possible2,
+          part2_evidence2: mine.part2_evidence2,
+          part2_mostPlausible: mine.part2_mostPlausible,
+          part3_causationYes: mine.part3_causationYes,
+          part3_causationNo: mine.part3_causationNo,
+          part3_otherFactor1: mine.part3_otherFactor1,
+          part3_otherFactor2: mine.part3_otherFactor2,
+          part4_biggestConcern: mine.part4_biggestConcern,
+          part4_confidenceEffect: mine.part4_confidenceEffect,
+        }).every(v => typeof v === 'string' && v.trim() !== '')) {
           setAnalysisSubmitted(true);
         }
       }
@@ -229,7 +250,15 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           part3_decision1: mine.part3_decision1 || '',
           part3_decision2: mine.part3_decision2 || ''
         });
-        setAnalysis2Submitted(!!(mine._submitted || mine.analysis2Submitted));
+        setAnalysis2Submitted(!!(mine._submitted || mine.analysis2Submitted || Object.values({
+          part1_s1: mine.part1_s1,
+          part1_s2: mine.part1_s2,
+          part1_s3: mine.part1_s3,
+          part2_who: mine.part2_who,
+          part2_because: mine.part2_because,
+          part3_decision1: mine.part3_decision1,
+          part3_decision2: mine.part3_decision2,
+        }).every(v => typeof v === 'string' && v.trim() !== '')));
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -265,7 +294,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           return null;
         });
         setVideoChecks(checks as (boolean | null)[]);
-        setVideoSubmitted(!!(mine as any).submitted);
+        setVideoSubmitted(!!((mine as any).submitted || (mine.answers && mine.answers.slice(0,5).every((a: string) => !!a && a.trim() !== ''))));
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -291,7 +320,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       if (mine && Array.isArray(mine.pairs)) {
         const pairs = mine.pairs.slice(0,5).map((p: any) => ({ predictor: p?.predictor || '', response: p?.response || '' }));
         setPairAnswers(pairs);
-        const submittedFlag = !!(mine as any).submitted;
+        const submittedFlag = !!((mine as any).submitted || mine.pairs.every((p: any) => (p?.predictor && p?.response)));
         setPairSubmitted(submittedFlag);
         // compute checks based on answer key
         const checks = pairs.map((p, idx) => {
@@ -385,7 +414,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
             } catch (e) { return null; }
           });
           setPhase2A1Checks(checks as (boolean | null)[]);
-          setPhase2A1Submitted(!!(mine as any).submitted);
+          setPhase2A1Submitted(!!((mine as any).submitted || (mine.answers && mine.answers.slice(0,4).every((a: string) => !!a && a.trim() !== ''))));
         }
       } catch (e) { /* ignore */ }
     }, [user.username]);
@@ -400,7 +429,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setA3Reasoning(mine.reasoning || '');
         setA3Prediction(mine.prediction || '');
         setA3ResearchQuestion(mine.researchQuestion || '');
-        setA3Submitted(!!(mine as any).submitted);
+        setA3Submitted(!!((mine as any).submitted || (mine.var1 && mine.var2 && mine.reasoning && mine.prediction && mine.researchQuestion)));
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -414,7 +443,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setExitScale1(typeof mine.confidence === 'number' ? mine.confidence : 0);
         setExitScale2(typeof mine.understanding === 'number' ? mine.understanding : 0);
         setExitScale3(typeof mine.connection === 'number' ? mine.connection : 0);
-        setExitSubmitted(!!(mine as any).submitted);
+        setExitSubmitted(!!((mine as any).submitted || (mine.importantLearning && mine.confidence && mine.understanding && mine.connection)));
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -422,7 +451,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   useEffect(() => {
     // derive whether Activity 1a (all scenarios) was submitted
     try {
-      const allSubmitted = Object.keys(observations).length > 0 && Object.values(observations).every(v => !!v.submitted);
+      const allSubmitted = Object.keys(observations).length > 0 && Object.values(observations).every(v => !!(v.submitted || (v.obs && v.affected && v.causes)));
       setActivity1aSubmitted(allSubmitted);
     } catch (e) { /* ignore */ }
 
@@ -437,6 +466,15 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
     // Phase 4 submit contributes 25% to Lesson 2 progress when submitted
     const phase4Contrib = submitDisabledP4 ? 25 : 0;
+
+    const derivedCompletedPhases = [
+      phase1Contrib >= 25 ? 1 : null,
+      phase2Contrib >= 25 ? 2 : null,
+      phase3Contrib >= 25 ? 3 : null,
+      phase4Contrib >= 25 ? 4 : null,
+    ].filter((phase): phase is number => phase !== null);
+
+    setCompletedPhases(derivedCompletedPhases);
 
     const total = Math.min(100, phase1Contrib + phase2Contrib + phase3Contrib + phase4Contrib);
     setDisplayProgress(total);
@@ -514,8 +552,6 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         if (typeof snapshot.exitScale2 === 'number') setExitScale2(snapshot.exitScale2);
         if (typeof snapshot.exitScale3 === 'number') setExitScale3(snapshot.exitScale3);
         if (typeof snapshot.exitSubmitted === 'boolean') setExitSubmitted(snapshot.exitSubmitted);
-        if (Array.isArray(snapshot.completedPhases)) setCompletedPhases(snapshot.completedPhases);
-        if (typeof snapshot.displayProgress === 'number') setDisplayProgress(snapshot.displayProgress);
       } finally {
         lesson2SnapshotLoaded.current = true;
       }
