@@ -341,3 +341,21 @@ Self-heal actions applied
 Files touched
 - src/pages/student_sections/Lesson2.tsx
 - src/pages/portals/AdminPortal.tsx
+
+[2026-03-10 19:34] Admin lesson review modal falling back to raw JSON
+
+Observed issues
+- Lesson 2 review was showing the entire `lesson2State` object as a JSON blob instead of a grading-friendly layout.
+- Lesson 3 was still at risk of the same fallback because only Lesson 1 had a proper lesson-state merge + formatter.
+
+Diagnosis
+- `getLessonReviewSections()` had a specific structured renderer only for Lesson 1.
+- Lesson 2 and Lesson 3 were falling through to the generic object dump.
+- `mergeReviewResponse()` only merged remote `student_state` into Lesson 1 responses.
+
+Self-heal actions applied
+- Added structured review sections for Lesson 2 and Lesson 3.
+- Added lesson-state merge support for Lesson 2 and Lesson 3 so admin review reflects the combined live state.
+
+Files touched
+- src/pages/portals/AdminPortal.tsx

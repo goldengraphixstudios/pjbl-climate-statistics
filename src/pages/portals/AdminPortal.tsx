@@ -196,6 +196,23 @@ function formatReviewValue(value: any): string {
   return JSON.stringify(value, null, 2);
 }
 
+function formatScenarioObservation(value: any) {
+  if (!value || typeof value !== 'object') return '—';
+  const parts = [
+    value.obs ? `Observed: ${value.obs}` : '',
+    value.affected ? `Affected: ${value.affected}` : '',
+    value.causes ? `Causes: ${value.causes}` : ''
+  ].filter(Boolean);
+  return parts.length ? parts.join(' | ') : '—';
+}
+
+function formatPairAnswer(value: any) {
+  if (!value || typeof value !== 'object') return '—';
+  const predictor = value.predictor ? `Predictor: ${value.predictor}` : '';
+  const response = value.response ? `Response: ${value.response}` : '';
+  return [predictor, response].filter(Boolean).join(' | ') || '—';
+}
+
 function getLessonReviewSections(response?: ResponseRow | null) {
   if (!response) return [] as Array<{ title: string; items: Array<{ label: string; value: any }> }>;
 
@@ -244,6 +261,141 @@ function getLessonReviewSections(response?: ResponseRow | null) {
     ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
   }
 
+  if (response.activity_type === 'lesson2') {
+    const state = response.answers?.lesson2State || {};
+    return [
+      {
+        title: 'Phase 1',
+        items: [
+          { label: 'Scenario 1', value: formatScenarioObservation(state.observations?.[1]) },
+          { label: 'Scenario 2', value: formatScenarioObservation(state.observations?.[2]) },
+          { label: 'Scenario 3', value: formatScenarioObservation(state.observations?.[3]) },
+          { label: 'Scenario 4', value: formatScenarioObservation(state.observations?.[4]) },
+          { label: 'Scenario 5', value: formatScenarioObservation(state.observations?.[5]) },
+          { label: 'Scenario 6', value: formatScenarioObservation(state.observations?.[6]) },
+          { label: 'Scenario 7', value: formatScenarioObservation(state.observations?.[7]) },
+          { label: 'Scenario 8', value: formatScenarioObservation(state.observations?.[8]) },
+          { label: 'Most urgent or severe', value: state.activity1b?.mostUrgent },
+          { label: 'Question 1', value: state.activity1b?.q1 },
+          { label: 'Question 2', value: state.activity1b?.q2 },
+          { label: 'Question 3', value: state.activity1b?.q3 },
+          { label: 'Video checkpoint answers', value: state.videoAnswers },
+          { label: 'Variable pair 1', value: formatPairAnswer(state.pairAnswers?.[0]) },
+          { label: 'Variable pair 2', value: formatPairAnswer(state.pairAnswers?.[1]) },
+          { label: 'Variable pair 3', value: formatPairAnswer(state.pairAnswers?.[2]) },
+          { label: 'Variable pair 4', value: formatPairAnswer(state.pairAnswers?.[3]) },
+          { label: 'Variable pair 5', value: formatPairAnswer(state.pairAnswers?.[4]) },
+          { label: 'Independent variable', value: state.a3Var1 },
+          { label: 'Dependent variable', value: state.a3Var2 },
+          { label: 'Reasoning', value: state.a3Reasoning },
+          { label: 'Predicted correlation', value: state.a3Prediction },
+          { label: 'Research question', value: state.a3ResearchQuestion },
+          { label: 'Exit ticket', value: state.exitText },
+          { label: 'Confidence scale 1', value: state.exitScale1 },
+          { label: 'Confidence scale 2', value: state.exitScale2 },
+          { label: 'Confidence scale 3', value: state.exitScale3 }
+        ]
+      },
+      {
+        title: 'Phase 2',
+        items: [
+          { label: 'Regression line answers', value: state.phase2A1Answers },
+          { label: 'Manual regression upload', value: state.previewURL },
+          { label: 'Spreadsheet verification upload', value: state.previewURL3 },
+          { label: 'Equation output upload', value: state.previewURL4 },
+          { label: 'Regression equation', value: state.p4Equation },
+          { label: 'Y-intercept', value: state.p4YIntercept },
+          { label: 'Interpretation', value: state.p4Interpretation }
+        ]
+      },
+      {
+        title: 'Phase 3',
+        items: [
+          { label: 'Research question', value: state.analysisInputs?.part1_researchQuestion },
+          { label: 'Regression equation', value: state.analysisInputs?.part1_regressionEquation },
+          { label: 'Interpretation', value: state.analysisInputs?.part1_interpretation },
+          { label: 'Evidence 1', value: state.analysisInputs?.part2_evidence1 },
+          { label: 'Evidence 2', value: state.analysisInputs?.part2_evidence2 },
+          { label: 'Possible explanation 1', value: state.analysisInputs?.part2_possible1 },
+          { label: 'Possible explanation 2', value: state.analysisInputs?.part2_possible2 },
+          { label: 'Most plausible explanation', value: state.analysisInputs?.part2_mostPlausible },
+          { label: 'Correlation is not causation', value: state.analysisInputs?.part3_causationNo },
+          { label: 'Potential causal interpretation', value: state.analysisInputs?.part3_causationYes },
+          { label: 'Other factor 1', value: state.analysisInputs?.part3_otherFactor1 },
+          { label: 'Other factor 2', value: state.analysisInputs?.part3_otherFactor2 },
+          { label: 'Biggest concern', value: state.analysisInputs?.part4_biggestConcern },
+          { label: 'Confidence effect', value: state.analysisInputs?.part4_confidenceEffect },
+          { label: 'Stakeholder 1', value: state.analysis2Inputs?.part1_s1 },
+          { label: 'Stakeholder 2', value: state.analysis2Inputs?.part1_s2 },
+          { label: 'Stakeholder 3', value: state.analysis2Inputs?.part1_s3 },
+          { label: 'Relevant stakeholder', value: state.analysis2Inputs?.part2_who },
+          { label: 'Why it matters', value: state.analysis2Inputs?.part2_because },
+          { label: 'Decision 1', value: state.analysis2Inputs?.part3_decision1 },
+          { label: 'Decision 2', value: state.analysis2Inputs?.part3_decision2 }
+        ]
+      },
+      {
+        title: 'Phase 4',
+        items: [
+          { label: 'Final output upload', value: response.answers?.phase4_upload || state.previewURLP4 },
+          { label: 'Progress', value: typeof state.displayProgress === 'number' ? `${state.displayProgress}%` : null }
+        ]
+      }
+    ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
+  }
+
+  if (response.activity_type === 'lesson3') {
+    const state = response.answers?.lesson3State || {};
+    return [
+      {
+        title: 'Phase 1',
+        items: [
+          { label: 'Research question', value: state.recallA },
+          { label: 'Regression equation', value: state.recallB },
+          { label: 'Equation interpretation', value: state.recallC },
+          { label: 'Confounding variables / considerations', value: state.finalConsiderations },
+          { label: 'Uploaded diagram', value: state.uploadedDiagramPreview }
+        ]
+      },
+      {
+        title: 'Phase 2',
+        items: [
+          { label: 'Interpolation output', value: state.p2a1Preview },
+          { label: 'Extrapolation output', value: state.p2a2Preview },
+          { label: 'Coefficient output', value: state.p2a3Preview },
+          { label: 'Coefficient interpretation', value: state.p2a3Answer }
+        ]
+      },
+      {
+        title: 'Phase 3',
+        items: [
+          { label: 'Prediction output', value: state.p3Preview }
+        ]
+      },
+      {
+        title: 'Phase 4',
+        items: [
+          { label: 'Peer answer 1', value: state.peer1Answer },
+          { label: 'Peer answer 2', value: state.peer2Answer },
+          { label: 'Peer answer 3', value: state.peer3Answer },
+          { label: 'Peer answer 4', value: state.peer4Answer },
+          { label: 'Peer review strength', value: state.peerStrength },
+          { label: 'Peer review suggestion', value: state.peerSuggestion },
+          { label: 'Peer reviewer username', value: state.peerReviewerUsername },
+          { label: 'Final confidence', value: state.finalConfidence },
+          { label: 'Confidence reason', value: state.finalConfidenceReason },
+          { label: 'Most challenging concept', value: state.finalChallenge },
+          { label: 'Statistics changed view', value: state.finalStatsChange },
+          { label: 'Climate understanding changed', value: state.finalClimateChange },
+          { label: 'Connection to real life', value: state.finalConnectionChange },
+          { label: 'Extension / next step', value: state.finalExtension },
+          { label: 'Learner insight', value: state.finalLearnerInsight },
+          { label: 'Final reflection output', value: response.answers?.phase4_reflection || state.finalPreview }
+        ]
+      }
+    ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
+  }
+
   const answerEntries = Object.entries(response.answers || {})
     .filter(([key]) => key !== '__meta')
     .map(([key, value]) => ({
@@ -253,7 +405,7 @@ function getLessonReviewSections(response?: ResponseRow | null) {
 
   return [
     {
-      title: response.activity_type === 'lesson2' ? 'Lesson 2 Submission' : 'Lesson 3 Submission',
+      title: 'Lesson Submission',
       items: answerEntries
     }
   ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
@@ -351,6 +503,34 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
             ...(remoteState || {}),
             ...(responseState || {}),
             phaseData: mergedPhaseData
+          }
+        }
+      };
+    }
+
+    if (response.activity_type === 'lesson2') {
+      const responseState = response.answers?.lesson2State || {};
+      return {
+        ...response,
+        answers: {
+          ...(response.answers || {}),
+          lesson2State: {
+            ...(remoteState || {}),
+            ...(responseState || {})
+          }
+        }
+      };
+    }
+
+    if (response.activity_type === 'lesson3') {
+      const responseState = response.answers?.lesson3State || {};
+      return {
+        ...response,
+        answers: {
+          ...(response.answers || {}),
+          lesson3State: {
+            ...(remoteState || {}),
+            ...(responseState || {})
           }
         }
       };

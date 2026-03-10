@@ -642,3 +642,23 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 19:34] Admin review formatting for Lesson 2 and Lesson 3
+- Reworked the admin review modal so Lesson 2 and Lesson 3 no longer fall back to a raw JSON dump.
+- Added structured review sections for Lesson 2:
+  - Phase 1 observations, urgent scenarios, questions, video answers, variable pairs, variable selection, and exit ticket
+  - Phase 2 regression-line/manual-output fields
+  - Phase 3 analysis + stakeholder worksheet fields
+  - Phase 4 final upload/progress
+- Added structured review sections for Lesson 3:
+  - Phase 1 recalled research components and confounding-variable work
+  - Phase 2 uploaded outputs + coefficient interpretation
+  - Phase 3 prediction output
+  - Phase 4 peer review + final reflection fields
+- Updated admin lesson-state merge so Lesson 2 and Lesson 3 review views combine `student_state` with response data the same way Lesson 1 already did.
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending
