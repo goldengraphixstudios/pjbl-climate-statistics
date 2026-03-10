@@ -158,7 +158,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           obs: d?.obs || '',
           affected: d?.affected || '',
           causes: d?.causes || '',
-          submitted: !!d
+          submitted: !!d?.submitted
         };
       }
       setObservations(map);
@@ -169,7 +169,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const allb = getLesson2Phase1Activity1bAll();
       const mineb = allb[user.username];
       if (mineb) {
-        setActivity1b({ mostUrgent: mineb.mostUrgent || '', q1: mineb.q1 || '', q2: mineb.q2 || '', q3: mineb.q3 || '', submitted: true });
+        setActivity1b({ mostUrgent: mineb.mostUrgent || '', q1: mineb.q1 || '', q2: mineb.q2 || '', q3: mineb.q3 || '', submitted: !!(mineb as any).submitted });
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -196,7 +196,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           part4_confidenceEffect: mine.part4_confidenceEffect || ''
         });
         // lock UI if previously submitted
-        if (mine._finished || mine.timestamp || mine._submitted || mine.analysisSubmitted) {
+        if (mine._finished || mine._submitted || mine.analysisSubmitted) {
           setAnalysisSubmitted(true);
         }
       }
@@ -229,7 +229,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           part3_decision1: mine.part3_decision1 || '',
           part3_decision2: mine.part3_decision2 || ''
         });
-        setAnalysis2Submitted(!!mine.timestamp || !!(mine._submitted));
+        setAnalysis2Submitted(!!(mine._submitted || mine.analysis2Submitted));
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -251,8 +251,8 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     try {
       const all = getLesson2Phase1Activity2All();
       const mine = all[user.username];
-      if (mine && Array.isArray(mine.answers)) {
-        setVideoAnswers(mine.answers.slice(0,5).map(a => a || ''));
+        if (mine && Array.isArray(mine.answers)) {
+          setVideoAnswers(mine.answers.slice(0,5).map(a => a || ''));
         // mark checks based on saved answers
         const checks = (mine.answers.slice(0,5) as string[]).map((raw, idx) => {
           const a = (raw || '').toLowerCase().trim();
@@ -265,7 +265,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           return null;
         });
         setVideoChecks(checks as (boolean | null)[]);
-        setVideoSubmitted(!!mine.answers && mine.answers.slice(0,5).every(a => !!a));
+        setVideoSubmitted(!!(mine as any).submitted);
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -291,7 +291,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       if (mine && Array.isArray(mine.pairs)) {
         const pairs = mine.pairs.slice(0,5).map((p: any) => ({ predictor: p?.predictor || '', response: p?.response || '' }));
         setPairAnswers(pairs);
-        const submittedFlag = mine.pairs.every((p: any) => (p?.predictor && p?.response));
+        const submittedFlag = !!(mine as any).submitted;
         setPairSubmitted(submittedFlag);
         // compute checks based on answer key
         const checks = pairs.map((p, idx) => {
@@ -385,7 +385,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
             } catch (e) { return null; }
           });
           setPhase2A1Checks(checks as (boolean | null)[]);
-          setPhase2A1Submitted(!!mine.answers && mine.answers.slice(0,4).every(a => !!a));
+          setPhase2A1Submitted(!!(mine as any).submitted);
         }
       } catch (e) { /* ignore */ }
     }, [user.username]);
@@ -400,7 +400,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setA3Reasoning(mine.reasoning || '');
         setA3Prediction(mine.prediction || '');
         setA3ResearchQuestion(mine.researchQuestion || '');
-        setA3Submitted(!!(mine.var1 && mine.var2 && mine.reasoning && mine.prediction && mine.researchQuestion));
+        setA3Submitted(!!(mine as any).submitted);
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -414,7 +414,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setExitScale1(typeof mine.confidence === 'number' ? mine.confidence : 0);
         setExitScale2(typeof mine.understanding === 'number' ? mine.understanding : 0);
         setExitScale3(typeof mine.connection === 'number' ? mine.connection : 0);
-        setExitSubmitted(!!(mine.importantLearning && mine.confidence && mine.understanding && mine.connection));
+        setExitSubmitted(!!(mine as any).submitted);
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -451,8 +451,29 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         const snapshot = await getStudentState(identifier, 'lesson2') as any;
         if (!snapshot) return;
 
-        if (snapshot.observations) setObservations(snapshot.observations);
-        if (snapshot.activity1b) setActivity1b(snapshot.activity1b);
+        if (snapshot.observations) {
+          const sanitized = Object.fromEntries(
+            Object.entries(snapshot.observations).map(([key, value]: [string, any]) => [
+              key,
+              {
+                obs: value?.obs || '',
+                affected: value?.affected || '',
+                causes: value?.causes || '',
+                submitted: !!value?.submitted,
+              },
+            ]),
+          ) as Record<number, { obs: string; affected: string; causes: string; submitted?: boolean }>;
+          setObservations(sanitized);
+        }
+        if (snapshot.activity1b) {
+          setActivity1b({
+            mostUrgent: snapshot.activity1b.mostUrgent || '',
+            q1: snapshot.activity1b.q1 || '',
+            q2: snapshot.activity1b.q2 || '',
+            q3: snapshot.activity1b.q3 || '',
+            submitted: !!snapshot.activity1b.submitted,
+          });
+        }
         if (Array.isArray(snapshot.videoAnswers)) setVideoAnswers(snapshot.videoAnswers);
         if (Array.isArray(snapshot.videoChecks)) setVideoChecks(snapshot.videoChecks);
         if (typeof snapshot.videoSubmitted === 'boolean') setVideoSubmitted(snapshot.videoSubmitted);

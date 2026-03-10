@@ -585,8 +585,8 @@ export const getActivity2CheckpointAll = (): Record<string, { answers: string[];
 
 // Lesson 2 Phase 1 Activity 2 (Video checkpoints for Lesson 2) - separate storage from Lesson 1
 export const saveLesson2Phase1Activity2Checkpoint = (username: string, answers: string[], score: number) => {
-  const store = safeGetAll(LESSON2_P1_A2_KEY) as Record<string, { answers: string[]; score: number; timestamp?: string }>;
-  store[username] = { answers, score, timestamp: new Date().toISOString() };
+  const store = safeGetAll(LESSON2_P1_A2_KEY) as Record<string, { answers: string[]; score: number; timestamp?: string; submitted?: boolean }>;
+  store[username] = { answers, score, timestamp: new Date().toISOString(), submitted: true };
   safeSetItemSync(LESSON2_P1_A2_KEY, store);
   // Mirror into canonical Lesson1State for teacher monitoring (Activity 2 -> Phase1 a2 flags)
   try {
@@ -603,8 +603,8 @@ export const getLesson2Phase1Activity2All = (): Record<string, { answers: string
 
 // Lesson 2 Phase 1 Activity 2b (Pair of Variables answers for Lesson 2)
 export const saveLesson2Phase1Activity2b = (username: string, pairs: { predictor: string; response: string }[]) => {
-  const store = safeGetAll(LESSON2_P1_A2B_KEY) as Record<string, { pairs: { predictor: string; response: string }[]; timestamp?: string }>;
-  store[username] = { pairs: pairs.map(p => ({ predictor: p.predictor, response: p.response })), timestamp: new Date().toISOString() };
+  const store = safeGetAll(LESSON2_P1_A2B_KEY) as Record<string, { pairs: { predictor: string; response: string }[]; timestamp?: string; submitted?: boolean }>;
+  store[username] = { pairs: pairs.map(p => ({ predictor: p.predictor, response: p.response })), timestamp: new Date().toISOString(), submitted: true };
   safeSetItemSync(LESSON2_P1_A2B_KEY, store);
   // Mirror minimal info for teacher monitoring
   try { setPhase1ActivityFlag(username, 'a2Done', true); } catch (e) { /* ignore */ }
@@ -617,8 +617,8 @@ export const getLesson2Phase1Activity2bAll = (): Record<string, { pairs: { predi
 
 // Lesson 2 Phase 1 Activity 3: Climate Variable Selection (dropdowns + encodings)
 export const saveLesson2Phase1Activity3 = (username: string, var1: string, var2: string, reasoning: string, prediction: string, researchQuestion: string) => {
-  const store = safeGetAll(LESSON2_P1_A3_KEY) as Record<string, { var1: string; var2: string; reasoning: string; prediction: string; researchQuestion: string; timestamp?: string }>;
-  store[username] = { var1: var1 || '', var2: var2 || '', reasoning: reasoning || '', prediction: prediction || '', researchQuestion: researchQuestion || '', timestamp: new Date().toISOString() };
+  const store = safeGetAll(LESSON2_P1_A3_KEY) as Record<string, { var1: string; var2: string; reasoning: string; prediction: string; researchQuestion: string; timestamp?: string; submitted?: boolean }>;
+  store[username] = { var1: var1 || '', var2: var2 || '', reasoning: reasoning || '', prediction: prediction || '', researchQuestion: researchQuestion || '', timestamp: new Date().toISOString(), submitted: true };
   safeSetItemSync(LESSON2_P1_A3_KEY, store);
   // reflect in lesson1 state for teacher monitoring if desired
   try { setPhase1ActivityFlag(username, 'a3Var1', var1); setPhase1ActivityFlag(username, 'a3Var2', var2); setPhase1ActivityFlag(username, 'a3Done', true); } catch (e) { /* ignore */ }
@@ -631,8 +631,8 @@ export const getLesson2Phase1Activity3All = (): Record<string, { var1: string; v
 
 // Lesson 2 Phase 1 Activity 4: Exit Ticket (important learning + 3 confidence scales)
 export const saveLesson2Phase1Activity4 = (username: string, importantLearning: string, confidence: number, understanding: number, connection: number) => {
-  const store = safeGetAll(LESSON2_P1_A4_KEY) as Record<string, { importantLearning: string; confidence: number; understanding: number; connection: number; timestamp?: string }>;
-  store[username] = { importantLearning: importantLearning || '', confidence: confidence || 0, understanding: understanding || 0, connection: connection || 0, timestamp: new Date().toISOString() };
+  const store = safeGetAll(LESSON2_P1_A4_KEY) as Record<string, { importantLearning: string; confidence: number; understanding: number; connection: number; timestamp?: string; submitted?: boolean }>;
+  store[username] = { importantLearning: importantLearning || '', confidence: confidence || 0, understanding: understanding || 0, connection: connection || 0, timestamp: new Date().toISOString(), submitted: true };
   safeSetItemSync(LESSON2_P1_A4_KEY, store);
   try { setPhase1ActivityFlag(username, 'a4aQuestion', importantLearning); setPhase1ActivityFlag(username, 'a4aSubmitted', true); } catch (e) { /* ignore */ }
   return store;
@@ -784,8 +784,8 @@ export const getPhase2Activity1All = (): Record<string, { answers: string[]; sco
 
 // Lesson 2 Phase 2 Activity 1: store video checkpoint answers separately from Lesson 1
 export const saveLesson2Phase2Activity1 = (username: string, answers: string[], score: number) => {
-  const store = safeGetAll(LESSON2_P2_A1_KEY) as Record<string, { answers: string[]; score: number; timestamp?: string }>;
-  store[username] = { answers, score, timestamp: new Date().toISOString() };
+  const store = safeGetAll(LESSON2_P2_A1_KEY) as Record<string, { answers: string[]; score: number; timestamp?: string; submitted?: boolean }>;
+  store[username] = { answers, score, timestamp: new Date().toISOString(), submitted: true };
   safeSetItemSync(LESSON2_P2_A1_KEY, store);
   // Do NOT mirror Lesson 2 answers into the canonical Lesson 1 state — these are separate pages.
   return store;
@@ -966,9 +966,9 @@ export const saveLesson2Phase1Activity1 = (
   affected: string,
   causes: string
 ) => {
-  const store = safeGetAll(LESSON2_P1_A1_KEY) as Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string }>>;
+  const store = safeGetAll(LESSON2_P1_A1_KEY) as Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string; submitted?: boolean }>>;
   const userStore = store[username] || {};
-  userStore[scenarioId] = { obs, affected, causes, timestamp: new Date().toISOString() };
+  userStore[scenarioId] = { obs, affected, causes, timestamp: new Date().toISOString(), submitted: true };
   store[username] = userStore;
   safeSetItemSync(LESSON2_P1_A1_KEY, store);
   // mark phase1 activity 1 as done (teacher monitoring)
@@ -976,8 +976,8 @@ export const saveLesson2Phase1Activity1 = (
   return store;
 };
 
-export const getLesson2Phase1Activity1All = (): Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string }>> => {
-  return safeGetAll(LESSON2_P1_A1_KEY) as Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string }>>;
+export const getLesson2Phase1Activity1All = (): Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string; submitted?: boolean }>> => {
+  return safeGetAll(LESSON2_P1_A1_KEY) as Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string; submitted?: boolean }>>;
 };
 
 // Lesson 2 Phase1 Activity 1b (Most urgent scenario + 3 questions)
@@ -988,15 +988,15 @@ export const saveLesson2Phase1Activity1b = (
   q2: string,
   q3?: string
 ) => {
-  const store = safeGetAll(LESSON2_P1_A1B_KEY) as Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string }>;
-  store[username] = { mostUrgent, q1, q2, q3: q3 || '', timestamp: new Date().toISOString() };
+  const store = safeGetAll(LESSON2_P1_A1B_KEY) as Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string; submitted?: boolean }>;
+  store[username] = { mostUrgent, q1, q2, q3: q3 || '', timestamp: new Date().toISOString(), submitted: true };
   safeSetItemSync(LESSON2_P1_A1B_KEY, store);
   try { setPhase1ActivityFlag(username, 'a1Done', true); } catch (e) { /* ignore */ }
   return store;
 };
 
-export const getLesson2Phase1Activity1bAll = (): Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string }> => {
-  return safeGetAll(LESSON2_P1_A1B_KEY) as Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string }>;
+export const getLesson2Phase1Activity1bAll = (): Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string; submitted?: boolean }> => {
+  return safeGetAll(LESSON2_P1_A1B_KEY) as Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string; submitted?: boolean }>;
 };
 
 // Phase 2 Activity 4: check answers (adds 4.00)

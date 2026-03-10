@@ -285,3 +285,22 @@ Self-heal actions applied
 
 Files touched
 - src/services/progressService.ts
+
+[2026-03-10 18:06] Lesson 2 drafts were being treated as final submissions
+
+Observed issues
+- Lesson 2 textareas/inputs could load in a locked state even when the student had only draft data or prior test entries.
+- Phase 3 analysis sections could become locked after reloads because autosave timestamps were interpreted as submission state.
+
+Diagnosis
+- Lesson 2 load effects were inferring `submitted=true` from the existence of stored draft data instead of explicit submit markers.
+- Some save helpers did not persist explicit submit flags, so the page could not reliably distinguish draft state from real submission state.
+
+Self-heal actions applied
+- Added explicit `submitted: true` persistence for the relevant Lesson 2 activity saves.
+- Changed Lesson 2 hydration/load logic to lock only on explicit submitted markers.
+- Removed timestamp-only locking for the Phase 3 analysis sections.
+
+Files touched
+- src/pages/student_sections/Lesson2.tsx
+- src/services/progressService.ts

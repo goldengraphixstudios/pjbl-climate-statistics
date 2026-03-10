@@ -567,3 +567,18 @@ How To Use Going Forward
   - `src/services/progressService.ts`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 18:06] Lesson 2 draft-lock correction
+- Found a separate Lesson 2 regression: several sections were being restored as "submitted" merely because saved draft data existed.
+- This especially affected Phase 1 Activity 1/1b and Phase 3 analysis sections, where reloads could lock textareas/inputs before a real submit/finalize action.
+- Fix applied:
+  - Lesson 2 now treats only explicit `submitted` flags as locked state for Activity 1a/1b, video/pair checkpoints, Activity 3, and the exit ticket
+  - Phase 3 analysis sections no longer lock from autosave timestamps alone; they only lock on explicit submitted markers
+  - save helpers now persist explicit `submitted: true` for the Lesson 2 activities that should hard-lock after submission
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+  - `src/services/progressService.ts`
+- Commit: pending
+- Push: pending
