@@ -268,3 +268,20 @@ Files touched
 - src/pages/student_sections/PreAssessment.tsx
 - src/pages/student_sections/PostAssessment.tsx
 - src/pages/portals/AdminPortal.tsx
+
+[2026-03-10 17:38] Lesson 2 buttons could fail silently on storage writes
+
+Observed issues
+- Lesson 2 observation/submit buttons were clickable but sometimes produced no visible state change.
+- The same storage pattern existed across Lesson 2 final-output helpers and some Lesson 3 read/review paths.
+
+Diagnosis
+- Several Lesson 2 helper functions in `progressService.ts` still wrote directly to `localStorage` without using the project’s safe fallback helpers.
+- If browser storage quota was exceeded or storage writes failed, the helper threw before the component could mark the activity submitted/completed.
+
+Self-heal actions applied
+- Replaced raw Lesson 2 helper storage writes with `safeGetAll` and `safeSetItemSync`.
+- Switched related Lesson 3 and Lesson 2 interpretation/review getters to `safeGetAll` so fallback IndexedDB-backed data is still visible to the app/admin review.
+
+Files touched
+- src/services/progressService.ts

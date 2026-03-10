@@ -552,3 +552,18 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 17:38] Lesson 2 storage helper cleanup
+- Investigated continued report that Lesson 2 observation/submit buttons were clickable but produced no visible action.
+- Root cause identified:
+  - many Lesson 2 progress helpers in `src/services/progressService.ts` still used raw `localStorage.getItem/setItem`
+  - when storage write failed, those synchronous helpers threw before the calling component could flip submitted/completed UI state
+- Fix applied:
+  - converted active Lesson 2 save helpers to use `safeGetAll` + `safeSetItemSync`
+  - converted related Lesson 3 and Lesson 2 interpretation/review getters to `safeGetAll` so restore/review paths also honor fallback storage
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/services/progressService.ts`
+- Commit: pending
+- Push: pending

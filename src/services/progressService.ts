@@ -439,9 +439,7 @@ export const saveLesson3Phase1Activity2 = async (username: string, payload: { fi
 };
 
 export const getLesson3Phase1Activity2All = (): Record<string, { fileDataUrl?: string; filename?: string; considerations?: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P1_A2_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { fileDataUrl?: string; filename?: string; considerations?: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P1_A2_KEY) as Record<string, { fileDataUrl?: string; filename?: string; considerations?: string; timestamp?: string }>;
 };
 
 export const saveLesson3Phase2Activity1 = async (username: string, payload: { fileDataUrl?: string; filename?: string; timestamp?: string }) => {
@@ -485,9 +483,7 @@ export const saveLesson3Phase2Activity1 = async (username: string, payload: { fi
 };
 
 export const getLesson3Phase2Activity1All = (): Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P2_A1_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P2_A1_KEY) as Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>;
 };
 
 const LESSON3_P2_A2_KEY = 'lesson3_phase2_activity2';
@@ -512,9 +508,7 @@ export const saveLesson3Phase2Activity2 = async (username: string, payload: { fi
 };
 
 export const getLesson3Phase2Activity2All = (): Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P2_A2_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P2_A2_KEY) as Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>;
 };
 
 export const saveLesson3Phase2Activity3 = async (username: string, payload: { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }) => {
@@ -535,9 +529,7 @@ export const saveLesson3Phase2Activity3 = async (username: string, payload: { fi
 };
 
 export const getLesson3Phase2Activity3All = (): Record<string, { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P2_A3_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P2_A3_KEY) as Record<string, { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }>;
 };
 
 export const saveLesson3Phase3Activity1 = async (username: string, payload: { fileDataUrl?: string; filename?: string; timestamp?: string }) => {
@@ -558,15 +550,11 @@ export const saveLesson3Phase3Activity1 = async (username: string, payload: { fi
 };
 
 export const getLesson3Phase3Activity1All = (): Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P3_A1_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P3_A1_KEY) as Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>;
 };
 
 export const getLesson3Phase1Activity1All = (): Record<string, { researchQuestion: string; regressionEquation: string; interpretation: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P1_A1_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { researchQuestion: string; regressionEquation: string; interpretation: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P1_A1_KEY) as Record<string, { researchQuestion: string; regressionEquation: string; interpretation: string; timestamp?: string }>;
 };
 
 export const saveActivity2Checkpoint = async (username: string, answers: string[], score: number) => {
@@ -597,10 +585,9 @@ export const getActivity2CheckpointAll = (): Record<string, { answers: string[];
 
 // Lesson 2 Phase 1 Activity 2 (Video checkpoints for Lesson 2) - separate storage from Lesson 1
 export const saveLesson2Phase1Activity2Checkpoint = (username: string, answers: string[], score: number) => {
-  const storeRaw = localStorage.getItem(LESSON2_P1_A2_KEY);
-  const store: Record<string, { answers: string[]; score: number; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P1_A2_KEY) as Record<string, { answers: string[]; score: number; timestamp?: string }>;
   store[username] = { answers, score, timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P1_A2_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P1_A2_KEY, store);
   // Mirror into canonical Lesson1State for teacher monitoring (Activity 2 -> Phase1 a2 flags)
   try {
     setPhase1ActivityFlag(username, 'a2Answers', answers);
@@ -616,10 +603,9 @@ export const getLesson2Phase1Activity2All = (): Record<string, { answers: string
 
 // Lesson 2 Phase 1 Activity 2b (Pair of Variables answers for Lesson 2)
 export const saveLesson2Phase1Activity2b = (username: string, pairs: { predictor: string; response: string }[]) => {
-  const storeRaw = localStorage.getItem(LESSON2_P1_A2B_KEY);
-  const store: Record<string, { pairs: { predictor: string; response: string }[]; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P1_A2B_KEY) as Record<string, { pairs: { predictor: string; response: string }[]; timestamp?: string }>;
   store[username] = { pairs: pairs.map(p => ({ predictor: p.predictor, response: p.response })), timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P1_A2B_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P1_A2B_KEY, store);
   // Mirror minimal info for teacher monitoring
   try { setPhase1ActivityFlag(username, 'a2Done', true); } catch (e) { /* ignore */ }
   return store;
@@ -631,10 +617,9 @@ export const getLesson2Phase1Activity2bAll = (): Record<string, { pairs: { predi
 
 // Lesson 2 Phase 1 Activity 3: Climate Variable Selection (dropdowns + encodings)
 export const saveLesson2Phase1Activity3 = (username: string, var1: string, var2: string, reasoning: string, prediction: string, researchQuestion: string) => {
-  const storeRaw = localStorage.getItem(LESSON2_P1_A3_KEY);
-  const store: Record<string, { var1: string; var2: string; reasoning: string; prediction: string; researchQuestion: string; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P1_A3_KEY) as Record<string, { var1: string; var2: string; reasoning: string; prediction: string; researchQuestion: string; timestamp?: string }>;
   store[username] = { var1: var1 || '', var2: var2 || '', reasoning: reasoning || '', prediction: prediction || '', researchQuestion: researchQuestion || '', timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P1_A3_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P1_A3_KEY, store);
   // reflect in lesson1 state for teacher monitoring if desired
   try { setPhase1ActivityFlag(username, 'a3Var1', var1); setPhase1ActivityFlag(username, 'a3Var2', var2); setPhase1ActivityFlag(username, 'a3Done', true); } catch (e) { /* ignore */ }
   return store;
@@ -646,10 +631,9 @@ export const getLesson2Phase1Activity3All = (): Record<string, { var1: string; v
 
 // Lesson 2 Phase 1 Activity 4: Exit Ticket (important learning + 3 confidence scales)
 export const saveLesson2Phase1Activity4 = (username: string, importantLearning: string, confidence: number, understanding: number, connection: number) => {
-  const storeRaw = localStorage.getItem(LESSON2_P1_A4_KEY);
-  const store: Record<string, { importantLearning: string; confidence: number; understanding: number; connection: number; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P1_A4_KEY) as Record<string, { importantLearning: string; confidence: number; understanding: number; connection: number; timestamp?: string }>;
   store[username] = { importantLearning: importantLearning || '', confidence: confidence || 0, understanding: understanding || 0, connection: connection || 0, timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P1_A4_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P1_A4_KEY, store);
   try { setPhase1ActivityFlag(username, 'a4aQuestion', importantLearning); setPhase1ActivityFlag(username, 'a4aSubmitted', true); } catch (e) { /* ignore */ }
   return store;
 };
@@ -800,10 +784,9 @@ export const getPhase2Activity1All = (): Record<string, { answers: string[]; sco
 
 // Lesson 2 Phase 2 Activity 1: store video checkpoint answers separately from Lesson 1
 export const saveLesson2Phase2Activity1 = (username: string, answers: string[], score: number) => {
-  const storeRaw = localStorage.getItem(LESSON2_P2_A1_KEY);
-  const store: Record<string, { answers: string[]; score: number; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P2_A1_KEY) as Record<string, { answers: string[]; score: number; timestamp?: string }>;
   store[username] = { answers, score, timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P2_A1_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P2_A1_KEY, store);
   // Do NOT mirror Lesson 2 answers into the canonical Lesson 1 state — these are separate pages.
   return store;
 };
@@ -814,10 +797,9 @@ export const getLesson2Phase2Activity1All = (): Record<string, { answers: string
 
 // Lesson 2 Phase 2 Activity 2: student file upload (PDF) storage
 export const saveLesson2Phase2Activity2 = (username: string, uploadUrl: string, mime: string, filename?: string) => {
-  const storeRaw = localStorage.getItem(LESSON2_P2_A2_KEY);
-  const store: Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P2_A2_KEY) as Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }>;
   store[username] = { uploadUrl, mime, filename: filename || '', timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P2_A2_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P2_A2_KEY, store);
   // Do NOT mirror Lesson2 Phase2 Activity2 uploads into Lesson1 canonical state.
   // Lesson2 Phase2 Activity2 has its own separate store (`LESSON2_P2_A2_KEY`).
   return store;
@@ -829,10 +811,9 @@ export const getLesson2Phase2Activity2All = (): Record<string, { uploadUrl: stri
 
 // Lesson 2 Phase 2 Activity 3: student file upload (PDF) storage
 export const saveLesson2Phase2Activity3 = (username: string, uploadUrl: string, mime: string, filename?: string) => {
-  const storeRaw = localStorage.getItem(LESSON2_P2_A3_KEY);
-  const store: Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P2_A3_KEY) as Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }>;
   store[username] = { uploadUrl, mime, filename: filename || '', timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P2_A3_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P2_A3_KEY, store);
   // Do NOT mirror Lesson2 Phase2 Activity3 uploads into Lesson1 canonical state.
   // Lesson2 Phase2 Activity3 writes to `LESSON2_P2_A3_KEY` only.
   return store;
@@ -985,12 +966,11 @@ export const saveLesson2Phase1Activity1 = (
   affected: string,
   causes: string
 ) => {
-  const storeRaw = localStorage.getItem(LESSON2_P1_A1_KEY);
-  const store: Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string }>> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P1_A1_KEY) as Record<string, Record<number, { obs: string; affected: string; causes: string; timestamp?: string }>>;
   const userStore = store[username] || {};
   userStore[scenarioId] = { obs, affected, causes, timestamp: new Date().toISOString() };
   store[username] = userStore;
-  localStorage.setItem(LESSON2_P1_A1_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P1_A1_KEY, store);
   // mark phase1 activity 1 as done (teacher monitoring)
   try { setPhase1ActivityFlag(username, 'a1Done', true); } catch (e) { /* ignore */ }
   return store;
@@ -1008,10 +988,9 @@ export const saveLesson2Phase1Activity1b = (
   q2: string,
   q3?: string
 ) => {
-  const storeRaw = localStorage.getItem(LESSON2_P1_A1B_KEY);
-  const store: Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P1_A1B_KEY) as Record<string, { mostUrgent: string; q1: string; q2: string; q3?: string; timestamp?: string }>;
   store[username] = { mostUrgent, q1, q2, q3: q3 || '', timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P1_A1B_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P1_A1B_KEY, store);
   try { setPhase1ActivityFlag(username, 'a1Done', true); } catch (e) { /* ignore */ }
   return store;
 };
@@ -1102,10 +1081,9 @@ export const savePhase2Activity4Interpret = async (
 
 // Lesson 2 Phase 2 Activity 4: student file upload (PDF/image) storage (separate from interpretation meta)
 export const saveLesson2Phase2Activity4 = (username: string, uploadUrl: string, mime: string, filename?: string) => {
-  const storeRaw = localStorage.getItem(LESSON2_P2_A4_KEY);
-  const store: Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P2_A4_KEY) as Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }>;
   store[username] = { uploadUrl, mime, filename: filename || '', timestamp: new Date().toISOString() };
-  localStorage.setItem(LESSON2_P2_A4_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P2_A4_KEY, store);
   try {
     const current = getLesson1State(username);
     const p2: any = { ...(current.phaseData[2] || {}) };
@@ -1154,10 +1132,9 @@ export const getLesson2Phase2Activity4All = (): Record<string, { uploadUrl: stri
 
 // Lesson 2 Phase 4 Activity 1: student file upload (PDF/image) storage
 export const saveLesson2Phase4Activity1 = (username: string, uploadUrl: string, mime: string, filename?: string, submitted?: boolean) => {
-  const storeRaw = localStorage.getItem(LESSON2_P4_A1_KEY);
-  const store: Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string; submitted?: boolean }> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P4_A1_KEY) as Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string; submitted?: boolean }>;
   store[username] = { uploadUrl, mime, filename: filename || '', timestamp: new Date().toISOString(), submitted: !!submitted };
-  localStorage.setItem(LESSON2_P4_A1_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P4_A1_KEY, store);
 
   // Do NOT mirror Lesson 2 Phase 4 uploads into the canonical Lesson 1 state.
   // Lesson 2 Phase 4 has its own store (`LESSON2_P4_A1_KEY`) and should remain separate.
@@ -1178,11 +1155,10 @@ const PHASE3_REC_KEY = 'lesson1_phase3_recommendation';
 const LESSON2_P3_A1_KEY = 'lesson2_phase3_activity1';
 
 export const saveLesson2Phase3Activity1 = (username: string, payload: any) => {
-  const storeRaw = localStorage.getItem(LESSON2_P3_A1_KEY);
-  const store: Record<string, any> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P3_A1_KEY) as Record<string, any>;
   const ts = new Date().toISOString();
   store[username] = { ...(payload || {}), timestamp: ts };
-  localStorage.setItem(LESSON2_P3_A1_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P3_A1_KEY, store);
 
   // Mirror important fields into the canonical Lesson1State.phaseData[3] so teacher portal shows encodings
   try {
@@ -1228,11 +1204,10 @@ export const getLesson2Phase3Activity1All = (): Record<string, any> => {
 const LESSON2_P3_A2_KEY = 'lesson2_phase3_activity2';
 
 export const saveLesson2Phase3Activity2 = (username: string, payload: any) => {
-  const storeRaw = localStorage.getItem(LESSON2_P3_A2_KEY);
-  const store: Record<string, any> = storeRaw ? JSON.parse(storeRaw) : {};
+  const store = safeGetAll(LESSON2_P3_A2_KEY) as Record<string, any>;
   const ts = new Date().toISOString();
   store[username] = { ...(payload || {}), timestamp: ts };
-  localStorage.setItem(LESSON2_P3_A2_KEY, JSON.stringify(store));
+  safeSetItemSync(LESSON2_P3_A2_KEY, store);
 
   try {
     const current = getLesson1State(username);
@@ -1512,9 +1487,7 @@ export const saveLesson3Phase4PeerReview = async (
 };
 
 export const getLesson3Phase4ReviewAll = (): Record<string, { submitted: boolean; review?: any; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P4_REVIEW_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { submitted: boolean; review?: any; timestamp?: string }>;
+  return safeGetAll(LESSON3_P4_REVIEW_KEY) as Record<string, { submitted: boolean; review?: any; timestamp?: string }>;
 };
 
 export const getPhase4CompleteAll = (): Record<string, { completed: boolean }> => {
@@ -1546,9 +1519,7 @@ export const saveLesson3Phase4Reflection = async (
 };
 
 export const getLesson3Phase4CompleteAll = (): Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(LESSON3_P4_COMPLETE_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>;
+  return safeGetAll(LESSON3_P4_COMPLETE_KEY) as Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>;
 };
 
 // Phase 2 Activity 2: guided Pearson r (store r and variable names)
@@ -1627,11 +1598,9 @@ export const getPhase2SelfAssessAll = (): Record<string, { answers: string[] }> 
 };
 
 export const getPhase2Activity4CheckAll = (): Record<string, { checked: boolean; strength?: string[]; direction?: string[]; timestamp?: string }> => {
-  const storeRaw = localStorage.getItem(PHASE2_ACTIVITY4_CHECK_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
+  const base = safeGetAll(PHASE2_ACTIVITY4_CHECK_KEY) as Record<string, { checked: boolean; strength?: string[]; direction?: string[]; timestamp?: string }>;
   try {
-    const l2raw = localStorage.getItem(LESSON2_P2_A4_KEY);
-    const l2 = l2raw ? JSON.parse(l2raw) : {};
+    const l2 = safeGetAll(LESSON2_P2_A4_KEY) as Record<string, any>;
     const merged = { ...base } as Record<string, any>;
     for (const k of Object.keys(l2)) {
       if (!merged[k]) merged[k] = { checked: false };
@@ -1642,28 +1611,20 @@ export const getPhase2Activity4CheckAll = (): Record<string, { checked: boolean;
 };
 
 export const getPhase2Activity4InterpAll = (): Record<string, { interp: string }> => {
-  const storeRaw = localStorage.getItem(PHASE2_ACTIVITY4_INTERP_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { interp: string }>;
+  return safeGetAll(PHASE2_ACTIVITY4_INTERP_KEY) as Record<string, { interp: string }>;
 };
 
 export const getPhase2Activity4InterpAllDetailed = (): Record<string, { interp: string; timestamp?: string; var1?: string; var2?: string; question?: string; computedR?: string; strength?: string; direction?: string; encodings?: any }> => {
-  const storeRaw = localStorage.getItem(PHASE2_ACTIVITY4_INTERP_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { interp: string; timestamp?: string; var1?: string; var2?: string; question?: string; computedR?: string; strength?: string; direction?: string; encodings?: any }>;
+  return safeGetAll(PHASE2_ACTIVITY4_INTERP_KEY) as Record<string, { interp: string; timestamp?: string; var1?: string; var2?: string; question?: string; computedR?: string; strength?: string; direction?: string; encodings?: any }>;
 };
 
 // Lesson2-only getters for Phase2 Activity4 interpretations (separate store)
 export const getLesson2Phase2Activity4InterpAll = (): Record<string, { interp: string }> => {
-  const storeRaw = localStorage.getItem(LESSON2_P2_A4_INTERP_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { interp: string }>;
+  return safeGetAll(LESSON2_P2_A4_INTERP_KEY) as Record<string, { interp: string }>;
 };
 
 export const getLesson2Phase2Activity4InterpAllDetailed = (): Record<string, { interp: string; timestamp?: string; var1?: string; var2?: string; question?: string; computedR?: string; strength?: string; direction?: string; encodings?: any }> => {
-  const storeRaw = localStorage.getItem(LESSON2_P2_A4_INTERP_KEY);
-  const base = storeRaw ? JSON.parse(storeRaw) : {};
-  return base as Record<string, { interp: string; timestamp?: string; var1?: string; var2?: string; question?: string; computedR?: string; strength?: string; direction?: string; encodings?: any }>;
+  return safeGetAll(LESSON2_P2_A4_INTERP_KEY) as Record<string, { interp: string; timestamp?: string; var1?: string; var2?: string; question?: string; computedR?: string; strength?: string; direction?: string; encodings?: any }>;
 };
 
 export const getUserProgress = (username: string): UserProgress => {
