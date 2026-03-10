@@ -526,3 +526,29 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 17:05] Final lesson submission and review stability pass
+- Investigated student-side report that Lesson 2 submit buttons were not working and performed a matching sweep on Lesson 3 and assessment save paths.
+- Root cause identified:
+  - several active submit / feedback-acknowledgement paths depended only on `getMyProfile()?.id`
+  - when profile resolution missed, the UI could still appear to save locally while no live Supabase `responses` update occurred
+- Fix applied:
+  - added `resolveStudentId(user.username)` fallback across active live-write/read paths in:
+    - `Lesson1.tsx`
+    - `Lesson2.tsx`
+    - `Lesson3.tsx`
+    - `PreAssessment.tsx`
+    - `PostAssessment.tsx`
+  - Lesson 1 revised-question finalize now also refreshes the live `responses.lesson1` row so admin no longer reads a stale pre-feedback snapshot
+  - admin review for lesson submissions now merges `responses` with `student_state` for lesson rows, reducing false blanks in review fields
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/Lesson1.tsx`
+  - `src/pages/student_sections/Lesson2.tsx`
+  - `src/pages/student_sections/Lesson3.tsx`
+  - `src/pages/student_sections/PreAssessment.tsx`
+  - `src/pages/student_sections/PostAssessment.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending

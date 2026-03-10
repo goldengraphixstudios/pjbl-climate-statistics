@@ -5,6 +5,7 @@ import { setUserProgress, savePostAssessmentPart1Score, savePostAssessmentPart1R
 import { ActivityType, upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { resolveStudentId } from '../../services/studentStateService';
 
 interface AuthUser {
   id?: string;
@@ -84,7 +85,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     const load = async () => {
       try {
         const prof = await getMyProfile();
-        const studentId = prof?.id;
+        const studentId = prof?.id || await resolveStudentId(user.username);
         if (!studentId) return;
         const resp = await getResponseForStudentActivity(studentId, 'post');
         if (resp) {
@@ -135,7 +136,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       setUserProgress(user.username, 5, 50);
       try {
         const prof = await getMyProfile();
-        const studentId = prof?.id;
+        const studentId = prof?.id || await resolveStudentId(user.username);
         if (studentId) {
           await upsertResponse({
             student_id: studentId,
@@ -172,7 +173,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     setPart2Submitted(true);
     try {
       const prof = await getMyProfile();
-      const studentId = prof?.id;
+      const studentId = prof?.id || await resolveStudentId(user.username);
       if (studentId) {
         const itemCorrect = responses.map((r, i) => r === answerKey[i]);
         const correct = itemCorrect.filter(Boolean).length;
@@ -204,7 +205,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const handleAcknowledge = async () => {
     try {
       const prof = await getMyProfile();
-      const studentId = prof?.id;
+      const studentId = prof?.id || await resolveStudentId(user.username);
       if (studentId) {
         const fb = await acknowledgeFeedback(studentId, 'post');
         setServerFeedback(fb);

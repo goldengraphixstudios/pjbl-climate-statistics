@@ -5,6 +5,7 @@ import { setUserProgress, savePreAssessmentPart1Score, savePreAssessmentPart1Res
 import { ActivityType, upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { resolveStudentId } from '../../services/studentStateService';
 
 interface AuthUser {
   id?: string;
@@ -98,7 +99,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     const load = async () => {
       try {
         const prof = await getMyProfile();
-        const studentId = prof?.id;
+        const studentId = prof?.id || await resolveStudentId(user.username);
         if (!studentId) return;
         const resp = await getResponseForStudentActivity(studentId, 'pre');
         if (resp) {
@@ -164,7 +165,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       // also upsert unified response row
       try {
         const prof = await getMyProfile();
-        const studentId = prof?.id;
+        const studentId = prof?.id || await resolveStudentId(user.username);
         if (studentId) {
           await upsertResponse({
             student_id: studentId,
@@ -216,7 +217,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     // persist combined to responses table
     try {
       const prof = await getMyProfile();
-      const studentId = prof?.id;
+      const studentId = prof?.id || await resolveStudentId(user.username);
       if (studentId) {
         const correct = itemCorrect.filter(Boolean).length;
         await upsertResponse({
@@ -247,7 +248,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const handleAcknowledge = async () => {
     try {
       const prof = await getMyProfile();
-      const studentId = prof?.id;
+      const studentId = prof?.id || await resolveStudentId(user.username);
       if (studentId) {
         const fb = await acknowledgeFeedback(studentId, 'pre');
         setServerFeedback(fb);

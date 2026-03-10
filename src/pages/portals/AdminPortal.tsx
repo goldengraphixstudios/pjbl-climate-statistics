@@ -6,6 +6,7 @@ import ClassManagement from '../../components/teacher/ClassManagement';
 import StudentList from '../../components/teacher/StudentList';
 import { FeedbackRow, getFeedbackForStudents } from '../../services/feedbackService';
 import { ActivityType, ResponseRow, getResponsesForStudents, teacherUpdateScore } from '../../services/responsesService';
+import { getStudentState, type LessonSlug } from '../../services/studentStateService';
 import { getClassRecord } from '../../services/submissionsService';
 import * as XLSX from 'xlsx';
 import '../../styles/AdminPortal.css';
@@ -320,6 +321,60 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
     response: ResponseRow;
   } | null>(null);
 
+  const mergeReviewResponse = (response: ResponseRow, remoteState: any): ResponseRow => {
+    if (!remoteState) return response;
+    if (response.activity_type === 'lesson1') {
+      const responseState = response.answers?.lesson1State || {};
+      const mergedPhaseData = {
+        ...(remoteState?.phaseData || {}),
+        ...(responseState?.phaseData || {})
+      };
+      for (const phase of [1, 2, 3, 4] as const) {
+        mergedPhaseData[phase] = {
+          ...(remoteState?.phaseData?.[phase] || {}),
+          ...(responseState?.phaseData?.[phase] || {})
+        };
+      }
+      return {
+        ...response,
+        answers: {
+          ...(response.answers || {}),
+          lesson1State: {
+            ...(remoteState || {}),
+            ...(responseState || {}),
+            phaseData: mergedPhaseData
+          }
+        }
+      };
+    }
+
+    return response;
+  };
+
+  const openReviewRow = async (
+    name: string,
+    username: string,
+    activityType: ActivityType,
+    response: ResponseRow
+  ) => {
+    if (activityType === 'lesson1' || activityType === 'lesson2' || activityType === 'lesson3') {
+      try {
+        const remoteState = await getStudentState(response.student_id, activityType as LessonSlug);
+        setReviewRow({
+          name,
+          username,
+          activityType,
+          response: mergeReviewResponse(response, remoteState)
+        });
+        return;
+      } catch (error) {
+        console.error('openReviewRow lesson state merge failed', error);
+      }
+    }
+
+    setReviewRow({ name, username, activityType, response });
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📘' },
     { id: 'create', label: 'Create Class', icon: '➕' },
@@ -604,12 +659,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                           <button
-                            onClick={() => setReviewRow({
-                              name: row.name,
-                              username: row.username,
+                            onClick={() => openReviewRow(
+                              row.name,
+                              row.username,
                               activityType,
                               response
-                            })}
+                            )}
                             className="download-btn lesson-feedback-button"
                           >
                             Review
@@ -1707,12 +1762,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   <td style={{textAlign: 'center'}}>
                                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                       <button
-                                        onClick={() => setReviewRow({
-                                          name: r.name,
-                                          username: r.username,
-                                          activityType: 'pre',
-                                          response: r.response as ResponseRow
-                                        })}
+                                        onClick={() => openReviewRow(
+                                          r.name,
+                                          r.username,
+                                          'pre',
+                                          r.response as ResponseRow
+                                        )}
                                         style={{
                                           padding: '6px 12px',
                                           backgroundColor: '#fff',
@@ -2092,12 +2147,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 <td style={{textAlign: 'center'}}>
                                   <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                     <button
-                                      onClick={() => setReviewRow({
-                                        name: r.name,
-                                        username: r.username,
-                                        activityType: 'post',
-                                        response: r.response
-                                      })}
+                                      onClick={() => openReviewRow(
+                                        r.name,
+                                        r.username,
+                                        'post',
+                                        r.response
+                                      )}
                                       style={{
                                         padding: '6px 12px',
                                         backgroundColor: '#fff',

@@ -243,3 +243,28 @@ Self-heal actions applied
 
 Files touched
 - src/pages/portals/AdminPortal.tsx
+
+[2026-03-10 17:05] Lesson submits could stay local-only when profile lookup missed
+
+Observed issues
+- Lesson 2 submit actions were reported as not working.
+- Lesson 1 admin review still showed stale blanks for revised question and some saved fields.
+- The same risk pattern existed in Lesson 3 and assessment write/acknowledgement paths.
+
+Diagnosis
+- Multiple student-side Supabase calls used only `getMyProfile()?.id` to resolve the current student UUID.
+- If that profile lookup returned no UUID, the save path stopped before `responses` was written, even though local/browser progress could still change.
+- Admin review for Lesson 1 relied too heavily on the submitted `responses` snapshot and not enough on current `student_state`.
+
+Self-heal actions applied
+- Added `resolveStudentId(user.username)` fallback for active live save/read paths in Lesson 1, Lesson 2, Lesson 3, Pre-Assessment, and Post-Assessment.
+- Lesson 1 revised-question finalize now also updates the live `lesson1` response row.
+- Admin lesson review now merges `responses` with `student_state` so late edits do not appear blank in the review modal.
+
+Files touched
+- src/pages/student_sections/Lesson1.tsx
+- src/pages/student_sections/Lesson2.tsx
+- src/pages/student_sections/Lesson3.tsx
+- src/pages/student_sections/PreAssessment.tsx
+- src/pages/student_sections/PostAssessment.tsx
+- src/pages/portals/AdminPortal.tsx

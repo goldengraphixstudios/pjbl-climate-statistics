@@ -894,9 +894,34 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   };
 
   const canFinalize = useMemo(() => !!(p1Data.a4aSubmitted) && !!(p1Data.a4bFinalQuestion || '').trim() && !!activity4Feedback, [p1Data.a4aSubmitted, p1Data.a4bFinalQuestion, activity4Feedback]);
-  const onFinalizeQuestion = () => {
+  const onFinalizeQuestion = async () => {
     saveActivity4bFinal(user.username, p1Data.a4bFinalQuestion || '');
-    setState(getLesson1State(user.username));
+    const nextState = normalizeLesson1State(getLesson1State(user.username));
+    saveLesson1State(user.username, nextState);
+    setState(nextState);
+    try {
+      const prof = await getMyProfile();
+      const studentId = prof?.id || await resolveStudentId(user.username);
+      if (studentId) {
+        await upsertResponse({
+          student_id: studentId,
+          activity_type: 'lesson1',
+          answers: {
+            __meta: {
+              schemaVersion: 1,
+              source: 'student-portal',
+              activityType: 'lesson1',
+              submittedAt: new Date().toISOString(),
+              username: user.username,
+              stage: 'final'
+            },
+            lesson1State: nextState
+          }
+        });
+      }
+    } catch (err) {
+      console.error('upsert lesson1 response after revised question', err);
+    }
   };
 
   const canOpenActivity = (activity: number) => {
@@ -1703,7 +1728,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
             {!serverFeedback.acknowledged && (
               <button onClick={async () => {
                 const prof = await getMyProfile();
-                const sid = prof?.id;
+                const sid = prof?.id || await resolveStudentId(user.username);
                 if (sid) {
                   const fb = await acknowledgeFeedback(sid, 'lesson1');
                   setServerFeedback(fb);
@@ -3958,7 +3983,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                         // upsert lesson1 response record
                         try {
                           const prof = await getMyProfile();
-                          const studentId = prof?.id;
+                          const studentId = prof?.id || await resolveStudentId(user.username);
                           if (studentId) {
                             await upsertResponse({
                               student_id: studentId,

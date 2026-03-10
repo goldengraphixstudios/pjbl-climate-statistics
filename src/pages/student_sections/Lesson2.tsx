@@ -7,7 +7,7 @@ import { activity2bAnswerKey, lesson2Phase2Activity1Validators, lesson2Phase2Act
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
-import { getStudentState, upsertStudentState } from '../../services/studentStateService';
+import { getStudentState, resolveStudentId, upsertStudentState } from '../../services/studentStateService';
 
 interface AuthUser {
   username: string;
@@ -49,7 +49,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     const load = async () => {
       try {
         const prof = await getMyProfile();
-        const studentId = prof?.id;
+        const studentId = prof?.id || await resolveStudentId(user.username);
         if (!studentId) return;
         const fb = await getFeedbackForStudentActivity(studentId, 'lesson2');
         if (fb) setServerFeedback(fb);
@@ -699,7 +699,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
             {!serverFeedback.acknowledged && (
               <button onClick={async () => {
                 const prof = await getMyProfile();
-                const sid = prof?.id;
+                const sid = prof?.id || await resolveStudentId(user.username);
                 if (sid) {
                   const fb = await acknowledgeFeedback(sid, 'lesson2');
                   setServerFeedback(fb);
@@ -2123,7 +2123,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         const finalize = async (uploadUrl?: string) => {
                           try {
                             const prof = await getMyProfile();
-                            const studentId = prof?.id;
+                            const studentId = prof?.id || await resolveStudentId(user.username);
                             if (studentId) {
                               await upsertResponse({
                                 student_id: studentId,
