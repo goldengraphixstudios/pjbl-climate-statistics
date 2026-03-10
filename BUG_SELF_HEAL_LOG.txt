@@ -228,3 +228,18 @@ Files touched
 - src/pages/portals/AdminPortal.tsx
 - supabase/schema.sql
 - SUPABASE_FEEDBACK_SCOPE_SQL.sql
+
+[2026-03-10 16:28] Assessment rows lacked a review path
+
+Observed issue
+- Pre-Assessment and Post-Assessment tables still required teachers to judge student work from a compressed row view only.
+
+Diagnosis
+- The new review modal had only been wired to lesson outputs, leaving assessment review inconsistent with the lesson grading flow.
+
+Self-heal actions applied
+- Added `Review` actions to pre/post assessment rows.
+- Extended the review modal to render assessment answer sets, correctness markers, score, group scores, and survey responses.
+
+Files touched
+- src/pages/portals/AdminPortal.tsx

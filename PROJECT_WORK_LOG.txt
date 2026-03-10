@@ -510,3 +510,19 @@ How To Use Going Forward
   - run `SUPABASE_FEEDBACK_SCOPE_SQL.sql` in Supabase SQL Editor before using the new activity-scoped feedback button live
 - Commit: pending
 - Push: pending
+
+[2026-03-10 16:28] Expanded review coverage to assessments
+- Extended the admin `Review` flow beyond lesson outputs so staff can inspect submitted assessment content before feedback:
+  - Pre-Assessment rows now have `Review`
+  - Post-Assessment rows now have `Review`
+- Assessment review modal now shows:
+  - Part 1 answers
+  - correctness markers when available
+  - derived score
+  - competency group scores
+  - survey responses when present
+- Lesson 2 / Lesson 3 review continue to use the same read-only review modal, driven by the saved response payload.
+- Files:
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending

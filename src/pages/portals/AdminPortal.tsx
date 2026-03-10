@@ -250,6 +250,50 @@ function getLessonReviewSections(response?: ResponseRow | null) {
   ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));
 }
 
+function getSubmissionReviewSections(response?: ResponseRow | null) {
+  if (!response) return [] as Array<{ title: string; items: Array<{ label: string; value: any }> }>;
+
+  if (response.activity_type === 'pre' || response.activity_type === 'post') {
+    const answers = Array.isArray(response.answers?.part1) ? response.answers.part1 : [];
+    const correctness = Array.isArray(response.correctness?.part1) ? response.correctness.part1 : [];
+    const questionItems = answers.map((answer: string, index: number) => ({
+      label: `Question ${index + 1}`,
+      value: correctness.length
+        ? `${answer || '-'}${typeof correctness[index] === 'boolean' ? ` (${correctness[index] ? 'Correct' : 'Incorrect'})` : ''}`
+        : (answer || '-')
+    }));
+    const surveyAnswers = Array.isArray(response.answers?.part2) ? response.answers.part2 : [];
+    const surveyItems = surveyAnswers.map((answer: number, index: number) => ({
+      label: `Survey ${index + 1}`,
+      value: answer
+    }));
+
+    const sections = [
+      {
+        title: response.activity_type === 'pre' ? 'Pre-Assessment Part 1' : 'Post-Assessment Part 1',
+        items: [
+          ...questionItems,
+          { label: 'Score', value: deriveAssessmentScore(response) },
+          { label: 'LC1-2', value: deriveGroupScores(response)?.lc12 ?? null },
+          { label: 'LC3-4', value: deriveGroupScores(response)?.lc34 ?? null },
+          { label: 'LC5-6', value: deriveGroupScores(response)?.lc56 ?? null }
+        ]
+      },
+      {
+        title: response.activity_type === 'pre' ? 'Initial Survey' : 'End-of-Lesson Survey',
+        items: surveyItems
+      }
+    ];
+
+    return sections.filter((section) => section.items.some((item: { value: any }) => {
+      const formatted = formatReviewValue(item.value);
+      return formatted !== '-' && formatted !== 'â€”';
+    }));
+  }
+
+  return getLessonReviewSections(response);
+}
+
 const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCreateClass, onUpdateStudents, onDeleteClass }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
@@ -1614,13 +1658,14 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                         id: s.id || '',
                         name: s.name || '',
                         username: s.username || '',
+                        response,
                         answers: Array.isArray(response?.answers?.part1) ? response.answers.part1 : Array.from({ length: 15 }, () => ''),
                         score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null,
                         feedbackText: feedback?.feedback_text || '',
                         feedbackAcknowledged: !!feedback?.acknowledged,
                         hasFeedback: !!feedback
                       };
-                    }).filter(r => r.score !== null);
+                    }).filter(r => r.score !== null && !!r.response);
                     // format name Last, First and sort alphabetically by last name
                     const fmt = (full: string) => {
                       const p = (full || '').trim().split(/\s+/);
@@ -1660,6 +1705,27 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                     )}
                                   </td>
                                   <td style={{textAlign: 'center'}}>
+                                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                      <button
+                                        onClick={() => setReviewRow({
+                                          name: r.name,
+                                          username: r.username,
+                                          activityType: 'pre',
+                                          response: r.response as ResponseRow
+                                        })}
+                                        style={{
+                                          padding: '6px 12px',
+                                          backgroundColor: '#fff',
+                                          color: '#1976D2',
+                                          border: '1px solid #1976D2',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          fontSize: '12px',
+                                          fontWeight: 600
+                                        }}
+                                      >
+                                        Review
+                                      </button>
                                     <button
                                       onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'pre' })}
                                       style={{
@@ -1675,6 +1741,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                     >
                                       💬 Feedback
                                     </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -1982,6 +2049,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                         id: s.id || '',
                         name: s.name || '',
                         username: s.username || '',
+                        response,
                         responses: Array.isArray(response?.answers?.part1) ? response.answers.part1 : null,
                         score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null,
                         feedbackText: feedback?.feedback_text || '',
@@ -2022,6 +2090,27 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   )}
                                 </td>
                                 <td style={{textAlign: 'center'}}>
+                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    <button
+                                      onClick={() => setReviewRow({
+                                        name: r.name,
+                                        username: r.username,
+                                        activityType: 'post',
+                                        response: r.response
+                                      })}
+                                      style={{
+                                        padding: '6px 12px',
+                                        backgroundColor: '#fff',
+                                        color: '#1976D2',
+                                        border: '1px solid #1976D2',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      Review
+                                    </button>
                                   <button
                                     onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'post' })}
                                     style={{
@@ -2037,6 +2126,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   >
                                     💬 Feedback
                                   </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -2274,7 +2364,13 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                 <div>
                   <h2 style={{ margin: 0, fontSize: 26, color: '#0b61c9' }}>Submission Review</h2>
                   <div style={{ marginTop: 8, color: '#444', fontSize: 15 }}>
-                    <strong>{formatDisplayName(reviewRow.name)}</strong> ({reviewRow.username}) - {reviewRow.activityType === 'lesson1' ? 'Lesson 1' : reviewRow.activityType === 'lesson2' ? 'Lesson 2' : 'Lesson 3'}
+                    <strong>{formatDisplayName(reviewRow.name)}</strong> ({reviewRow.username}) - {
+                      reviewRow.activityType === 'lesson1' ? 'Lesson 1' :
+                      reviewRow.activityType === 'lesson2' ? 'Lesson 2' :
+                      reviewRow.activityType === 'lesson3' ? 'Lesson 3' :
+                      reviewRow.activityType === 'pre' ? 'Pre-Assessment' :
+                      'Post-Assessment'
+                    }
                   </div>
                   <div style={{ marginTop: 4, color: '#666', fontSize: 13 }}>
                     Last updated {new Date(reviewRow.response.updated_at).toLocaleString()}
@@ -2297,7 +2393,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
               </div>
 
               <div style={{ display: 'grid', gap: 16 }}>
-                {getLessonReviewSections(reviewRow.response).map((section) => (
+                {getSubmissionReviewSections(reviewRow.response).map((section) => (
                   <section
                     key={section.title}
                     style={{
@@ -2310,11 +2406,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                     <h3 style={{ margin: '0 0 14px 0', color: '#0b61c9' }}>{section.title}</h3>
                     <div style={{ display: 'grid', gap: 12 }}>
                       {section.items
-                        .filter((item) => {
+                        .filter((item: { value: any }) => {
                           const formatted = formatReviewValue(item.value);
                           return formatted !== '-' && formatted !== 'â€”';
                         })
-                        .map((item) => {
+                        .map((item: { label: string; value: any }) => {
                           const formatted = formatReviewValue(item.value);
                           const multiline = formatted.includes('\n') || formatted.length > 120;
                           return (
