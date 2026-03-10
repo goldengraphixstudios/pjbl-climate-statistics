@@ -582,3 +582,20 @@ How To Use Going Forward
   - `src/services/progressService.ts`
 - Commit: pending
 - Push: pending
+
+[2026-03-10 18:28] Lesson 2 intermediate activities made updateable
+- Continued report indicated Lesson 2 still felt unchanged: textareas remained locked and submit buttons still appeared inert on intermediate activities.
+- Applied a safer UX model for Lesson 2 internal activities:
+  - Activity 1 observations/questions
+  - Activity 2 video checkpoints / variable pairs
+  - Activity 3 variable selection
+  - Activity 4 exit ticket
+  - Phase 2 Activity 1
+  - Phase 3 analysis + stakeholder worksheet
+- These sections now remain editable after prior saves; buttons update existing answers instead of hard-locking the form.
+- Verification:
+  - repo-local `tsc -b` passed
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+- Commit: pending
+- Push: pending

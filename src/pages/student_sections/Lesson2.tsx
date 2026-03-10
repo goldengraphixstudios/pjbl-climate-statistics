@@ -861,15 +861,15 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                                       <div>
                                         <div style={{ fontWeight:700, marginBottom:4 }}>What do you observe in the image?</div>
-                                        <textarea rows={3} value={state.obs} onChange={(e)=> setObservations(prev=>({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), obs: e.target.value } }))} disabled={!!state.submitted} style={{ width:'100%', padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)' }} placeholder={`Describe the visible changes or impacts in Scenario ${scenario.id}`} />
+                                        <textarea rows={3} value={state.obs} onChange={(e)=> setObservations(prev=>({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), obs: e.target.value } }))} style={{ width:'100%', padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)' }} placeholder={`Describe the visible changes or impacts in Scenario ${scenario.id}`} />
                                       </div>
                                       <div>
                                         <div style={{ fontWeight:700, marginBottom:4 }}>Who or what is affected?</div>
-                                        <textarea rows={3} value={state.affected} onChange={(e)=> setObservations(prev=>({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), affected: e.target.value } }))} disabled={!!state.submitted} style={{ width:'100%', padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)' }} placeholder="People, animals, plants, infrastructure" />
+                                        <textarea rows={3} value={state.affected} onChange={(e)=> setObservations(prev=>({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), affected: e.target.value } }))} style={{ width:'100%', padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)' }} placeholder="People, animals, plants, infrastructure" />
                                       </div>
                                       <div>
                                         <div style={{ fontWeight:700, marginBottom:4 }}>What are the possible causes?</div>
-                                        <textarea rows={3} value={state.causes} onChange={(e)=> setObservations(prev=>({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), causes: e.target.value } }))} disabled={!!state.submitted} style={{ width:'100%', padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)' }} placeholder="List potential causes" />
+                                        <textarea rows={3} value={state.causes} onChange={(e)=> setObservations(prev=>({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), causes: e.target.value } }))} style={{ width:'100%', padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)' }} placeholder="List potential causes" />
                                       </div>
                                       <div className="section-actions" style={{ justifyContent:'flex-start' }}>
                                         <button className="save-btn" onClick={() => {
@@ -879,7 +879,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                             saveLesson2Phase1Activity1(user.username, scenario.id, cur.obs, cur.affected, cur.causes);
                                             setObservations(prev => ({ ...prev, [scenario.id]: { ...(prev[scenario.id]||{}), submitted: true } }));
                                           } catch (e) { /* ignore */ }
-                                        }} disabled={!allFilled || !!state.submitted} style={{ background:'var(--submit-bg)', color:'var(--submit-text)' }}>Submit Observations</button>
+                                        }} disabled={!allFilled} style={{ background:'var(--submit-bg)', color:'var(--submit-text)' }}>{state.submitted ? 'Update Observations' : 'Submit Observations'}</button>
                                       </div>
                                     </div>
                                   </div>
@@ -892,12 +892,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                             <div className="card" style={{ background:'var(--cards-bg)', borderColor:'var(--input-border)' }}>
                               <div style={{ fontWeight:700, fontSize:18, marginBottom:12 }}>Which scenarios seem most urgent or severe?</div>
-                              <textarea rows={4} value={activity1b.mostUrgent} onChange={(e)=> setActivity1b(prev=>({ ...prev, mostUrgent: e.target.value }))} disabled={!!activity1b.submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:20 }} placeholder="Write your assessment" />
+                              <textarea rows={4} value={activity1b.mostUrgent} onChange={(e)=> setActivity1b(prev=>({ ...prev, mostUrgent: e.target.value }))} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:20 }} placeholder="Write your assessment" />
                               <div style={{ fontWeight:700, fontSize:18, marginBottom:12 }}>List 2–3 questions you have about each scenario that could be answered using data or statistics</div>
                               <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
-                                <input value={activity1b.q1} onChange={(e)=> setActivity1b(prev=>({ ...prev, q1: e.target.value }))} disabled={!!activity1b.submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Question 1" />
-                                <input value={activity1b.q2} onChange={(e)=> setActivity1b(prev=>({ ...prev, q2: e.target.value }))} disabled={!!activity1b.submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Question 2" />
-                                <input value={activity1b.q3} onChange={(e)=> setActivity1b(prev=>({ ...prev, q3: e.target.value }))} disabled={!!activity1b.submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Question 3 (optional)" />
+                                <input value={activity1b.q1} onChange={(e)=> setActivity1b(prev=>({ ...prev, q1: e.target.value }))} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Question 1" />
+                                <input value={activity1b.q2} onChange={(e)=> setActivity1b(prev=>({ ...prev, q2: e.target.value }))} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Question 2" />
+                                <input value={activity1b.q3} onChange={(e)=> setActivity1b(prev=>({ ...prev, q3: e.target.value }))} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Question 3 (optional)" />
                               </div>
                               <div className="section-actions" style={{ justifyContent:'flex-end' }}>
                                 <button className="save-btn" onClick={() => {
@@ -906,7 +906,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     saveLesson2Phase1Activity1b(user.username, activity1b.mostUrgent, activity1b.q1, activity1b.q2, activity1b.q3);
                                     setActivity1b(prev => ({ ...prev, submitted: true }));
                                   } catch (e) { /* ignore */ }
-                                }} disabled={!!activity1b.submitted || !(activity1b.mostUrgent && activity1b.q1 && activity1b.q2)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>Submit Answers</button>
+                                }} disabled={!(activity1b.mostUrgent && activity1b.q1 && activity1b.q2)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{activity1b.submitted ? 'Update Answers' : 'Submit Answers'}</button>
                               </div>
                             </div>
                             <div className="gap-3" />
@@ -989,9 +989,8 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 return (
                                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <input value={val} onChange={(e) => {
-                                      if (videoSubmitted) return;
                                       const copy = videoAnswers.slice(); copy[i-1] = e.target.value; setVideoAnswers(copy);
-                                    }} disabled={videoSubmitted} style={{ flex: 1, padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder={`Answer ${i}`} />
+                                    }} style={{ flex: 1, padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder={`Answer ${i}`} />
                                     <div style={{ width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center' }}>
                                       {checked === true && (
                                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1013,7 +1012,6 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           </div>
                           <div className="section-actions" style={{ marginTop:24, justifyContent:'flex-end' }}>
                             <button className="save-btn" onClick={() => {
-                              if (videoSubmitted) return;
                               // require all answers filled
                               if (videoAnswers.slice(0,5).some(a => !a || a.trim() === '')) return;
                               // compute checks
@@ -1032,7 +1030,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 setVideoChecks(checks.map(c => c ? true : false));
                                 setVideoSubmitted(true);
                               } catch (e) { /* ignore */ }
-                            }} disabled={videoSubmitted || videoAnswers.slice(0,5).some(a => !a || a.trim() === '')} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>Submit Answers</button>
+                            }} disabled={videoAnswers.slice(0,5).some(a => !a || a.trim() === '')} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{videoSubmitted ? 'Update Answers' : 'Submit Answers'}</button>
                           </div>
                           <div className="gap-3" />
                           <div className="gap-3" />
@@ -1060,13 +1058,11 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   <div style={{ fontWeight:600 }}>{idx+1}.</div>
                                   <div>{pair}</div>
                                   <input value={pairAnswers[idx]?.predictor || ''} onChange={(e) => {
-                                      if (pairSubmitted) return;
                                       const copy = pairAnswers.slice(); copy[idx] = { ...(copy[idx] || { predictor: '', response: '' }), predictor: e.target.value }; setPairAnswers(copy);
-                                  }} disabled={pairSubmitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Predictor" />
+                                  }} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Predictor" />
                                   <input value={pairAnswers[idx]?.response || ''} onChange={(e) => {
-                                      if (pairSubmitted) return;
                                       const copy = pairAnswers.slice(); copy[idx] = { ...(copy[idx] || { predictor: '', response: '' }), response: e.target.value }; setPairAnswers(copy);
-                                  }} disabled={pairSubmitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Response" />
+                                  }} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)' }} placeholder="Response" />
                                   <div style={{ width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center' }}>
                                     {pairChecks[idx] === true && (
                                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1086,7 +1082,6 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             </div>
                             <div className="section-actions" style={{ marginTop:12, justifyContent:'flex-end' }}>
                               <button className="save-btn" onClick={() => {
-                                if (pairSubmitted) return;
                                 // require all predictors and responses filled
                                 if (pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)) return;
                                 try {
@@ -1105,7 +1100,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   setPairChecks(checks.map(c => c ? true : false));
                                   setPairSubmitted(true);
                                 } catch (e) { /* ignore */ }
-                              }} disabled={pairSubmitted || pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>Submit Answers</button>
+                              }} disabled={pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{pairSubmitted ? 'Update Answers' : 'Submit Answers'}</button>
                             </div>
                           </div>
                         </div>
@@ -1144,7 +1139,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:16, width:'100%', marginBottom:32 }}>
                             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                               <div style={{ fontWeight:700, fontSize:18, textAlign:'center' }}>Independent Variable</div>
-                              <select value={a3Var1} onChange={(e) => setA3Var1(e.target.value)} disabled={a3Submitted} style={{ width:'90%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', color:'var(--p-regular)', alignSelf:'center' }}>
+                              <select value={a3Var1} onChange={(e) => setA3Var1(e.target.value)} style={{ width:'90%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', color:'var(--p-regular)', alignSelf:'center' }}>
                                 <option value="" disabled>Select independent variable</option>
                                 <option>Consecutive Dry Days</option>
                                 <option>Consecutive Wet Days</option>
@@ -1159,7 +1154,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                               <div style={{ fontWeight:700, fontSize:18, textAlign:'center' }}>Dependent Variable</div>
-                              <select value={a3Var2} onChange={(e) => setA3Var2(e.target.value)} disabled={a3Submitted} style={{ width:'90%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', color:'var(--p-regular)', alignSelf:'center' }}>
+                              <select value={a3Var2} onChange={(e) => setA3Var2(e.target.value)} style={{ width:'90%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', color:'var(--p-regular)', alignSelf:'center' }}>
                                 <option value="" disabled>Select dependent variable</option>
                                 <option>Banana Production (MT)</option>
                                 <option>Commercial Fish Catch (MT)</option>
@@ -1181,16 +1176,16 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div className="gap-3" />
                           <div style={{ height:40 }} />
                           <div style={{ fontStyle:'italic', marginBottom:8 }}>Why do you think this pair of variables are related?</div>
-                          <textarea rows={2} value={a3Reasoning} onChange={(e) => setA3Reasoning(e.target.value)} disabled={a3Submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:12 }} placeholder="Provide your reasoning" />
+                          <textarea rows={2} value={a3Reasoning} onChange={(e) => setA3Reasoning(e.target.value)} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:12 }} placeholder="Provide your reasoning" />
 
                           <div style={{ fontStyle:'italic', marginBottom:8 }}>Predict whether you expect a positive correlation, negative correlation, or no correlation</div>
-                          <textarea rows={2} value={a3Prediction} onChange={(e) => setA3Prediction(e.target.value)} disabled={a3Submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:12 }} placeholder="State your prediction" />
+                          <textarea rows={2} value={a3Prediction} onChange={(e) => setA3Prediction(e.target.value)} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:12 }} placeholder="State your prediction" />
 
                             <div style={{ fontStyle:'italic', marginBottom:8 }}>Write your research question based on the influence of the independent variable on the dependent variable.<br/>Example: Does heat index influence heat-related illneses in Davao Region?</div>
-                          <textarea rows={2} value={a3ResearchQuestion} onChange={(e) => setA3ResearchQuestion(e.target.value)} disabled={a3Submitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:16 }} placeholder="Describe the potential impact" />
+                          <textarea rows={2} value={a3ResearchQuestion} onChange={(e) => setA3ResearchQuestion(e.target.value)} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:16 }} placeholder="Describe the potential impact" />
 
                           <div className="section-actions" style={{ justifyContent:'flex-end' }}>
-                            <button className="save-btn" onClick={() => submitA3()} disabled={a3Submitted || !canSubmitA3()} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{a3Submitted ? 'Submitted' : 'Submit Answers'}</button>
+                            <button className="save-btn" onClick={() => submitA3()} disabled={!canSubmitA3()} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{a3Submitted ? 'Update Answers' : 'Submit Answers'}</button>
                           </div>
                         </div>
                       </div>
@@ -1226,7 +1221,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         <div className="card" style={{ background:'var(--cards-bg)', borderColor:'var(--input-border)', padding:18 }}>
                           <div style={{ fontWeight:700, fontSize:18, marginBottom:12 }}>Exit Ticket</div>
                           <div style={{ marginBottom:10 }}>Write the most important concept or skill you gained from this phase of the lesson.</div>
-                          <textarea rows={2} value={exitText} onChange={(e) => setExitText(e.target.value)} disabled={exitSubmitted} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:20 }} placeholder="Share your key takeaway" />
+                          <textarea rows={2} value={exitText} onChange={(e) => setExitText(e.target.value)} style={{ width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:10, background:'var(--input-bg)', marginBottom:20 }} placeholder="Share your key takeaway" />
 
                           <div style={{ marginBottom:12 }}>On a scale of 1–5, rate your confidence level on the following:</div>
                           <div style={{ display:'grid', gridTemplateColumns:'1.5fr repeat(5, 60px)', gap:8, alignItems:'center' }}>
@@ -1238,21 +1233,21 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             <div style={{ paddingLeft:10 }}>Understanding independent vs. dependent variables</div>
                             {[5,4,3,2,1].map((n)=> (
                               <label key={`row1-${n}`} style={{ display:'flex', justifyContent:'center', alignItems:'center' }}>
-                                <input type="radio" name="conf-indep" value={n} checked={exitScale1 === n} onChange={() => setExitScale1(n)} disabled={exitSubmitted} style={{ accentColor:'var(--submit-bg)' }} />
+                                <input type="radio" name="conf-indep" value={n} checked={exitScale1 === n} onChange={() => setExitScale1(n)} style={{ accentColor:'var(--submit-bg)' }} />
                               </label>
                             ))}
 
                             <div style={{ paddingLeft:10 }}>Selecting appropriate climate variables for analysis</div>
                             {[5,4,3,2,1].map((n)=> (
                               <label key={`row2-${n}`} style={{ display:'flex', justifyContent:'center', alignItems:'center' }}>
-                                <input type="radio" name="conf-select" value={n} checked={exitScale2 === n} onChange={() => setExitScale2(n)} disabled={exitSubmitted} style={{ accentColor:'var(--submit-bg)' }} />
+                                <input type="radio" name="conf-select" value={n} checked={exitScale2 === n} onChange={() => setExitScale2(n)} style={{ accentColor:'var(--submit-bg)' }} />
                               </label>
                             ))}
 
                             <div style={{ paddingLeft:10 }}>Connecting statistics to real-world climate issues</div>
                             {[5,4,3,2,1].map((n)=> (
                               <label key={`row3-${n}`} style={{ display:'flex', justifyContent:'center', alignItems:'center' }}>
-                                <input type="radio" name="conf-connect" value={n} checked={exitScale3 === n} onChange={() => setExitScale3(n)} disabled={exitSubmitted} style={{ accentColor:'var(--submit-bg)' }} />
+                                <input type="radio" name="conf-connect" value={n} checked={exitScale3 === n} onChange={() => setExitScale3(n)} style={{ accentColor:'var(--submit-bg)' }} />
                               </label>
                             ))}
                           </div>
@@ -1265,7 +1260,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 saveLesson2Phase1Activity4(user.username, exitText, exitScale1, exitScale2, exitScale3);
                                 setExitSubmitted(true);
                               } catch (e) { /* ignore */ }
-                            }} disabled={exitSubmitted || !(exitText && exitScale1 && exitScale2 && exitScale3)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{exitSubmitted ? 'Submitted' : 'Submit Exit Ticket'}</button>
+                            }} disabled={!(exitText && exitScale1 && exitScale2 && exitScale3)} style={{ background:'var(--submit-bg)', color:'var(--submit-text)', borderColor:'var(--submit-bg)' }}>{exitSubmitted ? 'Update Exit Ticket' : 'Submit Exit Ticket'}</button>
                           </div>
                         </div>
                       </div>
@@ -1352,7 +1347,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   <input value={phase2A1Answers[i] || ''} onChange={(e) => {
                                     if (phase2A1Submitted) return;
                                     const copy = phase2A1Answers.slice(); copy[i] = e.target.value; setPhase2A1Answers(copy);
-                                  }} disabled={phase2A1Submitted} placeholder={`Answer ${i+1}`} style={{ flex: 1, padding:10, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9' }} />
+                                  }} placeholder={`Answer ${i+1}`} style={{ flex: 1, padding:10, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9' }} />
                                   <div style={{ width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center' }}>
                                     {phase2A1Checks[i] === true && (
                                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1382,7 +1377,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     setPhase2A1Checks(checks.map(c => c ? true : false));
                                     setPhase2A1Submitted(true);
                                   } catch (e) { /* ignore */ }
-                                }} disabled={phase2A1Submitted || phase2A1Answers.slice(0,4).some(a => !a || a.trim() === '')} style={{ background: '#E6B8CC', color: '#4D2038', borderColor: '#E6B8CC' }}>Save Answers</button>
+                                }} disabled={phase2A1Answers.slice(0,4).some(a => !a || a.trim() === '')} style={{ background: '#E6B8CC', color: '#4D2038', borderColor: '#E6B8CC' }}>{phase2A1Submitted ? 'Update Answers' : 'Save Answers'}</button>
                               </div>
                             </div>
                           </div>
@@ -1866,50 +1861,50 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>PART 1: What Your Data Shows</div>
 
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:6 }}>A. Our Research Question:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part1_researchQuestion} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part1_researchQuestion: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part1_researchQuestion} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part1_researchQuestion: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ height:8 }} />
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:6 }}>B. Our Regression Line Equation:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part1_regressionEquation} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part1_regressionEquation: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part1_regressionEquation} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part1_regressionEquation: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ height:8 }} />
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:6 }}>C. Our Interpretation:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part1_interpretation} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part1_interpretation: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part1_interpretation} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part1_interpretation: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div className="gap-3" />
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>PART 2: Explaining the Pattern</div>
                           <div style={{ marginBottom:8 }}>A. Why does the independent variable have an influence on the dependent variable?</div>
 
                           <div style={{ marginLeft:12, fontStyle:'italic', marginBottom:6 }}>Possible Explanation 1:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part2_possible1} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_possible1: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part2_possible1} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_possible1: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ marginLeft:12, fontStyle:'italic', marginBottom:6 }}>Evidence supporting this:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part2_evidence1} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_evidence1: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part2_evidence1} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_evidence1: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ marginLeft:12, fontStyle:'italic', marginBottom:6 }}>Possible Explanation 2:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part2_possible2} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_possible2: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part2_possible2} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_possible2: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ marginLeft:12, fontStyle:'italic', marginBottom:6 }}>Evidence supporting this:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part2_evidence2} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_evidence2: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part2_evidence2} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_evidence2: e.target.value }))} placeholder="Encoding / answer" style={{ width:'calc(100% - 12px)', marginLeft:12, padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ marginTop:8, marginBottom:6 }}>B. Which explanation seems most plausible? Why?</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part2_mostPlausible} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_mostPlausible: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:12 }} />
+                          <input value={analysisInputs.part2_mostPlausible} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part2_mostPlausible: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:12 }} />
 
                           <div className="gap-3" />
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>PART 3: What Your Data DOESN'T Show</div>
                           <div style={{ marginBottom:8 }}>A. Does the regression prove absolute causation or prediction here?</div>
                           <div style={{ display:'flex', gap:12, marginBottom:8 }}>
-                            <label style={{ display:'flex', alignItems:'center', gap:8 }}><input type="checkbox" disabled={analysisSubmitted} checked={analysisInputs.part3_causationYes !== ''} onChange={(e)=> setAnalysisInputs(s=>({ ...s, part3_causationYes: e.target.checked ? 'Yes, because' : '' }))} /> <span>Yes, because</span></label>
-                            <input disabled={analysisSubmitted} value={analysisInputs.part3_causationYes} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_causationYes: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, flex:1 }} />
+                            <label style={{ display:'flex', alignItems:'center', gap:8 }}><input type="checkbox" checked={analysisInputs.part3_causationYes !== ''} onChange={(e)=> setAnalysisInputs(s=>({ ...s, part3_causationYes: e.target.checked ? 'Yes, because' : '' }))} /> <span>Yes, because</span></label>
+                            <input value={analysisInputs.part3_causationYes} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_causationYes: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, flex:1 }} />
                           </div>
                           <div style={{ display:'flex', gap:12, marginBottom:8 }}>
-                            <label style={{ display:'flex', alignItems:'center', gap:8 }}><input type="checkbox" disabled={analysisSubmitted} checked={analysisInputs.part3_causationNo !== ''} onChange={(e)=> setAnalysisInputs(s=>({ ...s, part3_causationNo: e.target.checked ? 'No, because' : '' }))} /> <span>No, because</span></label>
-                            <input disabled={analysisSubmitted} value={analysisInputs.part3_causationNo} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_causationNo: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, flex:1 }} />
+                            <label style={{ display:'flex', alignItems:'center', gap:8 }}><input type="checkbox" checked={analysisInputs.part3_causationNo !== ''} onChange={(e)=> setAnalysisInputs(s=>({ ...s, part3_causationNo: e.target.checked ? 'No, because' : '' }))} /> <span>No, because</span></label>
+                            <input value={analysisInputs.part3_causationNo} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_causationNo: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, flex:1 }} />
                           </div>
 
                           <div style={{ marginBottom:8 }}>B. What other factors might influence this prediction?</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part3_otherFactor1} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_otherFactor1: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
-                          <input disabled={analysisSubmitted} value={analysisInputs.part3_otherFactor2} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_otherFactor2: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:12 }} />
+                          <input value={analysisInputs.part3_otherFactor1} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_otherFactor1: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part3_otherFactor2} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part3_otherFactor2: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:12 }} />
 
                           <div className="gap-3" />
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>PART 4: Data Quality and Limitations</div>
@@ -1923,19 +1918,19 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           </div>
 
                           <div style={{ fontWeight:700, marginBottom:6 }}>A. My biggest concern about data reliability:</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part4_biggestConcern} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part4_biggestConcern: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
+                          <input value={analysisInputs.part4_biggestConcern} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part4_biggestConcern: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:8 }} />
 
                           <div style={{ height:8 }} />
                           <div style={{ fontWeight:700, marginBottom:6 }}>B. How does this limitation affect my confidence in the findings?</div>
-                          <input disabled={analysisSubmitted} value={analysisInputs.part4_confidenceEffect} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part4_confidenceEffect: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:12 }} />
+                          <input value={analysisInputs.part4_confidenceEffect} onChange={(e)=>setAnalysisInputs(s=>({ ...s, part4_confidenceEffect: e.target.value }))} placeholder="Encoding / answer" style={{ width:'100%', padding:12, border:`1px solid var(--input-border)`, borderRadius:8, background:`var(--input-bg)`, marginBottom:12 }} />
 
                           <div style={{ height:16 }} />
                           <div className="section-actions" style={{ justifyContent:'flex-end' }}>
                             {(() => {
                               const allFilled = Object.values(analysisInputs).every(v => v && v.trim() !== '');
                               return (
-                                <button className="save-btn phase3-submit" disabled={!allFilled || analysisSubmitted} onClick={() => {
-                                    if (!allFilled || analysisSubmitted) return;
+                                <button className="save-btn phase3-submit" disabled={!allFilled} onClick={() => {
+                                    if (!allFilled) return;
                                     try {
                                       // Save answers and mark as submitted
                                       saveLesson2Phase3Activity1(user.username, { ...analysisInputs, _submitted: true, analysisSubmitted: true });
@@ -1943,7 +1938,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     } catch (e) { /* ignore */ }
                                     setAnalysisSubmitted(true);
                                   
-                                  }} style={{ background: allFilled && !analysisSubmitted ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled && !analysisSubmitted ? 'var(--submit-text)' : '#9CA3AF' }}>Submit Analysis</button>
+                                  }} style={{ background: allFilled ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled ? 'var(--submit-text)' : '#9CA3AF' }}>{analysisSubmitted ? 'Update Analysis' : 'Submit Analysis'}</button>
                               );
                             })()}
                           </div>
@@ -1985,17 +1980,17 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div style={{ marginBottom:8 }}>Who in our community might care about this relationship?</div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                             <div style={{ fontWeight:700 }}>1.</div>
-                            <input disabled={analysis2Submitted} value={analysis2Inputs.part1_s1} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part1_s1: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
+                            <input value={analysis2Inputs.part1_s1} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part1_s1: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
                             <div style={{ fontStyle:'italic', color:'#6B7280', fontSize:'0.85rem' }}>(e.g., rice farmers)</div>
                           </div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                             <div style={{ fontWeight:700 }}>2.</div>
-                            <input disabled={analysis2Submitted} value={analysis2Inputs.part1_s2} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part1_s2: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
+                            <input value={analysis2Inputs.part1_s2} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part1_s2: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
                             <div style={{ fontStyle:'italic', color:'#6B7280', fontSize:'0.85rem' }}>(e.g., barangay health workers)</div>
                           </div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
                             <div style={{ fontWeight:700 }}>3.</div>
-                            <input disabled={analysis2Submitted} value={analysis2Inputs.part1_s3} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part1_s3: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
+                            <input value={analysis2Inputs.part1_s3} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part1_s3: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
                             <div style={{ fontStyle:'italic', color:'#6B7280', fontSize:'0.85rem' }}>(e.g., city disaster management office)</div>
                           </div>
 
@@ -2004,10 +1999,10 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div style={{ marginBottom:8 }}>Choose ONE stakeholder and explain:</div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                             <div style={{ width:260 }}>The understanding of this influence matters to</div>
-                            <input disabled={analysis2Submitted} value={analysis2Inputs.part2_who} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part2_who: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
+                            <input value={analysis2Inputs.part2_who} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part2_who: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
                           </div>
                           <div style={{ marginBottom:6 }}>because…</div>
-                          <input disabled={analysis2Submitted} value={analysis2Inputs.part2_because} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part2_because: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', width:'100%', marginBottom:12 }} />
+                          <input value={analysis2Inputs.part2_because} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part2_because: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', width:'100%', marginBottom:12 }} />
 
                           <div className="gap-3" />
                           <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>PART 3: Current Decisions This Affects</div>
@@ -2015,11 +2010,11 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div style={{ fontStyle:'italic', marginBottom:8 }}>Decisions affected:</div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                             <div style={{ fontWeight:700 }}>1.</div>
-                            <input disabled={analysis2Submitted} value={analysis2Inputs.part3_decision1} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part3_decision1: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
+                            <input value={analysis2Inputs.part3_decision1} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part3_decision1: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
                           </div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
                             <div style={{ fontWeight:700 }}>2.</div>
-                            <input disabled={analysis2Submitted} value={analysis2Inputs.part3_decision2} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part3_decision2: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
+                            <input value={analysis2Inputs.part3_decision2} onChange={(e)=>setAnalysis2Inputs(s=>({ ...s, part3_decision2: e.target.value }))} placeholder="Encoding / answer" style={{ padding:12, border:'1px solid #FFD4E4', borderRadius:8, background:'#FFF5F9', flex:1 }} />
                           </div>
 
                           <div style={{ height:16 }} />
@@ -2027,14 +2022,14 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             {(() => {
                               const allFilled = Object.values(analysis2Inputs).every(v => v && v.trim() !== '');
                               return (
-                                <button className="save-btn phase3-submit" disabled={!allFilled || analysis2Submitted} onClick={() => {
-                                  if (!allFilled || analysis2Submitted) return;
+                                <button className="save-btn phase3-submit" disabled={!allFilled} onClick={() => {
+                                  if (!allFilled) return;
                                   try {
                                     saveLesson2Phase3Activity2(user.username, analysis2Inputs);
                                     savePhase3SubmitWorksheet(user.username);
                                   } catch (e) { /* ignore */ }
                                   setAnalysis2Submitted(true);
-                                }} style={{ background: allFilled && !analysis2Submitted ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled && !analysis2Submitted ? 'var(--submit-text)' : '#9CA3AF' }}>Submit Worksheet</button>
+                                }} style={{ background: allFilled ? 'var(--submit-bg)' : '#E5EDF9', color: allFilled ? 'var(--submit-text)' : '#9CA3AF' }}>{analysis2Submitted ? 'Update Worksheet' : 'Submit Worksheet'}</button>
                               );
                             })()}
                           </div>

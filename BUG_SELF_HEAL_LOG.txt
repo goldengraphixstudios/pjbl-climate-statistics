@@ -304,3 +304,19 @@ Self-heal actions applied
 Files touched
 - src/pages/student_sections/Lesson2.tsx
 - src/services/progressService.ts
+
+[2026-03-10 18:28] Lesson 2 intermediate UI needed updateable behavior
+
+Observed issues
+- User still reported Lesson 2 as unchanged: textareas remained locked and submit buttons still seemed to do nothing on previously touched activities.
+
+Diagnosis
+- Even with explicit submit flags fixed, the page was still hard-disabling many intermediate lesson inputs/buttons based on local section submitted flags.
+- For this lesson, those intermediate activities are better treated as updateable checkpoints, not one-time immutable submissions.
+
+Self-heal actions applied
+- Removed hard-disable behavior from the main Lesson 2 intermediate activity inputs/buttons.
+- Buttons now remain usable for resubmission/updates and relabel to `Update ...` after the first save.
+
+Files touched
+- src/pages/student_sections/Lesson2.tsx
