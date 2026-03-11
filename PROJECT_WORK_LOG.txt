@@ -710,3 +710,12 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 13:18] Student dashboard lesson progression simplified
+- Changed student section locking so the next learning section unlocks once the previous section is submitted/completed.
+- Removed lesson-feedback acknowledgment as a blocker for progressing from Lesson 1 to Lesson 2, Lesson 2 to Lesson 3, and Lesson 3 to Post-Assessment.
+- Updated dashboard status labels so submitted sections display as completed rather than waiting on feedback state.
+- Files:
+  - `src/pages/portals/StudentPortal.tsx`
+- Commit: pending
+- Push: pending

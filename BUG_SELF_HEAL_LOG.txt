@@ -62,6 +62,23 @@ Self-heal actions applied
 Files touched
 - src/pages/portals/AdminPortal.tsx
 
+[2026-03-11 13:18] Student dashboard still blocked next lesson after previous completion
+
+Observed issues
+- Students could complete Lesson 1 but Lesson 2 remained locked.
+- The same progression issue was expected to affect later lesson transitions as well.
+
+Diagnosis
+- The student dashboard still required lesson feedback and acknowledgment before unlocking the next section.
+- That no longer matched the intended flow where the next section should open once the previous section is completed.
+
+Self-heal actions applied
+- Simplified section locking to require previous submission/completion only.
+- Simplified dashboard status labels so submitted sections show as completed instead of waiting on feedback state.
+
+Files touched
+- src/pages/portals/StudentPortal.tsx
+
 Verification
 - repo-local TypeScript build succeeded
 - repo-local Vite build succeeded

@@ -51,9 +51,6 @@ const getActivityStatusLabel = (status?: {
   acknowledged: boolean;
 }, activityType?: ActivityType | 'performance') => {
   if (!status?.submitted) return 'Not started';
-  if (activityType === 'pre' || activityType === 'post') return 'Completed';
-  if (!status.feedback) return 'Submitted';
-  if (!status.acknowledged) return 'Feedback ready';
   return 'Completed';
 };
 
@@ -155,8 +152,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
       const prevType = activityTypeForId(sectionId - 1);
       if (prevType) {
         const prev = activityStatuses[prevType];
-        if (prevType === 'pre' || prevType === 'post') return !prev.submitted;
-        if (!prev.submitted || !prev.feedback || !prev.acknowledged) return true;
+        if (!prev.submitted) return true;
       }
     }
     return false;
