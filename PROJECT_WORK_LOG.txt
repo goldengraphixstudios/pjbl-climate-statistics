@@ -778,3 +778,17 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 10:42] Refresh persistence and live admin bootstrap
+- Stopped clearing Supabase auth storage automatically on GitHub Pages boot and re-enabled persisted sessions while keeping token auto-refresh disabled there.
+- Added a lightweight app-session restore in `src/App.tsx` so refresh can restore the last portal state even when the Supabase session path is flaky.
+- Forced an immediate class reload after login and on every auth-user restore, then shortened the class refresh interval so admin data appears without waiting for a manual page refresh.
+- Added periodic/focus/visibility polling in `src/pages/portals/AdminPortal.tsx` for class record, response, feedback, and lesson-state data.
+- Added `currentUserId` fallback for teacher score saves in `src/services/responsesService.ts` so scoring survives app-session restores.
+- Files:
+  - `src/services/supabaseClient.ts`
+  - `src/App.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+  - `src/services/responsesService.ts`
+- Commit: pending
+- Push: pending

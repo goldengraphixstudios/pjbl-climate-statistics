@@ -38,6 +38,7 @@ interface LegacyClass {
 }
 
 const LOGIN_STATUS_KEY = 'studentLoginStatus';
+const APP_SESSION_KEY = 'appSessionV1';
 
 function getStudentLoginStatusMap(): Record<string, boolean> {
   try {
@@ -55,6 +56,37 @@ function saveStudentLoginStatus(username: string) {
     const current = getStudentLoginStatusMap();
     current[username] = true;
     localStorage.setItem(LOGIN_STATUS_KEY, JSON.stringify(current));
+  } catch {}
+}
+
+interface StoredAppSession {
+  authUser: AuthUser;
+  currentPage: string;
+  portalTab: 'overview' | 'sections';
+  savedAt: number;
+}
+
+function getStoredAppSession(): StoredAppSession | null {
+  try {
+    const raw = localStorage.getItem(APP_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.authUser?.username || !parsed?.authUser?.role) return null;
+    return parsed as StoredAppSession;
+  } catch {
+    return null;
+  }
+}
+
+function saveAppSession(session: StoredAppSession) {
+  try {
+    localStorage.setItem(APP_SESSION_KEY, JSON.stringify(session));
+  } catch {}
+}
+
+function clearAppSession() {
+  try {
+    localStorage.removeItem(APP_SESSION_KEY);
   } catch {}
 }
 
@@ -100,19 +132,35 @@ function App() {
   };
 
   useEffect(() => {
-    // Check Supabase session and subscribe to auth changes
     (async () => {
+      const storedAppSession = getStoredAppSession();
       try {
         const sess = await supabase.auth.getSession();
         const session = sess.data?.session;
         if (session) {
           const user = session.user;
           const profile = await getUserProfileByIdentifier(user.email || user.id);
-          const role = (profile && (profile.role as UserRole)) || 'student';
-          setAuthUser({ id: user.id, username: profile?.username || profile?.email || user.id, role });
-          setCurrentPage('portal');
+          const role = (profile && (profile.role as UserRole)) || storedAppSession?.authUser?.role || 'student';
+          const restoredUser = {
+            id: profile?.id || storedAppSession?.authUser?.id || user.id,
+            username: profile?.username || profile?.email || storedAppSession?.authUser?.username || user.id,
+            role
+          } satisfies AuthUser;
+          setAuthUser(restoredUser);
+          setPortalTab(storedAppSession?.portalTab || 'overview');
+          setCurrentPage(storedAppSession?.currentPage || 'portal');
+        } else if (storedAppSession?.authUser) {
+          setAuthUser(storedAppSession.authUser);
+          setPortalTab(storedAppSession.portalTab || 'overview');
+          setCurrentPage(storedAppSession.currentPage || 'portal');
         }
-      } catch (e) {}
+      } catch {
+        if (storedAppSession?.authUser) {
+          setAuthUser(storedAppSession.authUser);
+          setPortalTab(storedAppSession.portalTab || 'overview');
+          setCurrentPage(storedAppSession.currentPage || 'portal');
+        }
+      }
     })();
 
     loadClasses();
@@ -129,7 +177,9 @@ function App() {
       if (document.visibilityState === 'visible') refresh();
     };
 
-    const intervalId = setInterval(refresh, 15000);
+    refresh();
+
+    const intervalId = setInterval(refresh, 7000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -139,6 +189,20 @@ function App() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [authUser?.id, authUser?.role]);
+
+  useEffect(() => {
+    if (!authUser) {
+      clearAppSession();
+      return;
+    }
+
+    saveAppSession({
+      authUser,
+      currentPage,
+      portalTab,
+      savedAt: Date.now()
+    });
+  }, [authUser, currentPage, portalTab]);
 
   // Capture uncaught errors to localStorage for diagnostics
   useEffect(() => {
@@ -180,12 +244,15 @@ function App() {
       localStorage.setItem('currentUserId', id);
     }
     setAuthUser(userObj);
+    setPortalTab('overview');
     setCurrentPage('portal');
+    loadClasses().catch((e) => console.error('[App] post-login loadClasses error', e));
   };
 
   const handleLogout = () => {
     try { signOut().catch(() => {}); } catch {}
     localStorage.removeItem('currentUserId');
+    clearAppSession();
     setAuthUser(null);
     setCurrentPage('landing');
   };
@@ -212,6 +279,7 @@ function App() {
     setAuthUser(userObj);
     setPortalTab('overview');
     setCurrentPage('portal');
+    loadClasses().catch((e) => console.error('[App] post-student-login loadClasses error', e));
   };
 
   const handleCreateClass = async (grade: string, section: string) => {

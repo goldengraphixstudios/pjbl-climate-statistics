@@ -30,10 +30,6 @@ export function clearStaleSupabaseAuthStorage() {
   } catch {}
 }
 
-if (isGithubPagesHost) {
-  clearStaleSupabaseAuthStorage();
-}
-
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
     'Supabase environment variables are missing. ' +
@@ -43,13 +39,13 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   // provide a tiny bit of visibility when the app initializes
   console.info('Supabase client configured for', SUPABASE_URL);
   if (isGithubPagesHost) {
-    console.info('GitHub Pages host detected: Supabase auth session persistence disabled');
+    console.info('GitHub Pages host detected: Supabase auth auto-refresh disabled');
   }
 }
 
 export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '', {
   auth: {
-    persistSession: !isGithubPagesHost,
+    persistSession: true,
     autoRefreshToken: !isGithubPagesHost,
     detectSessionInUrl: false,
   },

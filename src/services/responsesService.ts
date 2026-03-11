@@ -15,6 +15,18 @@ export interface ResponseRow {
   updated_at: string;
 }
 
+function isUuid(value: string | null | undefined) {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function resolveScorerId() {
+  const storedId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
+  if (isUuid(storedId)) return storedId!;
+
+  const user = await supabase.auth.getUser();
+  return user.data?.user?.id || null;
+}
+
 /**
  * Upsert a student's response for an activity.  Returns the upserted row.
  */
@@ -83,8 +95,7 @@ export async function teacherUpdateScore(
   activity_type: ActivityType,
   teacher_score: number
 ) {
-  const user = await supabase.auth.getUser();
-  const teacher_id = user.data?.user?.id || null;
+  const teacher_id = await resolveScorerId();
   const { data, error } = await supabase
     .from('responses')
     .update({

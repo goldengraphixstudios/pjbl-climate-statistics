@@ -565,3 +565,26 @@ Self-heal actions applied
 Files touched
 - src/pages/student_sections/Lesson1.tsx
 - src/pages/portals/AdminPortal.tsx
+
+[2026-03-12 10:42] Admin refresh logout and empty-first-load
+
+Observed issues
+- On GitHub Pages, refreshing the site logged staff out immediately.
+- On fresh admin login, class/data tabs often appeared empty until the user manually refreshed the page.
+
+Diagnosis
+- The Pages-specific auth workaround was clearing stored Supabase auth tokens on every boot and disabling session persistence entirely.
+- `App.tsx` only loaded classes on mount and then on a delayed interval, so a login that happened after the initial anonymous load could leave the staff portal empty until a later reload.
+- `AdminPortal.tsx` only refreshed feedback/responses when props changed, not on a short live polling cadence.
+
+Self-heal actions applied
+- Re-enabled Supabase session persistence on GitHub Pages while keeping auto-refresh disabled.
+- Added app-session persistence/restoration in `App.tsx` and immediate class reloads after login/restore.
+- Added live polling/focus refresh in `AdminPortal.tsx`.
+- Added `currentUserId` fallback for teacher score writes.
+
+Files touched
+- src/services/supabaseClient.ts
+- src/App.tsx
+- src/pages/portals/AdminPortal.tsx
+- src/services/responsesService.ts
