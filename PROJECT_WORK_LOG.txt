@@ -691,3 +691,13 @@ How To Use Going Forward
   - `src/styles/AdminPortal.css`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 12:58] Lesson 1 Activity 4 ungated and admin preview state merge
+- Removed the teacher-feedback requirement from Lesson 1 Phase 1 Activity 4 revised-question encoding and finalization.
+- Updated the Activity 4 instructional copy so teacher feedback is optional rather than required for progression.
+- Admin lesson result rows now merge `student_state` with `responses` before generating the submission preview, so latest saved Lesson 1 values such as the revised question appear in the table and review consistently.
+- Files:
+  - `src/pages/student_sections/Lesson1.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending

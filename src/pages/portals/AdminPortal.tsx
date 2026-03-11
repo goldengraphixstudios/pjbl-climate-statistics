@@ -471,6 +471,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const [classRecordLoading, setClassRecordLoading] = useState(false);
   const [feedbackRows, setFeedbackRows] = useState<FeedbackRow[]>([]);
   const [responseRows, setResponseRows] = useState<ResponseRow[]>([]);
+  const [lessonStateMap, setLessonStateMap] = useState<Record<string, any>>({});
   const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0);
   const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
   const [scoreSavingKey, setScoreSavingKey] = useState<string | null>(null);
@@ -621,17 +622,28 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   useEffect(() => {
     const loadResponses = async () => {
       try {
-        const studentIds = (sectionFilter === 'ALL'
+        const selectedStudents = (sectionFilter === 'ALL'
           ? classes.flatMap(c => c.students)
-          : classes.filter(c => `Section ${c.section}` === sectionFilter).flatMap(c => c.students))
+          : classes.filter(c => `Section ${c.section}` === sectionFilter).flatMap(c => c.students));
+        const studentIds = selectedStudents
           .map((s: any) => s.id)
           .filter(Boolean);
         if (studentIds.length === 0) {
           setResponseRows([]);
+          setLessonStateMap({});
           return;
         }
         const rows = await getResponsesForStudents(studentIds);
         setResponseRows(rows);
+        const lessonStates = await Promise.all(
+          selectedStudents.flatMap((student: any) =>
+            (['lesson1', 'lesson2', 'lesson3'] as LessonSlug[]).map(async (lessonSlug) => {
+              const state = await getStudentState(student.id, lessonSlug);
+              return [`${student.id}::${lessonSlug}`, state] as const;
+            })
+          )
+        );
+        setLessonStateMap(Object.fromEntries(lessonStates.filter(([, state]) => !!state)));
       } catch (e) {
         console.error('[AdminPortal] responses load error', e);
       }
@@ -743,13 +755,16 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const getLessonRowsForActivity = (activityType: 'lesson1' | 'lesson2' | 'lesson3') => {
     return filteredStudents.map((s: any) => {
       const response = getLatestResponse(s.id, activityType);
+      const mergedResponse = response
+        ? mergeReviewResponse(response, lessonStateMap[`${s.id}::${activityType}`])
+        : response;
       const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === activityType);
-      const preview = getLessonSubmissionPreview(response);
+      const preview = getLessonSubmissionPreview(mergedResponse);
       return {
         id: s.id || '',
         name: s.name || '',
         username: s.username || '',
-        response,
+        response: mergedResponse,
         feedback,
         preview
       };

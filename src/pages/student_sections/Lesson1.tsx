@@ -893,7 +893,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
     setState(getLesson1State(user.username));
   };
 
-  const canFinalize = useMemo(() => !!(p1Data.a4aSubmitted) && !!(p1Data.a4bFinalQuestion || '').trim() && !!activity4Feedback, [p1Data.a4aSubmitted, p1Data.a4bFinalQuestion, activity4Feedback]);
+  const canFinalize = useMemo(() => !!(p1Data.a4aSubmitted) && !!(p1Data.a4bFinalQuestion || '').trim(), [p1Data.a4aSubmitted, p1Data.a4bFinalQuestion]);
   const onFinalizeQuestion = async () => {
     saveActivity4bFinal(user.username, p1Data.a4bFinalQuestion || '');
     const nextState = normalizeLesson1State(getLesson1State(user.username));
@@ -2012,14 +2012,14 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                         <ol style={{ paddingLeft:22 }}>
                           <li>Look at the sample research question provided as a guide.</li>
                           <li>In the first encoding field, type your first version of your research question.</li>
-                          <li>Submit it and wait for your teacher’s feedback.</li>
-                          <li>Once you receive feedback, follow the instructions given by your teacher.</li>
-                          <li>Encode your revised or improved version in the second encoding field.</li>
+                          <li>Submit your first version of the question.</li>
+                          <li>You may revise it immediately, or improve it further if your teacher later gives feedback.</li>
+                          <li>Encode your revised or improved version in the second encoding field, then finalize it.</li>
                         </ol>
                       </div>
                     </div>
                     <div className="gap-3 icon-label"><span className="icon">🔔</span> <b>Reminder:</b></div>
-                    <p>Feedback is part of the process—use it to strengthen your question.</p>
+                    <p>You may improve your question on your own first. If teacher feedback is given later, you can still use it to strengthen the question.</p>
                     <div className="info-card" style={{ marginTop: 8 }}>
                       <div><b>Question Template:</b></div>
                       <div className="gap-2"><em>"Is there a correlation between [Variable 1] and [Variable 2] in Davao Region, and what does this mean for [specific local concern]?"</em></div>
@@ -2033,11 +2033,11 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                     <div className="section-actions" style={{ justifyContent:'flex-end' }}><button className="submit-btn" onClick={onSubmitQuestion} disabled={!canSubmitQuestion || !!p1Data.a4aSubmitted}>Submit Question</button></div>
                     <div className="gap-3 feedback-box" style={{ width: '100%' }}>
                       <b>Feedback Box</b>
-                      <div className="gap-2">{activity4Feedback || 'Awaiting teacher feedback...'}</div>
+                      <div className="gap-2">{activity4Feedback || 'No teacher feedback yet. You may continue with your own revision.'}</div>
                     </div>
                     <div className="gap-3">
-                      <div><b>Now, encode here your revised question based on your teacher’s feedback.</b></div>
-                      <textarea rows={3} style={{ width: '100%' }} value={(state.phaseData as any)[1]?.a4bFinalQuestion || ''} onChange={(e)=> savePhaseData(1, { a4bFinalQuestion: e.target.value })} disabled={!activity4Feedback || !!((state.phaseData as any)[1]?.a4bFinalized)} />
+                      <div><b>Now, encode here your revised or improved question.</b></div>
+                      <textarea rows={3} style={{ width: '100%' }} value={(state.phaseData as any)[1]?.a4bFinalQuestion || ''} onChange={(e)=> savePhaseData(1, { a4bFinalQuestion: e.target.value })} disabled={!!((state.phaseData as any)[1]?.a4bFinalized)} />
                     </div>
                     <div className="section-actions" style={{ justifyContent:'flex-end' }}><button className="finalize-btn" onClick={onFinalizeQuestion} disabled={!canFinalize || !!p1Data.a4bFinalized}>Finalize Question</button></div>
                   </div>

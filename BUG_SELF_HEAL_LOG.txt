@@ -402,3 +402,22 @@ Files touched
 - src/pages/portals/AdminPortal.tsx
 - src/pages/student_sections/PerformanceSummary.tsx
 - src/styles/AdminPortal.css
+
+[2026-03-11 12:58] Lesson 1 Activity 4 gating and stale admin lesson preview
+
+Observed issues
+- Lesson 1 Phase 1 Activity 4 still required teacher feedback before the revised-question field and `Finalize Question` button could be used.
+- Admin Lesson 1 output rows showed stale/incomplete answer preview data even though newer values existed in `student_state`.
+
+Diagnosis
+- `canFinalize` and the revised-question textarea were still explicitly gated by `activity4Feedback`.
+- The lesson result table preview used the raw `responses.lesson1` payload, while only the review modal merged in `student_state`.
+
+Self-heal actions applied
+- Removed the teacher-feedback requirement for Lesson 1 Activity 4 revision/finalization.
+- Updated the Activity 4 copy and empty feedback-box message to reflect optional teacher feedback.
+- Merged `student_state` into lesson result row previews before generating Lesson 1/2/3 admin submission summaries.
+
+Files touched
+- src/pages/student_sections/Lesson1.tsx
+- src/pages/portals/AdminPortal.tsx
