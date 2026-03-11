@@ -746,3 +746,14 @@ How To Use Going Forward
   - `src/App.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 14:12] Login flow hardening
+- Removed the stray `student-portal` route transition from the student login handler and now route all successful logins directly to `portal`.
+- Added timeout guards to both `StudentLogin` and `AdminLogin` so slow Supabase/auth calls cannot leave the UI spinning indefinitely.
+- Normalized trimmed usernames before login/profile lookups to avoid silent mismatches caused by accidental leading/trailing spaces.
+- Files:
+  - `src/App.tsx`
+  - `src/pages/auth/StudentLogin.tsx`
+  - `src/pages/auth/AdminLogin.tsx`
+- Commit: pending
+- Push: pending

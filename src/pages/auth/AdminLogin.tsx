@@ -15,21 +15,37 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const withTimeout = async <T,>(promise: PromiseLike<T>, ms = 15000): Promise<T> => {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) =>
+        window.setTimeout(() => reject(new Error('timeout')), ms)
+      ),
+    ]);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     (async () => {
       try {
+        const normalizedUsername = username.trim();
         // Resolve username → email via users table, then Supabase signIn
-        const profileRes = await supabase
+        const profileRes = await withTimeout<{
+          data: { id: string; email: string; username: string; role: string } | null;
+          error?: unknown;
+        }>(
+          supabase
           .from('users')
           .select('id, email, username, role')
-          .eq('username', username)
-          .maybeSingle();
+          .eq('username', normalizedUsername)
+          .maybeSingle(),
+          10000
+        );
 
-        const email = username.includes('@')
-          ? username
+        const email = normalizedUsername.includes('@')
+          ? normalizedUsername
           : profileRes.data?.email || null;
 
         if (!email) {
@@ -37,7 +53,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
           return;
         }
 
-        const res = await signIn(email, password);
+        const res = await withTimeout(signIn(email, password));
         if (res.error) {
           setError('Invalid credentials. Please try again.');
           return;
@@ -50,11 +66,14 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
           return;
         }
 
-        const displayUsername = profileRes.data?.username || username;
+        const displayUsername = profileRes.data?.username || normalizedUsername;
         const appUserId = profileRes.data?.id || res.data?.session?.user?.id;
         onLogin(displayUsername, 'admin', appUserId);
       } catch (e) {
-        setError('Login failed. Please try again.');
+        const message = e instanceof Error && e.message === 'timeout'
+          ? 'Login timed out. Please check your connection and try again.'
+          : 'Login failed. Please try again.';
+        setError(message);
         console.error(e);
       } finally {
         setIsLoading(false);

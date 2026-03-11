@@ -16,13 +16,26 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const withTimeout = async <T,>(promise: PromiseLike<T>, ms = 15000): Promise<T> => {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) =>
+        window.setTimeout(() => reject(new Error('timeout')), ms)
+      ),
+    ]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      const result = await validateStudentCredentials(username, password);
+      const normalizedUsername = username.trim();
+      const normalizedPassword = password;
+      const result = await withTimeout(
+        validateStudentCredentials(normalizedUsername, normalizedPassword)
+      );
       if (!result.valid) {
         setError('Invalid credentials. Please contact your teacher for login details.');
         return;
@@ -33,17 +46,23 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
       let role: 'student' | 'admin' = 'student';
 
       if (userId) {
-        const profile = await getUserProfileByIdentifier(userId);
+        const profile = await withTimeout(getUserProfileByIdentifier(userId), 10000);
         if (profile?.role === 'admin') role = 'admin';
         userId = profile?.id || userId;
       } else if (!userId) {
         // Look up by username to get the Supabase id
         try {
-          const { data } = await supabase
+          const { data } = await withTimeout<{
+            data: { id: string; role: 'student' | 'admin' | 'teacher' } | null;
+            error?: unknown;
+          }>(
+            supabase
             .from('users')
             .select('id, role')
-            .eq('username', username)
-            .maybeSingle();
+            .eq('username', normalizedUsername)
+            .maybeSingle(),
+            10000
+          );
           if (data) {
             userId = data.id;
             if (data.role === 'admin') role = 'admin';
@@ -51,9 +70,12 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
         } catch {}
       }
 
-      onLogin(username, role, userId);
+      onLogin(normalizedUsername, role, userId);
     } catch (err) {
-      setError('Login failed. Please try again.');
+      const message = err instanceof Error && err.message === 'timeout'
+        ? 'Login timed out. Please check your connection and try again.'
+        : 'Login failed. Please try again.';
+      setError(message);
       console.error('Student login error', err);
     } finally {
       setIsLoading(false);

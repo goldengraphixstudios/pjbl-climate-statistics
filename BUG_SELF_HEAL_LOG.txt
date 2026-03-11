@@ -186,6 +186,26 @@ Self-heal actions applied
 Files touched
 - src/App.tsx
 
+[2026-03-11 14:12] Login UI could appear stuck
+
+Observed issues
+- Report that logging in gets stuck.
+
+Diagnosis
+- The student login path still had a bogus `student-portal` page transition for admin-role logins through the student auth flow.
+- Neither login screen had a timeout guard, so a slow or hung Supabase request could leave the UI showing `Logging in...` indefinitely.
+- Username lookups were also not trimming whitespace before querying.
+
+Self-heal actions applied
+- Forced successful student-side login routing to `portal`.
+- Added promise timeouts to both student and admin login flows.
+- Normalized trimmed usernames before auth/profile lookups.
+
+Files touched
+- src/App.tsx
+- src/pages/auth/StudentLogin.tsx
+- src/pages/auth/AdminLogin.tsx
+
 [2026-03-11 13:08] Admin lesson tabs excluded students with state-only work
 
 Observed issues

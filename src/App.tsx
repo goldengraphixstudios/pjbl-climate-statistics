@@ -211,12 +211,7 @@ function App() {
     }
     setAuthUser(userObj);
     setPortalTab('overview');
-
-    if (role === 'admin') {
-      setCurrentPage('student-portal');
-    } else {
-      setCurrentPage('portal');
-    }
+    setCurrentPage('portal');
   };
 
   const handleCreateClass = async (grade: string, section: string) => {
