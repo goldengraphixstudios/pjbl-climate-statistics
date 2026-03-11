@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AdminShieldIcon } from '../../components/RoleIcons';
 import '../../styles/Auth.css';
-import { signIn, supabase } from '../../services/supabaseClient';
+import { clearStaleSupabaseAuthStorage, signIn, supabase } from '../../services/supabaseClient';
 
 interface AdminLoginProps {
   onLogin: (username: string, role: 'admin', id?: string) => void;
@@ -31,6 +31,9 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
     (async () => {
       try {
         const normalizedUsername = username.trim();
+        if (typeof window !== 'undefined' && /(^|\.)github\.io$/i.test(window.location.hostname)) {
+          clearStaleSupabaseAuthStorage();
+        }
         // Resolve username → email via users table, then Supabase signIn
         const profileRes = await withTimeout<{
           data: { id: string; email: string; username: string; role: string } | null;

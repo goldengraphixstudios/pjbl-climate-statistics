@@ -134,6 +134,25 @@ Files touched
 - src/pages/student_sections/Lesson1.tsx
 - src/pages/portals/AdminPortal.tsx
 
+[2026-03-12 09:20] GitHub Pages admin login timed out from Supabase auth refresh loop
+
+Observed issues
+- Teacher/Admin login on GitHub Pages timed out even with correct credentials.
+- Browser console showed repeated `auth/v1/token?grant_type=refresh_token` failures from the `github.io` origin, ending in CORS/failed fetch errors.
+
+Diagnosis
+- The live static site was bootstrapping a persisted Supabase Auth session and attempting to refresh a stale token before login.
+- On the GitHub Pages host, that stale refresh path was enough to trap the UI in retries and eventually hit the app-side login timeout.
+
+Self-heal actions applied
+- Clear stale `sb-...auth-token` storage entries before Supabase client initialization on GitHub Pages.
+- Disable persisted auth sessions and auto-refresh specifically for the `github.io` host.
+- Clear stale auth storage again immediately before admin sign-in on GitHub Pages for a clean login attempt.
+
+Files touched
+- src/services/supabaseClient.ts
+- src/pages/auth/AdminLogin.tsx
+
 [2026-03-11 13:34] Student performance summary still used old feedback gating
 
 Observed issues

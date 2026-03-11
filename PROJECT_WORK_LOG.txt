@@ -757,3 +757,13 @@ How To Use Going Forward
   - `src/pages/auth/AdminLogin.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 09:20] GitHub Pages Supabase auth refresh loop mitigation
+- Added GitHub Pages host detection in the Supabase client and clear stale `sb-...auth-token` entries before client initialization.
+- Disabled persisted Supabase auth sessions and auto-refresh specifically on `github.io` so the live static deployment does not get trapped in a blocked refresh-token loop.
+- Added the same stale-auth cleanup right before admin sign-in on GitHub Pages to ensure login starts from a clean auth state.
+- Files:
+  - `src/services/supabaseClient.ts`
+  - `src/pages/auth/AdminLogin.tsx`
+- Commit: pending
+- Push: pending

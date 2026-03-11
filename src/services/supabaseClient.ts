@@ -3,6 +3,36 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 // Read Vite env variables directly so Vite can statically replace them at build time
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+const isBrowser = typeof window !== 'undefined';
+const isGithubPagesHost = isBrowser && /(^|\.)github\.io$/i.test(window.location.hostname);
+
+export function clearStaleSupabaseAuthStorage() {
+  if (!isBrowser) return;
+  const clearMatchingKeys = (storage: Storage) => {
+    const keys: string[] = [];
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i);
+      if (key && key.startsWith('sb-') && key.includes('auth-token')) {
+        keys.push(key);
+      }
+    }
+    for (const key of keys) {
+      storage.removeItem(key);
+    }
+  };
+
+  try {
+    clearMatchingKeys(window.localStorage);
+  } catch {}
+
+  try {
+    clearMatchingKeys(window.sessionStorage);
+  } catch {}
+}
+
+if (isGithubPagesHost) {
+  clearStaleSupabaseAuthStorage();
+}
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
@@ -12,9 +42,18 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 } else {
   // provide a tiny bit of visibility when the app initializes
   console.info('Supabase client configured for', SUPABASE_URL);
+  if (isGithubPagesHost) {
+    console.info('GitHub Pages host detected: Supabase auth session persistence disabled');
+  }
 }
 
-export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '');
+export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '', {
+  auth: {
+    persistSession: !isGithubPagesHost,
+    autoRefreshToken: !isGithubPagesHost,
+    detectSessionInUrl: false,
+  },
+});
 
 // Auth helpers
 export async function signUp(email: string, password: string) {
