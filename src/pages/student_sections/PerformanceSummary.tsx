@@ -40,8 +40,6 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
     if (activityType === 'pre' || activityType === 'post') {
       return { text: 'completed', tone: '#15803d' };
     }
-    if (!fb) return { text: 'submitted', tone: 'var(--primary-blue)' };
-    if (!fb.acknowledged) return { text: 'feedback ready', tone: '#d97706' };
     return { text: 'completed', tone: '#15803d' };
   };
 
@@ -62,16 +60,7 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
       ['pre','lesson1','lesson2','lesson3','post'].forEach((act, idx) => {
         const type = act as ActivityType;
         const resp = resps.find(r=>r.activity_type===type);
-        const fb = fbs.find(f=>f.activity_type===type);
-        if (type === 'pre' || type === 'post') {
-          progress[idx + 1] = resp ? 100 : 0;
-        } else if (resp && fb && fb.acknowledged) {
-          progress[idx + 1] = 100;
-        } else if (resp) {
-          progress[idx + 1] = 50;
-        } else {
-          progress[idx + 1] = 0;
-        }
+        progress[idx + 1] = resp ? 100 : 0;
       });
       const compCount = [1,2,3,4,5].reduce((acc,id)=>(progress[id]===100?acc+1:acc),0);
       progress[6] = Math.min(100, compCount * 20);

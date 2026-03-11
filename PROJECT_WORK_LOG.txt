@@ -719,3 +719,21 @@ How To Use Going Forward
   - `src/pages/portals/StudentPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 13:34] Performance summary lesson completion alignment
+- Updated the active student Performance Summary so Lesson 1, Lesson 2, and Lesson 3 count as completed once a lesson response exists, matching the dashboard unlock logic.
+- Removed the old feedback-acknowledgment dependency that could leave lesson progress stuck at 50% in the summary even after the next lesson was already unlocked.
+- Files:
+  - `src/pages/student_sections/PerformanceSummary.tsx`
+- Commit: pending
+- Push: pending
+
+[2026-03-11 13:52] Lesson 1 Phase 4 admin review and roster refresh hardening
+- Fixed the Lesson 1 admin review modal so Phase 4 reads the actual saved data shape from `phaseData[4]`, including nested reflection answers, peer-review details, and uploaded final output metadata.
+- Added periodic/focus-based class roster refresh in `src/App.tsx` so newly enrolled students and updated rosters sync back into the active admin portal without requiring a manual full reload.
+- Mirrored refreshed class data back into localStorage `teacherClasses` to keep student-facing display-name lookups aligned with the latest class roster.
+- Files:
+  - `src/pages/portals/AdminPortal.tsx`
+  - `src/App.tsx`
+- Commit: pending
+- Push: pending

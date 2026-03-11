@@ -62,7 +62,11 @@ function App() {
   const loadClasses = async () => {
     try {
       const rows = await getAllClasses();
-      setClasses(rows.map(toLegacyClass));
+      const legacyRows = rows.map(toLegacyClass);
+      setClasses(legacyRows);
+      try {
+        localStorage.setItem('teacherClasses', JSON.stringify(legacyRows));
+      } catch {}
     } catch (e) {
       console.error('[App] loadClasses error', e);
       // Fall back to localStorage if Supabase is unavailable
@@ -91,6 +95,28 @@ function App() {
 
     loadClasses();
   }, []);
+
+  useEffect(() => {
+    if (!authUser) return;
+
+    const refresh = () => {
+      loadClasses().catch((e) => console.error('[App] periodic loadClasses error', e));
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    const intervalId = setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authUser?.id, authUser?.role]);
 
   // Capture uncaught errors to localStorage for diagnostics
   useEffect(() => {

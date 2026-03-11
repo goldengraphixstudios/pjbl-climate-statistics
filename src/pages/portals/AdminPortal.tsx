@@ -260,6 +260,9 @@ function getLessonReviewSections(response?: ResponseRow | null) {
   if (response.activity_type === 'lesson1') {
     const state = response.answers?.lesson1State;
     const phaseData = state?.phaseData || {};
+    const phase4 = phaseData?.[4] || {};
+    const phase4Reflection = phase4?.reflection || {};
+    const phase4PeerReview = phase4?.peerReview || {};
     return [
       {
         title: 'Phase 1',
@@ -293,10 +296,24 @@ function getLessonReviewSections(response?: ResponseRow | null) {
       {
         title: 'Phase 4',
         items: [
-          { label: 'Confidence', value: phaseData?.[4]?.confidence },
-          { label: 'Most challenging', value: phaseData?.[4]?.challenging },
-          { label: 'Extension idea', value: phaseData?.[4]?.extend },
-          { label: 'Uploaded final output', value: phaseData?.[4]?.uploadUrl || phaseData?.[4]?.fileDataUrl }
+          { label: 'Peer review submitted', value: phase4?.peerReviewSubmitted },
+          { label: 'Mission complete', value: phase4?.missionComplete },
+          { label: 'Peer reviewer username', value: phase4?.peerReviewer || phase4PeerReview?.reviewer },
+          { label: 'Peer review strength', value: phase4?.strength || phase4PeerReview?.strength },
+          { label: 'Peer review suggestion', value: phase4?.suggestion || phase4PeerReview?.suggestion },
+          { label: 'Rubric - Clarity', value: phase4?.clarity },
+          { label: 'Rubric - Evidence', value: phase4?.evidence },
+          { label: 'Rubric - Honesty', value: phase4?.honesty },
+          { label: 'Rubric - Actionability', value: phase4?.actionability },
+          { label: 'Reflection confidence', value: phase4Reflection?.confidence },
+          { label: 'Group contribution', value: phase4Reflection?.contributed },
+          { label: 'Most challenging concept', value: phase4Reflection?.challenging },
+          { label: 'What changed about statistics', value: phase4Reflection?.stats },
+          { label: 'What changed about climate', value: phase4Reflection?.climate },
+          { label: 'Real-life connection', value: phase4Reflection?.connection },
+          { label: 'Extension idea', value: phase4Reflection?.extend },
+          { label: 'What I learned', value: phase4Reflection?.learned },
+          { label: 'Uploaded final output', value: phase4?.upload?.url || phase4?.uploadUrl || phase4?.fileDataUrl }
         ]
       }
     ].filter((section) => section.items.some((item) => formatReviewValue(item.value) !== '—'));

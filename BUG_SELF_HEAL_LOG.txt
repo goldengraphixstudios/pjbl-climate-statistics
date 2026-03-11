@@ -134,6 +134,41 @@ Files touched
 - src/pages/student_sections/Lesson1.tsx
 - src/pages/portals/AdminPortal.tsx
 
+[2026-03-11 13:34] Student performance summary still used old feedback gating
+
+Observed issues
+- Student dashboard could unlock the next lesson after submission, but the active student Performance Summary still showed lessons as partially complete until feedback was acknowledged.
+
+Diagnosis
+- `src/pages/student_sections/PerformanceSummary.tsx` still computed lesson progress as 50% when a response existed without acknowledged feedback.
+- This had become inconsistent with the newer unlock rule in `src/pages/portals/StudentPortal.tsx`.
+
+Self-heal actions applied
+- Simplified lesson progress computation so Lesson 1, Lesson 2, and Lesson 3 are treated as completed once their response row exists.
+- Kept assessment completion submission-based as already intended.
+
+Files touched
+- src/pages/student_sections/PerformanceSummary.tsx
+
+[2026-03-11 13:52] Lesson 1 Phase 4 values missing in admin review / stale class roster risk
+
+Observed issues
+- Lesson 1 Phase 4 final activity entries could appear missing in the admin review because the review renderer expected top-level Phase 4 fields, while the actual saved reflection values were nested under `phaseData[4].reflection`.
+- Admin lesson tabs could also miss otherwise valid student work if the in-memory class roster was stale, because lesson rows are built from the current `classes` prop.
+
+Diagnosis
+- The active Lesson 1 Phase 4 save path stores reflection answers under `phaseData[4].reflection`, peer review under `phaseData[4].peerReview`, and upload metadata under `phaseData[4].upload`.
+- The admin review modal only rendered a few top-level Phase 4 keys and therefore dropped the nested reflection answers.
+- The app only loaded classes on mount and after local class mutations, so a stale roster could hide valid lesson state rows from admin tabs until a hard reload.
+
+Self-heal actions applied
+- Updated the Lesson 1 admin review renderer to show nested reflection fields, peer review details, rubric-style Phase 4 entries, and uploaded output metadata.
+- Added periodic and focus-based class refresh in `src/App.tsx`, and mirrored the refreshed class list back into `teacherClasses` local storage.
+
+Files touched
+- src/pages/portals/AdminPortal.tsx
+- src/App.tsx
+
 [2026-03-11 13:08] Admin lesson tabs excluded students with state-only work
 
 Observed issues
