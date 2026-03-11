@@ -35,8 +35,11 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [responseRows, setResponseRows] = useState<any[]>([]);
   const [feedbackRows, setFeedbackRows] = useState<any[]>([]);
 
-  const getSummaryStatus = (resp: any, fb: any) => {
+  const getSummaryStatus = (resp: any, fb: any, activityType: string) => {
     if (!resp) return { text: 'pending', tone: '#999' };
+    if (activityType === 'pre' || activityType === 'post') {
+      return { text: 'completed', tone: '#15803d' };
+    }
     if (!fb) return { text: 'submitted', tone: 'var(--primary-blue)' };
     if (!fb.acknowledged) return { text: 'feedback ready', tone: '#d97706' };
     return { text: 'completed', tone: '#15803d' };
@@ -60,9 +63,15 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
         const type = act as ActivityType;
         const resp = resps.find(r=>r.activity_type===type);
         const fb = fbs.find(f=>f.activity_type===type);
-        if (resp && fb && fb.acknowledged) progress[idx+1] = 100;
-        else if (resp) progress[idx+1] = 50;
-        else progress[idx+1] = 0;
+        if (type === 'pre' || type === 'post') {
+          progress[idx + 1] = resp ? 100 : 0;
+        } else if (resp && fb && fb.acknowledged) {
+          progress[idx + 1] = 100;
+        } else if (resp) {
+          progress[idx + 1] = 50;
+        } else {
+          progress[idx + 1] = 0;
+        }
       });
       const compCount = [1,2,3,4,5].reduce((acc,id)=>(progress[id]===100?acc+1:acc),0);
       progress[6] = Math.min(100, compCount * 20);
@@ -142,13 +151,14 @@ const PerformanceSummary: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         ? (resp?.answers?.part1Score ?? derivedAssessmentScore ?? resp?.teacher_score ?? null)
                         : (resp?.teacher_score ?? null);
                       const hasScore = typeof score === 'number' && score !== null;
-                      const summaryStatus = getSummaryStatus(resp, fb);
+                      const summaryStatus = getSummaryStatus(resp, fb, actKey);
+                      const showFeedback = item.id !== 1 && item.id !== 5;
                       return (
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 700, color: hasScore ? 'var(--primary-blue)' : summaryStatus.tone }}>
                             {hasScore ? `${score} / ${max}` : <em style={{ fontWeight: 400, color: summaryStatus.tone }}>{summaryStatus.text}</em>}
                           </div>
-                          {fb?.feedback_text && (
+                          {showFeedback && fb?.feedback_text && (
                             <div style={{ fontSize: '0.8rem', color: '#555', marginTop: 4, maxWidth: 260, textAlign: 'right' }}>
                               <strong style={{ fontStyle: 'normal' }}>Teacher feedback:</strong>{' '}
                               <em>"{fb.feedback_text}"</em>

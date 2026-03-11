@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { HeaderStudentIcon } from '../../components/RoleIcons';
 import ProgressBar from '../../components/ProgressBar';
 import '../../styles/StudentPortal.css';
-import { getUserProgress, getRewardShownSections, markRewardShown } from '../../services/progressService';
-import { ActivityType, getResponseForStudentActivity, getResponsesForStudent } from '../../services/responsesService';
-import { getFeedbackForStudentActivity, getFeedbackForStudent, acknowledgeFeedback } from '../../services/feedbackService';
+import { ActivityType, getResponsesForStudent } from '../../services/responsesService';
+import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
 import ConfettiOverlay from '../../components/ConfettiOverlay';
 
@@ -50,8 +49,9 @@ const getActivityStatusLabel = (status?: {
   submitted: boolean;
   feedback?: any;
   acknowledged: boolean;
-}) => {
+}, activityType?: ActivityType | 'performance') => {
   if (!status?.submitted) return 'Not started';
+  if (activityType === 'pre' || activityType === 'post') return 'Completed';
   if (!status.feedback) return 'Submitted';
   if (!status.acknowledged) return 'Feedback ready';
   return 'Completed';
@@ -155,9 +155,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
       const prevType = activityTypeForId(sectionId - 1);
       if (prevType) {
         const prev = activityStatuses[prevType];
-        if (!prev.submitted || !prev.feedback || !prev.acknowledged) {
-          return true;
-        }
+        if (prevType === 'pre' || prevType === 'post') return !prev.submitted;
+        if (!prev.submitted || !prev.feedback || !prev.acknowledged) return true;
       }
     }
     return false;
@@ -309,7 +308,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
                     const type = activityTypeForId(section.id);
                     if (!type) return null;
                     const st = activityStatuses[type];
-                    const label = getActivityStatusLabel(st);
+                    const label = getActivityStatusLabel(st, type);
                     return <p className="progress-text">{label}</p>;
                   })()}
                 </div>

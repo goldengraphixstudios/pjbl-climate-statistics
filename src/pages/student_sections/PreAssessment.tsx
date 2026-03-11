@@ -3,7 +3,6 @@ import '../../styles/StudentPortal.css';
 import '../../styles/PreAssessment.css';
 import { setUserProgress, savePreAssessmentPart1Score, savePreAssessmentPart1Responses, savePreAssessmentPart2Responses } from '../../services/progressService';
 import { ActivityType, upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
-import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
 import { resolveStudentId } from '../../services/studentStateService';
 
@@ -90,7 +89,6 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [part2Responses, setPart2Responses] = useState<number[]>(Array(17).fill(0));
   const [itemCorrect, setItemCorrect] = useState<boolean[]>([]);
   const [part2Submitted, setPart2Submitted] = useState(false);
-  const [serverFeedback, setServerFeedback] = useState<any>(null);
   const [existingResponse, setExistingResponse] = useState<any>(null);
   const existingStage = existingResponse?.answers?.__meta?.stage;
   const hasSavedPart2 = Array.isArray(existingResponse?.answers?.part2) && existingResponse.answers.part2.length === 17;
@@ -123,8 +121,6 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
             setPhase('part2');
           }
         }
-        const fb = await getFeedbackForStudentActivity(studentId, 'pre');
-        if (fb) setServerFeedback(fb);
       } catch (e) {
         console.error('load existing preassessment data', e);
       }
@@ -257,19 +253,6 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       }
     } catch (e) {
       console.error('upsert pre response final', e);
-    }
-  };
-
-  const handleAcknowledge = async () => {
-    try {
-      const prof = await getMyProfile();
-      const studentId = prof?.id || await resolveStudentId(user.username);
-      if (studentId) {
-        const fb = await acknowledgeFeedback(studentId, 'pre');
-        setServerFeedback(fb);
-      }
-    } catch (e) {
-      console.error('ackpre', e);
     }
   };
 
@@ -889,20 +872,6 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
               </div>
             </section>
           ) : renderPart2()
-        )}
-
-        {/* teacher feedback block */}
-        {serverFeedback && (
-          <section className="teacher-feedback" style={{ padding: '12px 24px', background: '#f9f9f9', marginTop: 16 }}>
-            <h3>Teacher Feedback</h3>
-            <p>{serverFeedback.feedback_text}</p>
-            {!serverFeedback.acknowledged && (
-              <button onClick={handleAcknowledge}>Acknowledge</button>
-            )}
-            {serverFeedback.acknowledged && serverFeedback.acknowledged_at && (
-              <div style={{ fontSize: '0.9rem', color: '#555' }}>Acknowledged at {new Date(serverFeedback.acknowledged_at).toLocaleString()}</div>
-            )}
-          </section>
         )}
       </main>
     </div>

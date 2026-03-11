@@ -1893,7 +1893,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                   {(() => {
                     const rows = filteredStudents.map((s: any) => {
                       const response = getLatestResponse(s.id, 'pre');
-                      const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === 'pre');
                       const derivedScore = Array.isArray(response?.correctness?.part1)
                         ? response.correctness.part1.filter(Boolean).length
                         : null;
@@ -1903,10 +1902,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                         username: s.username || '',
                         response,
                         answers: Array.isArray(response?.answers?.part1) ? response.answers.part1 : Array.from({ length: 15 }, () => ''),
-                        score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null,
-                        feedbackText: feedback?.feedback_text || '',
-                        feedbackAcknowledged: !!feedback?.acknowledged,
-                        hasFeedback: !!feedback
+                        score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null
                       };
                     }).filter(r => r.score !== null && !!r.response);
                     // format name Last, First and sort alphabetically by last name
@@ -1931,7 +1927,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 <th>Name</th>
                                 {Array.from({length:15}, (_,i)=> <th key={i}>Q{i+1}</th>)}
                                 <th>Score</th>
-                                <th>Feedback</th>
                                 <th style={{textAlign: 'center'}}>Action</th>
                               </tr>
                             </thead>
@@ -1941,12 +1936,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   <td style={{whiteSpace: 'nowrap', textAlign: 'left'}}>{fmt(r.name)}</td>
                                   {r.answers.map((a:any, i:number) => <td key={i}>{a}</td>)}
                                   <td style={{textAlign: 'center'}}>{r.score}</td>
-                                  <td style={{ textAlign: 'left', fontSize: 12, color: r.feedbackText ? '#555' : '#999', maxWidth: 220 }}>
-                                    {r.feedbackText || 'No feedback yet'}
-                                    {r.feedbackAcknowledged && (
-                                      <div style={{ color: '#15803d', marginTop: 4, fontWeight: 600 }}>Acknowledged</div>
-                                    )}
-                                  </td>
                                   <td style={{textAlign: 'center'}}>
                                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                       <button
@@ -1969,21 +1958,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                       >
                                         Review
                                       </button>
-                                    <button
-                                      onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'pre' })}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#1976D2',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px',
-                                        fontWeight: 600
-                                      }}
-                                    >
-                                      💬 Feedback
-                                    </button>
                                     </div>
                                   </td>
                                 </tr>
@@ -2287,17 +2261,13 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                       const derivedScore = Array.isArray(response?.correctness?.part1)
                         ? response.correctness.part1.filter(Boolean).length
                         : null;
-                      const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === 'post');
                       return {
                         id: s.id || '',
                         name: s.name || '',
                         username: s.username || '',
                         response,
                         responses: Array.isArray(response?.answers?.part1) ? response.answers.part1 : null,
-                        score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null,
-                        feedbackText: feedback?.feedback_text || '',
-                        feedbackAcknowledged: !!feedback?.acknowledged,
-                        hasFeedback: !!feedback
+                        score: response?.answers?.part1Score ?? derivedScore ?? response?.teacher_score ?? null
                       };
                     }).filter((r:any) => r.responses !== null);
                     const fmt = (full: string) => {
@@ -2316,7 +2286,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                               <th>Name</th>
                               {Array.from({length:15}, (_,i)=> <th key={i}>Q{i+1}</th>)}
                               <th>Score</th>
-                              <th>Feedback</th>
                               <th style={{textAlign: 'center'}}>Action</th>
                             </tr>
                           </thead>
@@ -2326,12 +2295,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                 <td style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>{fmt(r.name)}</td>
                                 {r.responses.map((ans:any, i:number) => <td key={i}>{ans}</td>)}
                                 <td style={{ textAlign: 'center' }}>{r.score}</td>
-                                <td style={{ textAlign: 'left', fontSize: 12, color: r.feedbackText ? '#555' : '#999', maxWidth: 220 }}>
-                                  {r.feedbackText || 'No feedback yet'}
-                                  {r.feedbackAcknowledged && (
-                                    <div style={{ color: '#15803d', marginTop: 4, fontWeight: 600 }}>Acknowledged</div>
-                                  )}
-                                </td>
                                 <td style={{textAlign: 'center'}}>
                                   <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                     <button
@@ -2354,21 +2317,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                     >
                                       Review
                                     </button>
-                                  <button
-                                    onClick={() => setFeedbackStudent({ id: r.id, name: r.name, activity: 'post' })}
-                                    style={{
-                                      padding: '6px 12px',
-                                      backgroundColor: '#1976D2',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer',
-                                      fontSize: '12px',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    💬 Feedback
-                                  </button>
                                   </div>
                                 </td>
                               </tr>

@@ -677,3 +677,17 @@ How To Use Going Forward
   - `src/pages/student_sections/PreAssessment.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 12:35] Assessment feedback removal and admin mobile containment
+- Removed assessment feedback from the active admin pre-assessment and post-assessment result tables.
+- Kept lesson feedback flows intact; assessments now use completion/review only.
+- Confirmed the student dashboard progression rule allows `Pre-Assessment` completion to unlock `Lesson 1` without feedback acknowledgment.
+- Strengthened admin mobile containment so portal tabs scroll horizontally and table sections stay clipped inside the main white card instead of expanding off-screen.
+- Removed remaining pre/post feedback display from the student Performance Summary so assessment feedback is now lesson-only across the active UI.
+- Files:
+  - `src/pages/portals/StudentPortal.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+  - `src/pages/student_sections/PerformanceSummary.tsx`
+  - `src/styles/AdminPortal.css`
+- Commit: pending
+- Push: pending

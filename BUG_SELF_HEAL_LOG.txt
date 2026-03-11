@@ -378,3 +378,27 @@ Self-heal actions applied
 
 Files touched
 - src/pages/student_sections/PreAssessment.tsx
+
+[2026-03-11 12:35] Admin mobile overflow and assessment-feedback scope cleanup
+
+Observed issues
+- On mobile, the combined Teacher/Admin portal expanded past the white container card and bled off-screen.
+- Assessment tabs still exposed feedback controls even though the requested flow is to keep feedback only on lessons.
+- Student progression needed to rely on pre-assessment completion alone for the `Pre -> Lesson 1` step.
+
+Diagnosis
+- The admin portal card allowed child content to overflow, while tab rows and data tables did not have strong mobile containment rules.
+- Pre/post assessment result tables still carried lesson-style feedback columns and action buttons.
+- Lesson gating was already mostly split by activity type, but the cleanup needed to preserve that rule while removing assessment feedback UI.
+
+Self-heal actions applied
+- Added mobile containment and horizontal scrolling to admin portal tabs and data-table containers.
+- Removed pre/post feedback columns and feedback actions from admin assessment result tables.
+- Kept lesson feedback paths unchanged and confirmed pre/post progression is submission-based rather than feedback-based.
+- Removed remaining pre/post feedback display from the student performance summary and made assessment summary progress completion derive from submission alone.
+
+Files touched
+- src/pages/portals/StudentPortal.tsx
+- src/pages/portals/AdminPortal.tsx
+- src/pages/student_sections/PerformanceSummary.tsx
+- src/styles/AdminPortal.css
