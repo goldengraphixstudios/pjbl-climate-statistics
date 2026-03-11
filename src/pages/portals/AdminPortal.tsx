@@ -169,6 +169,47 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
   return { summary: 'Submitted', detail: '' };
 }
 
+function buildDraftLessonResponse(
+  studentId: string,
+  activityType: 'lesson1' | 'lesson2' | 'lesson3',
+  remoteState: any
+): ResponseRow | null {
+  if (!remoteState) return null;
+
+  const stateKey = activityType === 'lesson1'
+    ? 'lesson1State'
+    : activityType === 'lesson2'
+      ? 'lesson2State'
+      : 'lesson3State';
+
+  const updatedAt =
+    remoteState?.updated_at ||
+    remoteState?.syncedAt ||
+    remoteState?.phaseData?.[1]?.a1Timestamp ||
+    new Date().toISOString();
+
+  return {
+    id: `draft-${studentId}-${activityType}`,
+    student_id: studentId,
+    activity_type: activityType,
+    answers: {
+      __meta: {
+        schemaVersion: 1,
+        source: 'student-state',
+        activityType,
+        stage: 'draft'
+      },
+      [stateKey]: remoteState
+    },
+    correctness: null,
+    teacher_score: undefined,
+    teacher_scored_at: undefined,
+    teacher_scored_by: undefined,
+    created_at: updatedAt,
+    updated_at: updatedAt
+  };
+}
+
 function downloadCsvFile(rows: string[][], filename: string) {
   const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -755,9 +796,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const getLessonRowsForActivity = (activityType: 'lesson1' | 'lesson2' | 'lesson3') => {
     return filteredStudents.map((s: any) => {
       const response = getLatestResponse(s.id, activityType);
+      const remoteState = lessonStateMap[`${s.id}::${activityType}`];
       const mergedResponse = response
-        ? mergeReviewResponse(response, lessonStateMap[`${s.id}::${activityType}`])
-        : response;
+        ? mergeReviewResponse(response, remoteState)
+        : buildDraftLessonResponse(s.id, activityType, remoteState);
       const feedback = feedbackRows.find((f) => f.student_id === s.id && f.activity_type === activityType);
       const preview = getLessonSubmissionPreview(mergedResponse);
       return {
@@ -790,7 +832,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       <div className="chart-section table-section card-student-responses">
         <h3>{lessonLabelMap[activityType]} Final Outputs</h3>
         <div className="lesson-results-summary lesson-results-summary--cards">
-          <span>Submitted outputs: {rows.length}</span>
+          <span>Submitted outputs: {lessonRows.length}</span>
           <span>Scored outputs: {scoredRows.length}</span>
           <span>Feedback sent: {feedbackReadyCount}</span>
           <span>Average score: {averageScore ?? '—'}</span>
@@ -814,6 +856,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                   const response = row.response!;
                   const key = getScoreKey(row.id, activityType);
                   const scoreValue = getScoreDraft(row.id, activityType, response.teacher_score ?? null);
+                  const isDraftOnly = response.id.startsWith('draft-');
                   return (
                     <tr key={key}>
                       <td style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>
@@ -841,12 +884,17 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                           <button
                             type="button"
                             className="download-btn lesson-score-save"
-                            disabled={scoreSavingKey === key || scoreValue.trim() === ''}
+                            disabled={isDraftOnly || scoreSavingKey === key || scoreValue.trim() === ''}
                             onClick={() => handleSaveLessonScore(row.id, activityType, response.teacher_score ?? null)}
                           >
-                            {scoreSavingKey === key ? 'Saving...' : 'Save'}
+                            {isDraftOnly ? 'Draft only' : scoreSavingKey === key ? 'Saving...' : 'Save'}
                           </button>
                         </div>
+                        {isDraftOnly && (
+                          <div className="lesson-meta">
+                            Student has saved lesson state but has not created a final response row yet.
+                          </div>
+                        )}
                         {typeof response.teacher_score === 'number' && (
                           <div className="lesson-meta">
                             Current score: {response.teacher_score}

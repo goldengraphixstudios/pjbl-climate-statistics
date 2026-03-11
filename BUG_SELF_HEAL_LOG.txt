@@ -116,6 +116,23 @@ Self-heal actions applied
 Files touched
 - src/pages/student_sections/Lesson1.tsx
 - src/pages/portals/AdminPortal.tsx
+
+[2026-03-11 13:08] Admin lesson tabs excluded students with state-only work
+
+Observed issues
+- Some students had clearly answered Lesson 1 in `student_state`, but the admin Lesson 1 Outputs tab only showed one student.
+
+Diagnosis
+- The lesson-output tab filtered strictly on `responses` rows.
+- Students with saved lesson work only in `student_state` were invisible in admin, even though their answers existed and the review modal merge logic could use them.
+
+Self-heal actions applied
+- Added synthetic draft lesson rows built from `student_state` for Lesson 1/2/3 when no `responses` row exists.
+- Admin review remains available for those draft-only rows.
+- Teacher score save is disabled for draft-only rows until a real `responses` row exists.
+
+Files touched
+- src/pages/portals/AdminPortal.tsx
 - PROJECT_WORK_LOG.txt
 
 [2026-03-10 15:22] Lesson feedback actions too ambiguous in admin portal

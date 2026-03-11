@@ -701,3 +701,12 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 13:08] Include student_state-only lesson work in admin outputs
+- Updated the admin lesson-output tabs so students with saved `student_state` but no `responses` row still appear in Lesson 1/2/3 outputs.
+- Added synthetic draft lesson rows for admin review, with score save disabled until a real response row exists.
+- Lesson output summary count now reflects visible lesson rows, not only finalized `responses` rows.
+- Files:
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending
