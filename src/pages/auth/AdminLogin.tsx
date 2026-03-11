@@ -34,16 +34,17 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
         if (typeof window !== 'undefined' && /(^|\.)github\.io$/i.test(window.location.hostname)) {
           clearStaleSupabaseAuthStorage();
         }
-        // Resolve username → email via users table, then Supabase signIn
+
+        // Resolve username to email via users table, then Supabase signIn.
         const profileRes = await withTimeout<{
           data: { id: string; email: string; username: string; role: string } | null;
           error?: unknown;
         }>(
           supabase
-          .from('users')
-          .select('id, email, username, role')
-          .eq('username', normalizedUsername)
-          .maybeSingle(),
+            .from('users')
+            .select('id, email, username, role')
+            .eq('username', normalizedUsername)
+            .maybeSingle(),
           10000
         );
 
@@ -62,7 +63,6 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
           return;
         }
 
-        // Verify the user has admin or teacher role
         const role = profileRes.data?.role;
         if (role && role !== 'admin' && role !== 'teacher') {
           setError('This account does not have admin access.');
@@ -86,7 +86,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
 
   return (
     <div className="auth-container">
-      <button className="back-button" onClick={onBack}>← Back</button>
+      <button className="back-button" onClick={onBack}>Back</button>
       <div className="auth-card">
         <div className="auth-icon"><AdminShieldIcon size={56} /></div>
         <h2>Teacher / Administrator Login</h2>
@@ -119,7 +119,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>

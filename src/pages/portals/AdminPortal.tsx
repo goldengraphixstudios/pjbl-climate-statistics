@@ -114,12 +114,17 @@ function formatDisplayName(full: string) {
 
 function getLessonSubmissionPreview(response?: ResponseRow | null) {
   if (!response) return { summary: 'No submission yet', detail: '' };
+  const stage = response.answers?.__meta?.stage;
 
   if (response.activity_type === 'lesson1') {
     const state = response.answers?.lesson1State;
     if (state && typeof state === 'object') {
       const question = state?.phaseData?.[1]?.a4aQuestion || '';
       const revisedQuestion = state?.phaseData?.[1]?.a4bFinalQuestion || '';
+      const completedPhases = Array.isArray(state?.completedPhases) ? state.completedPhases.length : 0;
+      const phaseProgressValues = state?.phaseProgress && typeof state.phaseProgress === 'object'
+        ? Object.values(state.phaseProgress).filter((value) => typeof value === 'number') as number[]
+        : [];
       const completed = Object.entries(state).filter(([, value]) => {
         if (Array.isArray(value)) return value.length > 0;
         if (typeof value === 'string') return value.trim().length > 0;
@@ -130,9 +135,17 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
       const detailParts = [`${completed} saved lesson fields`];
       if (question) detailParts.push(`Research question: ${question}`);
       if (revisedQuestion) detailParts.push(`Revised question: ${revisedQuestion}`);
+      if (stage === 'draft') {
+        const progressText = phaseProgressValues.length
+          ? `${Math.round(phaseProgressValues.reduce((sum, value) => sum + value, 0) / 4)}% progress`
+          : completedPhases
+            ? `${completedPhases}/4 phases completed`
+            : 'Lesson state captured';
+        return { summary: 'Draft saved', detail: progressText };
+      }
       return { summary: 'Final output submitted', detail: detailParts.join(' • ') };
     }
-    return { summary: 'Final output submitted', detail: 'Lesson state captured' };
+    return { summary: stage === 'draft' ? 'Draft saved' : 'Final output submitted', detail: 'Lesson state captured' };
   }
 
   if (response.activity_type === 'lesson2') {
@@ -156,11 +169,20 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
   }
 
   if (response.activity_type === 'lesson3') {
+    const state = response.answers?.lesson3State || {};
     const reflection = response.answers?.phase4_reflection;
     if (typeof reflection === 'string' && reflection.trim()) {
       return {
         summary: reflection.startsWith('data:') ? 'Reflection image submitted' : 'Reflection submitted',
         detail: reflection.startsWith('data:') ? 'Canvas export captured' : reflection.slice(0, 80)
+      };
+    }
+    if (stage === 'draft') {
+      const completedPhases = Array.isArray(state.completedPhases) ? state.completedPhases.length : 0;
+      const pct = typeof state.lesson3ExtraPct === 'number' ? Math.min(100, state.lesson3ExtraPct) : null;
+      return {
+        summary: 'Draft saved',
+        detail: pct != null ? `${pct}% progress` : completedPhases ? `${completedPhases}/4 phases completed` : 'Lesson state captured'
       };
     }
     return { summary: 'Reflection submitted', detail: 'Phase 4 reflection saved' };
@@ -839,6 +861,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
     } as const;
 
     const lessonRows = getLessonRowsForActivity(activityType);
+    const finalRows = lessonRows.filter((row) => !row.response?.id.startsWith('draft-'));
+    const draftRows = lessonRows.filter((row) => row.response?.id.startsWith('draft-'));
     const scoredRows = rows.filter((row) => typeof row.teacher_score === 'number');
     const averageScore = scoredRows.length
       ? (scoredRows.reduce((sum, row) => sum + Number(row.teacher_score || 0), 0) / scoredRows.length).toFixed(2)
@@ -849,7 +873,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       <div className="chart-section table-section card-student-responses">
         <h3>{lessonLabelMap[activityType]} Final Outputs</h3>
         <div className="lesson-results-summary lesson-results-summary--cards">
-          <span>Submitted outputs: {lessonRows.length}</span>
+          <span>Submitted outputs: {finalRows.length}</span>
+          <span>Draft saves: {draftRows.length}</span>
           <span>Scored outputs: {scoredRows.length}</span>
           <span>Feedback sent: {feedbackReadyCount}</span>
           <span>Average score: {averageScore ?? '—'}</span>

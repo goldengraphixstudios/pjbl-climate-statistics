@@ -767,3 +767,14 @@ How To Use Going Forward
   - `src/pages/auth/AdminLogin.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 10:05] Lesson 3 persistence hardening and admin draft accuracy
+- Audited the active Lesson 3 student flow plus the admin Lesson 3 review/output path.
+- Hardened Lesson 3 save helpers for Phase 2 Activity 2, Phase 2 Activity 3, Phase 3 Activity 1, Phase 4 peer review, and Phase 4 reflection so they also mirror into `student_state`, not only local browser stores.
+- Updated admin lesson result previews so draft-only Lesson 1 and Lesson 3 rows are labeled as drafts with progress instead of looking like final submissions.
+- Updated lesson result summary cards so submitted outputs and draft saves are counted separately.
+- Files:
+  - `src/services/progressService.ts`
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending

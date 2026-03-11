@@ -505,6 +505,32 @@ export const saveLesson3Phase2Activity2 = async (username: string, payload: { fi
       console.error('Failed to save lesson3 phase2 activity2', e);
     }
   }
+  (async () => {
+    try {
+      const student_id = await resolveStudentId(username);
+      if (!student_id) return;
+      let publicUrl = payload.fileDataUrl;
+      if (payload.fileDataUrl && payload.filename) {
+        try {
+          const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
+          const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
+          if (!up.error) publicUrl = up.publicUrl;
+        } catch {
+          // ignore upload errors and keep original URL/data
+        }
+      }
+      const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
+      const existing = ss.data?.state || {};
+      const merged = {
+        ...(existing as any),
+        p2a2Preview: publicUrl || null,
+        p2a2Submitted: true,
+      };
+      await upsertStudentState(student_id, 'lesson3', merged);
+    } catch {
+      // ignore
+    }
+  })();
 };
 
 export const getLesson3Phase2Activity2All = (): Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }> => {
@@ -526,6 +552,33 @@ export const saveLesson3Phase2Activity3 = async (username: string, payload: { fi
       console.error('Failed to save lesson3 phase2 activity3', e);
     }
   }
+  (async () => {
+    try {
+      const student_id = await resolveStudentId(username);
+      if (!student_id) return;
+      let publicUrl = payload.fileDataUrl;
+      if (payload.fileDataUrl && payload.filename) {
+        try {
+          const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
+          const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
+          if (!up.error) publicUrl = up.publicUrl;
+        } catch {
+          // ignore upload errors and keep original URL/data
+        }
+      }
+      const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
+      const existing = ss.data?.state || {};
+      const merged = {
+        ...(existing as any),
+        p2a3Preview: publicUrl || null,
+        p2a3Answer: payload.interpretation || '',
+        p2a3Submitted: true,
+      };
+      await upsertStudentState(student_id, 'lesson3', merged);
+    } catch {
+      // ignore
+    }
+  })();
 };
 
 export const getLesson3Phase2Activity3All = (): Record<string, { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }> => {
@@ -547,6 +600,32 @@ export const saveLesson3Phase3Activity1 = async (username: string, payload: { fi
       console.error('Failed to save lesson3 phase3 activity1', e);
     }
   }
+  (async () => {
+    try {
+      const student_id = await resolveStudentId(username);
+      if (!student_id) return;
+      let publicUrl = payload.fileDataUrl;
+      if (payload.fileDataUrl && payload.filename) {
+        try {
+          const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
+          const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
+          if (!up.error) publicUrl = up.publicUrl;
+        } catch {
+          // ignore upload errors and keep original URL/data
+        }
+      }
+      const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
+      const existing = ss.data?.state || {};
+      const merged = {
+        ...(existing as any),
+        p3Preview: publicUrl || null,
+        p3Submitted: true,
+      };
+      await upsertStudentState(student_id, 'lesson3', merged);
+    } catch {
+      // ignore
+    }
+  })();
 };
 
 export const getLesson3Phase3Activity1All = (): Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }> => {
@@ -1484,6 +1563,28 @@ export const saveLesson3Phase4PeerReview = async (
       await awaitSafeSet(LESSON3_P4_REVIEW_KEY, store);
     } catch (e) { console.error('Failed to save lesson3 phase4 peer review', e); }
   }
+  (async () => {
+    try {
+      const student_id = await resolveStudentId(username);
+      if (!student_id) return;
+      const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
+      const existing = ss.data?.state || {};
+      const merged = {
+        ...(existing as any),
+        peer1Answer: Array.isArray(review.q1) ? (review.q1[0] || '') : '',
+        peer2Answer: Array.isArray(review.q2) ? (review.q2[0] || '') : '',
+        peer3Answer: Array.isArray(review.q3) ? (review.q3[0] || '') : '',
+        peer4Answer: Array.isArray(review.q4) ? (review.q4[0] || '') : '',
+        peerStrength: review.strength || '',
+        peerSuggestion: review.suggestion || '',
+        peerReviewerUsername: review.reviewer || '',
+        peerSubmitted: true,
+      };
+      await upsertStudentState(student_id, 'lesson3', merged);
+    } catch {
+      // ignore
+    }
+  })();
 };
 
 export const getLesson3Phase4ReviewAll = (): Record<string, { submitted: boolean; review?: any; timestamp?: string }> => {
@@ -1516,6 +1617,41 @@ export const saveLesson3Phase4Reflection = async (
       await awaitSafeSet(LESSON3_P4_COMPLETE_KEY, store);
     } catch (e) { console.error('Failed to save lesson3 phase4 reflection', e); }
   }
+  (async () => {
+    try {
+      const student_id = await resolveStudentId(username);
+      if (!student_id) return;
+      let publicUrl = uploadUrl;
+      if (uploadUrl && uploadUrl.startsWith('data:')) {
+        try {
+          const extension = mimeType === 'application/pdf' ? 'pdf' : 'bin';
+          const uploadPath = `lesson3/${student_id}/${Date.now()}-phase4-final.${extension}`;
+          const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, uploadUrl));
+          if (!up.error) publicUrl = up.publicUrl;
+        } catch {
+          // ignore upload errors and keep original URL/data
+        }
+      }
+      const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
+      const existing = ss.data?.state || {};
+      const merged = {
+        ...(existing as any),
+        finalConfidence: reflection?.confidence || '',
+        finalConfidenceReason: reflection?.contributed || '',
+        finalChallenge: reflection?.challenging || '',
+        finalStatsChange: reflection?.stats || '',
+        finalClimateChange: reflection?.climate || '',
+        finalConnectionChange: reflection?.connection || '',
+        finalExtension: reflection?.extend || '',
+        finalLearnerInsight: reflection?.learned || '',
+        finalPreview: publicUrl || null,
+        finalSubmitted: true,
+      };
+      await upsertStudentState(student_id, 'lesson3', merged);
+    } catch {
+      // ignore
+    }
+  })();
 };
 
 export const getLesson3Phase4CompleteAll = (): Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }> => {

@@ -153,6 +153,25 @@ Files touched
 - src/services/supabaseClient.ts
 - src/pages/auth/AdminLogin.tsx
 
+[2026-03-12 10:05] Lesson 3 admin reflection could depend on local timing instead of durable state
+
+Observed issues
+- Lesson 3 had several save paths where student work was definitely written locally, but durable server-side reflection relied on the page-level snapshot effect running afterward.
+- Admin lesson output summaries also counted draft-only lesson state as if it were a final submission, which made Lesson 1 and Lesson 3 output counts/previews misleading.
+
+Diagnosis
+- `saveLesson3Phase2Activity2`, `saveLesson3Phase2Activity3`, `saveLesson3Phase3Activity1`, `saveLesson3Phase4PeerReview`, and `saveLesson3Phase4Reflection` did not all mirror their latest values into `student_state`.
+- Admin preview logic treated any Lesson 1/3 row with state data as a final output, even when the row existed only as a draft proxy built from `student_state`.
+
+Self-heal actions applied
+- Mirrored the affected Lesson 3 save helpers into `student_state` using the same top-level keys that the student page and admin review consume.
+- Updated admin lesson preview labeling so draft-only Lesson 1 and Lesson 3 rows show `Draft saved` with progress instead of pretending to be final outputs.
+- Split the admin lesson summary cards into `Submitted outputs` and `Draft saves`.
+
+Files touched
+- src/services/progressService.ts
+- src/pages/portals/AdminPortal.tsx
+
 [2026-03-11 13:34] Student performance summary still used old feedback gating
 
 Observed issues
