@@ -1,0 +1,131 @@
+Git Notes - PJBL Climate Statistics
+Date: 2026-03-12
+
+==================================================
+1. Repo Location
+==================================================
+
+Local repo:
+- C:\Users\AJHAY\Documents\GitHub\pjbl-climate-statistics
+
+Primary branch:
+- main
+
+
+==================================================
+2. Remotes
+==================================================
+
+origin:
+- https://github.com/goldengraphixstudios/pjbl-climate-statistics.git
+
+upstream:
+- https://github.com/franz0121/pjbl-climate-statistics.git
+
+Important:
+- push project work to origin
+- upstream is the source/reference repo and should not be the normal push target
+
+
+==================================================
+3. Authentication / Token Notes
+==================================================
+
+Current git credential helper on this machine:
+- manager
+
+This means:
+- credentials are being handled by Git Credential Manager / machine sign-in
+- the GitHub token is NOT stored in the repo files
+- the token should NOT be written into project text files for safety
+
+Practical rule:
+- if pushes are currently working on this machine, auth is already configured
+- if pushes stop working later, re-authenticate in GitHub Desktop or refresh the Git credential/token in Git Credential Manager
+
+
+==================================================
+4. Useful Git Commands
+==================================================
+
+Check branch:
+git branch --show-current
+
+Check status:
+git status
+
+Check remotes:
+git remote -v
+
+Push to main:
+git push origin main
+
+Pull latest main:
+git pull origin main
+
+
+==================================================
+5. GitHub Pages Deploy Commands
+==================================================
+
+Run from:
+- C:\Users\AJHAY\Documents\GitHub\pjbl-climate-statistics
+
+Build:
+node .\node_modules\vite\bin\vite.js build
+
+Publish dist to gh-pages:
+node .\node_modules\gh-pages\bin\gh-pages.js -d dist -b gh-pages -r https://github.com/goldengraphixstudios/pjbl-climate-statistics.git
+
+Check published branch head:
+git ls-remote origin refs/heads/gh-pages
+
+Live URL:
+- https://goldengraphixstudios.github.io/pjbl-climate-statistics/
+
+
+==================================================
+6. Cleanup Note
+==================================================
+
+After building/deploying, local dist may show as modified.
+
+To clean it:
+git restore dist
+
+
+==================================================
+7. Recommended Resume Steps Next Time
+==================================================
+
+1. Open repo:
+- C:\Users\AJHAY\Documents\GitHub\pjbl-climate-statistics
+
+2. Read:
+- PROJECT_CONTEXT_SNAPSHOT.txt
+- PROJECT_WORK_LOG.txt
+- BUG_SELF_HEAL_LOG.txt
+- GIT_NOTES.txt
+
+3. Confirm git state:
+- git status
+- git remote -v
+
+4. If needed, deploy with the commands in section 5
+
+
+==================================================
+8. Safety Note
+==================================================
+
+Do not store:
+- personal access tokens
+- GitHub passwords
+- raw machine credentials
+
+inside the repo.
+
+Keep auth managed by:
+- Git Credential Manager
+- GitHub Desktop
+- or SSH keys if switched later

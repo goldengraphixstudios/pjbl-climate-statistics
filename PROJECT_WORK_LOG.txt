@@ -792,3 +792,21 @@ How To Use Going Forward
   - `src/services/responsesService.ts`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 11:05] Durable project context snapshot
+- Added `PROJECT_CONTEXT_SNAPSHOT.txt` in the repo root as the current whole-project continuation file.
+- The snapshot includes:
+  - stack / live URL / git refs
+  - active source of truth
+  - current behavior rules
+  - portal structure
+  - high-level tree
+  - implemented student/admin functionality
+  - known caveats
+  - QA guidance
+  - next-session resume instructions
+- Important note: this snapshot is intended to override older docs where they are stale.
+- Files:
+  - `PROJECT_CONTEXT_SNAPSHOT.txt`
+- Commit: pending
+- Push: pending
