@@ -737,3 +737,12 @@ How To Use Going Forward
   - `src/App.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-11 14:02] Student login status persistence for admin class list
+- Added a local `studentLoginStatus` map in `src/App.tsx` so student logins persist across class refreshes and the Teacher/Admin login-status chart does not revert to all-pending after Supabase class reloads.
+- `toLegacyClass` now overlays the local login-status map on top of the Supabase class roster.
+- Student login now records the username into the persisted login-status map before updating in-memory class state.
+- Files:
+  - `src/App.tsx`
+- Commit: pending
+- Push: pending

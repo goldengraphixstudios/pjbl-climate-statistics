@@ -169,6 +169,23 @@ Files touched
 - src/pages/portals/AdminPortal.tsx
 - src/App.tsx
 
+[2026-03-11 14:02] Admin login status reset after class refresh
+
+Observed issues
+- Teacher/Admin login-status charts and `Pending/Logged In` badges could revert to all-pending after the app refreshed classes from Supabase, even if students had already logged in earlier in the same browser.
+
+Diagnosis
+- `hasLoggedIn` was only being toggled in in-memory React state during student login.
+- `getAllClasses()` returns students with `hasLoggedIn: false`, so any later class reload overwrote the UI state.
+
+Self-heal actions applied
+- Added a persisted `studentLoginStatus` map in local storage.
+- Class rows now overlay that map when converting Supabase classes into the portal’s legacy class shape.
+- Student login writes into the persisted login-status map before updating UI state.
+
+Files touched
+- src/App.tsx
+
 [2026-03-11 13:08] Admin lesson tabs excluded students with state-only work
 
 Observed issues

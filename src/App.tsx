@@ -37,7 +37,29 @@ interface LegacyClass {
   students: LegacyStudent[];
 }
 
+const LOGIN_STATUS_KEY = 'studentLoginStatus';
+
+function getStudentLoginStatusMap(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(LOGIN_STATUS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStudentLoginStatus(username: string) {
+  try {
+    const current = getStudentLoginStatusMap();
+    current[username] = true;
+    localStorage.setItem(LOGIN_STATUS_KEY, JSON.stringify(current));
+  } catch {}
+}
+
 function toLegacyClass(c: ClassRow): LegacyClass {
+  const loginStatus = getStudentLoginStatusMap();
   return {
     id: c.id,
     grade: c.grade || '',
@@ -47,7 +69,7 @@ function toLegacyClass(c: ClassRow): LegacyClass {
       name: s.name,
       username: s.username,
       password: s.password || '',
-      hasLoggedIn: s.hasLoggedIn || false,
+      hasLoggedIn: !!(s.hasLoggedIn || loginStatus[s.username]),
     })),
   };
 }
@@ -173,6 +195,7 @@ function App() {
   };
 
   const handleStudentLogin = (username: string, role: UserRole, id?: string) => {
+    saveStudentLoginStatus(username);
     // Mark student as logged in in local state
     setClasses(prev => prev.map(cls => ({
       ...cls,
