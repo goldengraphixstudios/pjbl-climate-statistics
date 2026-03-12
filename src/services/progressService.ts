@@ -70,7 +70,18 @@ const _KNOWN_KEYS = [
   'lesson2_phase2_activity2',
   'lesson2_phase2_activity3',
   'lesson2_phase2_activity4',
-  'lesson2_phase4_activity1'
+  'lesson2_phase4_activity1',
+  // lesson3 keys
+  'lesson3_phase1_activity1',
+  'lesson3_phase1_activity2',
+  'lesson3_phase2_activity1',
+  'lesson3_phase2_activity2',
+  'lesson3_phase2_activity3',
+  'lesson3_phase3_activity1',
+  'lesson3_phase4_review',
+  'lesson3_phase4_complete',
+  // shared progress map
+  PROGRESS_KEY
 ];
 
 try {
@@ -107,10 +118,12 @@ const awaitSafeGet = async (key: string): Promise<any> => {
 const awaitSafeSet = async (key: string, value: any): Promise<void> => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    FALLBACK_CACHE[key] = value;
     return;
   } catch (err) {
     try {
       await localforage.setItem(key, value);
+      FALLBACK_CACHE[key] = value;
       return;
     } catch (e) {
       console.error('awaitSafeSet failed for key', key, e);
@@ -122,10 +135,28 @@ const awaitSafeSet = async (key: string, value: any): Promise<void> => {
 const safeSetItemSync = (key: string, value: any): void => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    FALLBACK_CACHE[key] = value;
     return;
   } catch (err) {
+    FALLBACK_CACHE[key] = value;
     // Trigger async fallback but don't await here (keep sync API)
     awaitSafeSet(key, value).catch(e => console.error('safeSetItemSync fallback failed for key', key, e));
+  }
+};
+
+const safeGetAllAsync = async <T>(key: string, fallback: T): Promise<T> => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw) as T;
+  } catch (e) { /* ignore */ }
+
+  try {
+    const stored = await awaitSafeGet(key);
+    if (!stored) return fallback;
+    if (typeof stored === 'string') return JSON.parse(stored) as T;
+    return stored as T;
+  } catch (e) {
+    return fallback;
   }
 };
 const TEACHER_FEEDBACK_KEY = 'teacherFeedback';
@@ -389,7 +420,14 @@ export const saveLesson3Phase1Activity1 = async (username: string, payload: { re
       // fetch existing student_state
       const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
       const existing = ss.data?.state || {};
-      const merged = { ...(existing as any), phase3_p1_a1: { researchQuestion: payload.researchQuestion, regressionEquation: payload.regressionEquation, interpretation: payload.interpretation, timestamp: payload.timestamp || new Date().toISOString() } };
+      const merged = {
+        ...(existing as any),
+        phase3_p1_a1: { researchQuestion: payload.researchQuestion, regressionEquation: payload.regressionEquation, interpretation: payload.interpretation, timestamp: payload.timestamp || new Date().toISOString() },
+        recallA: payload.researchQuestion,
+        recallB: payload.regressionEquation,
+        recallC: payload.interpretation,
+        recallLocked: true,
+      };
       await upsertStudentState(student_id, 'lesson3', merged);
     } catch (e) {
       // ignore
@@ -430,7 +468,13 @@ export const saveLesson3Phase1Activity2 = async (username: string, payload: { fi
       }
       const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
       const existing = ss.data?.state || {};
-      const merged = { ...(existing as any), phase3_p1_a2: { fileUrl: publicUrl, filename: payload.filename, considerations: payload.considerations, timestamp: payload.timestamp || new Date().toISOString() } };
+      const merged = {
+        ...(existing as any),
+        phase3_p1_a2: { fileUrl: publicUrl, filename: payload.filename, considerations: payload.considerations, timestamp: payload.timestamp || new Date().toISOString() },
+        finalConsiderations: payload.considerations || '',
+        uploadedDiagramPreview: publicUrl || null,
+        submitted2: true,
+      };
       await upsertStudentState(student_id, 'lesson3', merged);
     } catch (e) {
       // ignore
@@ -474,7 +518,12 @@ export const saveLesson3Phase2Activity1 = async (username: string, payload: { fi
       }
       const ss = await supabase.from('student_state').select('state').eq('student_id', student_id).eq('lesson_slug', 'lesson3').limit(1).maybeSingle();
       const existing = ss.data?.state || {};
-      const merged = { ...(existing as any), phase3_p2_a1: { fileUrl: publicUrl, filename: payload.filename, timestamp: payload.timestamp || new Date().toISOString() } };
+      const merged = {
+        ...(existing as any),
+        phase3_p2_a1: { fileUrl: publicUrl, filename: payload.filename, timestamp: payload.timestamp || new Date().toISOString() },
+        p2a1Preview: publicUrl || null,
+        p2a1Submitted: true,
+      };
       await upsertStudentState(student_id, 'lesson3', merged);
     } catch (e) {
       // ignore
@@ -1658,6 +1707,136 @@ export const getLesson3Phase4CompleteAll = (): Record<string, { completed?: bool
   return safeGetAll(LESSON3_P4_COMPLETE_KEY) as Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>;
 };
 
+export interface Lesson3PersistedState {
+  hasAnyData: boolean;
+  recallA: string;
+  recallB: string;
+  recallC: string;
+  recallLocked: boolean;
+  finalConsiderations: string;
+  uploadedDiagramPreview: string | null;
+  submitted2: boolean;
+  p2a1Preview: string | null;
+  p2a1Submitted: boolean;
+  p2a2Preview: string | null;
+  p2a2Submitted: boolean;
+  p2a3Preview: string | null;
+  p2a3Submitted: boolean;
+  p2a3Answer: string;
+  p3Preview: string | null;
+  p3Submitted: boolean;
+  peer1Answer: string;
+  peer2Answer: string;
+  peer3Answer: string;
+  peer4Answer: string;
+  peerStrength: string;
+  peerSuggestion: string;
+  peerReviewerUsername: string;
+  peerSubmitted: boolean;
+  finalConfidence: string;
+  finalConfidenceReason: string;
+  finalChallenge: string;
+  finalStatsChange: string;
+  finalClimateChange: string;
+  finalConnectionChange: string;
+  finalExtension: string;
+  finalLearnerInsight: string;
+  finalPreview: string | null;
+  finalSubmitted: boolean;
+  lesson3ExtraPct: number;
+}
+
+export const getLesson3PersistedState = async (username: string): Promise<Lesson3PersistedState> => {
+  const [
+    a1All,
+    a2All,
+    p2a1All,
+    p2a2All,
+    p2a3All,
+    p3All,
+    reviewAll,
+    finalAll,
+  ] = await Promise.all([
+    safeGetAllAsync<Record<string, { researchQuestion: string; regressionEquation: string; interpretation: string; timestamp?: string }>>(LESSON3_P1_A1_KEY, {}),
+    safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; considerations?: string; timestamp?: string }>>(LESSON3_P1_A2_KEY, {}),
+    safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>>(LESSON3_P2_A1_KEY, {}),
+    safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>>(LESSON3_P2_A2_KEY, {}),
+    safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }>>(LESSON3_P2_A3_KEY, {}),
+    safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>>(LESSON3_P3_A1_KEY, {}),
+    safeGetAllAsync<Record<string, { submitted?: boolean; review?: any; timestamp?: string }>>(LESSON3_P4_REVIEW_KEY, {}),
+    safeGetAllAsync<Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>>(LESSON3_P4_COMPLETE_KEY, {}),
+  ]);
+
+  const a1 = a1All[username];
+  const a2 = a2All[username];
+  const p2a1 = p2a1All[username];
+  const p2a2 = p2a2All[username];
+  const p2a3 = p2a3All[username];
+  const p3 = p3All[username];
+  const review = reviewAll[username] as any;
+  const finalEntry = finalAll[username] as any;
+  const reflection = finalEntry?.reflection || {};
+
+  const recallLocked = !!a1;
+  const submitted2 = !!a2;
+  const p2a1Submitted = !!p2a1;
+  const p2a2Submitted = !!p2a2;
+  const p2a3Submitted = !!p2a3;
+  const p3Submitted = !!p3;
+  const peerSubmitted = !!(review?.submitted || review?.review);
+  const finalSubmitted = !!(finalEntry?.completed || finalEntry?.uploadUrl || finalEntry?.reflection);
+  const lesson3ExtraPct = Math.min(
+    100,
+    (recallLocked ? 10 : 0) +
+      (submitted2 ? 15 : 0) +
+      (p2a1Submitted ? 8 : 0) +
+      (p2a2Submitted ? 8 : 0) +
+      (p2a3Submitted ? 9 : 0) +
+      (p3Submitted ? 25 : 0) +
+      (peerSubmitted ? 10 : 0) +
+      (finalSubmitted ? 15 : 0)
+  );
+
+  return {
+    hasAnyData: !!(a1 || a2 || p2a1 || p2a2 || p2a3 || p3 || review || finalEntry),
+    recallA: a1?.researchQuestion || '',
+    recallB: a1?.regressionEquation || '',
+    recallC: a1?.interpretation || '',
+    recallLocked,
+    finalConsiderations: a2?.considerations || '',
+    uploadedDiagramPreview: a2?.fileDataUrl || null,
+    submitted2,
+    p2a1Preview: p2a1?.fileDataUrl || null,
+    p2a1Submitted,
+    p2a2Preview: p2a2?.fileDataUrl || null,
+    p2a2Submitted,
+    p2a3Preview: p2a3?.fileDataUrl || null,
+    p2a3Submitted,
+    p2a3Answer: p2a3?.interpretation || '',
+    p3Preview: p3?.fileDataUrl || null,
+    p3Submitted,
+    peer1Answer: Array.isArray(review?.review?.q1) ? (review.review.q1[0] || '') : (review?.review?.q1 || ''),
+    peer2Answer: Array.isArray(review?.review?.q2) ? (review.review.q2[0] || '') : (review?.review?.q2 || ''),
+    peer3Answer: Array.isArray(review?.review?.q3) ? (review.review.q3[0] || '') : (review?.review?.q3 || ''),
+    peer4Answer: Array.isArray(review?.review?.q4) ? (review.review.q4[0] || '') : (review?.review?.q4 || ''),
+    peerStrength: review?.review?.strength || '',
+    peerSuggestion: review?.review?.suggestion || '',
+    peerReviewerUsername: review?.review?.reviewer || '',
+    peerSubmitted,
+    finalConfidence: reflection?.confidence || '',
+    finalConfidenceReason: reflection?.contributed || '',
+    finalChallenge: reflection?.challenging || '',
+    finalStatsChange: reflection?.stats || '',
+    finalClimateChange: reflection?.climate || '',
+    finalConnectionChange: reflection?.connection || '',
+    finalExtension: reflection?.extend || '',
+    finalLearnerInsight: reflection?.learned || '',
+    finalPreview: finalEntry?.uploadUrl || null,
+    finalSubmitted,
+    lesson3ExtraPct,
+  };
+};
+
 // Phase 2 Activity 2: guided Pearson r (store r and variable names)
 export const savePhase2Activity2 = (username: string, payload: { var1: string; var2: string; r: number }) => {
   const storeRaw = localStorage.getItem(PHASE2_ACTIVITY2_KEY);
@@ -1764,20 +1943,16 @@ export const getLesson2Phase2Activity4InterpAllDetailed = (): Record<string, { i
 };
 
 export const getUserProgress = (username: string): UserProgress => {
-  const raw = localStorage.getItem(PROGRESS_KEY);
-  const all: Record<string, UserProgress> = raw ? JSON.parse(raw) : {};
+  const all = safeGetAll(PROGRESS_KEY) as Record<string, UserProgress>;
   const existing = all[username];
-  if (existing) return existing;
-  return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, ...(existing || {}) };
 };
 
 export const setUserProgress = (username: string, sectionId: SectionId, percent: number) => {
-  const raw = localStorage.getItem(PROGRESS_KEY);
-  const all: Record<string, UserProgress> = raw ? JSON.parse(raw) : {};
-  const user = all[username] || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const all = safeGetAll(PROGRESS_KEY) as Record<string, UserProgress>;
+  const user = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, ...(all[username] || {}) };
   user[sectionId] = Math.max(0, Math.min(100, Math.round(percent)));
-  all[username] = user;
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(all));
+  safeSetItemSync(PROGRESS_KEY, { ...all, [username]: user });
 };
 
 export const savePreAssessmentPart1Score = (username: string, correctCount: number, itemCorrect?: boolean[]) => {

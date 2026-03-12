@@ -2,7 +2,7 @@ import '../../styles/StudentPortal.css';
 import '../../styles/Lesson.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ProgressBar from '../../components/ProgressBar';
-import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1All, getUserProgress, saveLesson3Phase1Activity2, getLesson3Phase1Activity2All, saveLesson3Phase2Activity1, getLesson3Phase2Activity1All, saveLesson3Phase2Activity2, getLesson3Phase2Activity2All, saveLesson3Phase2Activity3, getLesson3Phase2Activity3All, saveLesson3Phase3Activity1, getLesson3Phase3Activity1All, saveLesson3Phase4PeerReview, getLesson3Phase4ReviewAll, saveLesson3Phase4Reflection, getLesson3Phase4CompleteAll } from '../../services/progressService';
+import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1All, getUserProgress, saveLesson3Phase1Activity2, getLesson3Phase1Activity2All, saveLesson3Phase2Activity1, getLesson3Phase2Activity1All, saveLesson3Phase2Activity2, getLesson3Phase2Activity2All, saveLesson3Phase2Activity3, getLesson3Phase2Activity3All, saveLesson3Phase3Activity1, getLesson3Phase3Activity1All, saveLesson3Phase4PeerReview, getLesson3Phase4ReviewAll, saveLesson3Phase4Reflection, getLesson3Phase4CompleteAll, getLesson3PersistedState } from '../../services/progressService';
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
@@ -79,32 +79,6 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [recallLocked, setRecallLocked] = useState<boolean>(false);
   const [lesson3ExtraPct, setLesson3ExtraPct] = useState<number>(0);
   useEffect(() => { setUserProgress(user.username, 4, Math.min(100, progressPct + lesson3ExtraPct)); }, [progressPct, lesson3ExtraPct, user.username]);
-
-  // Compute extra awarded percent from saved activity entries so initial progress starts at 0
-  useEffect(() => {
-    try {
-      let sum = 0;
-      const a1 = (getLesson3Phase1Activity1All && typeof getLesson3Phase1Activity1All === 'function') ? getLesson3Phase1Activity1All() : {};
-      if (a1 && a1[user.username]) sum += 10; // Phase1 Activity1
-      const a2 = (getLesson3Phase1Activity2All && typeof getLesson3Phase1Activity2All === 'function') ? getLesson3Phase1Activity2All() : {};
-      if (a2 && a2[user.username]) sum += 15; // Phase1 Activity2
-      const p2a1 = (getLesson3Phase2Activity1All && typeof getLesson3Phase2Activity1All === 'function') ? getLesson3Phase2Activity1All() : {};
-      if (p2a1 && p2a1[user.username]) sum += 8; // Phase2 A1
-      const p2a2 = (getLesson3Phase2Activity2All && typeof getLesson3Phase2Activity2All === 'function') ? getLesson3Phase2Activity2All() : {};
-      if (p2a2 && p2a2[user.username]) sum += 8; // Phase2 A2
-      const p2a3 = (getLesson3Phase2Activity3All && typeof getLesson3Phase2Activity3All === 'function') ? getLesson3Phase2Activity3All() : {};
-      if (p2a3 && p2a3[user.username]) sum += 9; // Phase2 A3
-      const p3a1 = (getLesson3Phase3Activity1All && typeof getLesson3Phase3Activity1All === 'function') ? getLesson3Phase3Activity1All() : {};
-      if (p3a1 && p3a1[user.username]) sum += 25; // Phase3 A1
-      const rev = (getLesson3Phase4ReviewAll && typeof getLesson3Phase4ReviewAll === 'function') ? getLesson3Phase4ReviewAll() : {};
-      if (rev && rev[user.username]) sum += 10; // Phase4 review
-      const comp = (getLesson3Phase4CompleteAll && typeof getLesson3Phase4CompleteAll === 'function') ? getLesson3Phase4CompleteAll() : {};
-      if (comp && comp[user.username]) sum += 15; // Phase4 final
-      const newExtra = Math.min(100, sum);
-      setLesson3ExtraPct(newExtra);
-      try { localStorage.setItem('lesson3_extra_progress', String(newExtra)); } catch {}
-    } catch (e) { /* ignore */ }
-  }, [user.username]);
 
     // Load previously saved Lesson3 Phase1 Activity1 (recall fields) if any
     useEffect(() => {
@@ -269,6 +243,24 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [finalPreview, setFinalPreview] = useState<string | null>(null);
   const [finalSubmitted, setFinalSubmitted] = useState<boolean>(false);
 
+  const derivedLesson3ExtraPct = useMemo(() => Math.min(
+    100,
+    (recallLocked ? 10 : 0) +
+    (submitted2 ? 15 : 0) +
+    (p2a1Submitted ? 8 : 0) +
+    (p2a2Submitted ? 8 : 0) +
+    (p2a3Submitted ? 9 : 0) +
+    (p3Submitted ? 25 : 0) +
+    (peerSubmitted ? 10 : 0) +
+    (finalSubmitted ? 15 : 0)
+  ), [recallLocked, submitted2, p2a1Submitted, p2a2Submitted, p2a3Submitted, p3Submitted, peerSubmitted, finalSubmitted]);
+
+  useEffect(() => {
+    if (lesson3ExtraPct === derivedLesson3ExtraPct) return;
+    setLesson3ExtraPct(derivedLesson3ExtraPct);
+    try { localStorage.setItem('lesson3_extra_progress', String(derivedLesson3ExtraPct)); } catch {}
+  }, [derivedLesson3ExtraPct, lesson3ExtraPct]);
+
   // Load previously saved Phase4 reflection/upload if present
   useEffect(() => {
     try {
@@ -290,6 +282,83 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setFinalSubmitted(true);
       }
     } catch (e) { /* ignore */ }
+  }, [user.username]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateFromLocalFallback = async () => {
+      try {
+        const persisted = await getLesson3PersistedState(user.username);
+        if (cancelled || !persisted.hasAnyData) return;
+
+        if (persisted.recallLocked) {
+          setRecallA(persisted.recallA);
+          setRecallB(persisted.recallB);
+          setRecallC(persisted.recallC);
+          setRecallLocked(true);
+        }
+
+        if (persisted.submitted2) {
+          setFinalConsiderations(persisted.finalConsiderations);
+          setUploadedDiagramPreview(persisted.uploadedDiagramPreview);
+          setSubmitted2(true);
+        }
+
+        if (persisted.p2a1Submitted) {
+          setP2a1Preview(persisted.p2a1Preview);
+          setP2a1Submitted(true);
+        }
+
+        if (persisted.p2a2Submitted) {
+          setP2a2Preview(persisted.p2a2Preview);
+          setP2a2Submitted(true);
+        }
+
+        if (persisted.p2a3Submitted) {
+          setP2a3Preview(persisted.p2a3Preview);
+          setP2a3Answer(persisted.p2a3Answer);
+          setP2a3Submitted(true);
+        }
+
+        if (persisted.p3Submitted) {
+          setP3Preview(persisted.p3Preview);
+          setP3Submitted(true);
+        }
+
+        if (persisted.peerSubmitted) {
+          setPeer1Answer(persisted.peer1Answer);
+          setPeer2Answer(persisted.peer2Answer);
+          setPeer3Answer(persisted.peer3Answer);
+          setPeer4Answer(persisted.peer4Answer);
+          setPeerStrength(persisted.peerStrength);
+          setPeerSuggestion(persisted.peerSuggestion);
+          setPeerReviewerUsername(persisted.peerReviewerUsername);
+          setPeerSubmitted(true);
+        }
+
+        if (persisted.finalSubmitted) {
+          setFinalConfidence(persisted.finalConfidence);
+          setFinalConfidenceReason(persisted.finalConfidenceReason);
+          setFinalChallenge(persisted.finalChallenge);
+          setFinalStatsChange(persisted.finalStatsChange);
+          setFinalClimateChange(persisted.finalClimateChange);
+          setFinalConnectionChange(persisted.finalConnectionChange);
+          setFinalExtension(persisted.finalExtension);
+          setFinalLearnerInsight(persisted.finalLearnerInsight);
+          setFinalPreview(persisted.finalPreview);
+          setFinalSubmitted(true);
+        }
+      } catch (e) {
+        console.error('hydrate lesson3 local fallback failed', e);
+      }
+    };
+
+    hydrateFromLocalFallback();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user.username]);
 
   useEffect(() => {
