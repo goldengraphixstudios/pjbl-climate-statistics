@@ -849,3 +849,14 @@ How To Use Going Forward
   - `README.md`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 17:05] Admin polling reduction for class record and staff portal
+- Removed the 7-second app-wide class refresh interval and kept staff class reloads to login plus browser focus/visibility recovery only.
+- Removed the 7-second admin portal polling tick that kept refetching class record, feedback rows, and response rows in the background.
+- Scoped admin feedback queries to lesson output tabs only, and scoped response/state queries to the tabs that actually render response-backed analytics or lesson outputs.
+- Reduced class record reload triggers to active tab + selected section changes instead of every background refresh cycle.
+- Files:
+  - `src/App.tsx`
+  - `src/pages/portals/AdminPortal.tsx`
+- Commit: pending
+- Push: pending

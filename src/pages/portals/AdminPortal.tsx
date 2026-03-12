@@ -42,6 +42,10 @@ const RESPONSE_COLOR_MAP: Record<string, string> = {
   D: '#DFFFE1'
 };
 const CORRECT_COLOR = '#7FA8FF';
+const ANALYTICS_TAB_IDS = ['pre-assessment', 'initial-survey', 'post-assessment', 'end-survey', 'class-record'] as const;
+const LESSON_RESULT_TAB_IDS = ['lesson1-results', 'lesson2-results', 'lesson3-results'] as const;
+const FILTER_TAB_IDS = [...ANALYTICS_TAB_IDS, ...LESSON_RESULT_TAB_IDS];
+const RESPONSE_DRIVEN_TAB_IDS = ['pre-assessment', 'initial-survey', 'post-assessment', 'end-survey', ...LESSON_RESULT_TAB_IDS] as const;
 
 function deriveAssessmentScore(response?: ResponseRow | null) {
   if (!response) return null;
@@ -553,7 +557,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
   const [responseRows, setResponseRows] = useState<ResponseRow[]>([]);
   const [lessonStateMap, setLessonStateMap] = useState<Record<string, any>>({});
   const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0);
-  const [liveRefreshTick, setLiveRefreshTick] = useState(0);
   const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
   const [scoreSavingKey, setScoreSavingKey] = useState<string | null>(null);
   const [reviewRow, setReviewRow] = useState<{
@@ -663,44 +666,23 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
     { id: 'lesson3-results', label: 'Lesson 3 Outputs', icon: 'L3' }
   );
 
-  const analyticsTabIds = ['pre-assessment', 'initial-survey', 'post-assessment', 'end-survey', 'class-record'];
-  const filterTabIds = [...analyticsTabIds, 'lesson1-results', 'lesson2-results', 'lesson3-results'];
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setLiveRefreshTick((tick) => tick + 1);
-    }, 7000);
-
-    const refreshNow = () => setLiveRefreshTick((tick) => tick + 1);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshNow();
-      }
-    };
-    window.addEventListener('focus', refreshNow);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', refreshNow);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+  const selectedClassId = sectionFilter === 'ALL'
+    ? 'all'
+    : classes.find(c => `Section ${c.section}` === sectionFilter)?.id || 'all';
 
   // Load class record from Supabase when the tab is active
   useEffect(() => {
     if (activeTab !== 'class-record') return;
     setClassRecordLoading(true);
-    const classId = sectionFilter === 'ALL'
-      ? 'all'
-      : classes.find(c => `Section ${c.section}` === sectionFilter)?.id || 'all';
-    getClassRecord(classId)
+    getClassRecord(selectedClassId)
       .then(rows => setClassRecord(rows))
       .catch(e => console.error('[AdminPortal] classRecord error', e))
       .finally(() => setClassRecordLoading(false));
-  }, [activeTab, sectionFilter, classes, feedbackRefreshKey, liveRefreshTick]);
+  }, [activeTab, selectedClassId]);
 
   useEffect(() => {
+    if (!LESSON_RESULT_TAB_IDS.includes(activeTab as typeof LESSON_RESULT_TAB_IDS[number])) return;
+
     const loadFeedback = async () => {
       try {
         const studentIds = (sectionFilter === 'ALL'
@@ -719,9 +701,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       }
     };
     loadFeedback();
-  }, [classes, sectionFilter, feedbackRefreshKey, liveRefreshTick]);
+  }, [activeTab, classes, sectionFilter, feedbackRefreshKey]);
 
   useEffect(() => {
+    if (!RESPONSE_DRIVEN_TAB_IDS.includes(activeTab as typeof RESPONSE_DRIVEN_TAB_IDS[number])) return;
+
     const loadResponses = async () => {
       try {
         const selectedStudents = (sectionFilter === 'ALL'
@@ -751,7 +735,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
       }
     };
     loadResponses();
-  }, [classes, sectionFilter, feedbackRefreshKey, liveRefreshTick]);
+  }, [activeTab, classes, sectionFilter, feedbackRefreshKey]);
 
   const getLatestResponse = (studentId: string, activityType: ActivityType) =>
     responseRows.find((row) => row.student_id === studentId && row.activity_type === activityType);
@@ -1696,11 +1680,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
           ))}
         </div>
         <div className="admin-section">
-          {filterTabIds.includes(activeTab) && (
+          {FILTER_TAB_IDS.includes(activeTab as typeof FILTER_TAB_IDS[number]) && (
             <>
               <div className="section-header">
                 <h2>{tabs.find(t => t.id === activeTab)?.label}</h2>
-                {(analyticsTabIds.includes(activeTab) || activeTab === 'lesson1-results' || activeTab === 'lesson2-results' || activeTab === 'lesson3-results') && <div className="download-buttons">
+                {(ANALYTICS_TAB_IDS.includes(activeTab as typeof ANALYTICS_TAB_IDS[number]) || activeTab === 'lesson1-results' || activeTab === 'lesson2-results' || activeTab === 'lesson3-results') && <div className="download-buttons">
                   <button className="download-btn" onClick={() => handleDownloadReport('pdf')}>
                     📥 Download PDF
                   </button>

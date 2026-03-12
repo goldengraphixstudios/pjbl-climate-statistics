@@ -172,9 +172,10 @@ function App() {
 
   useEffect(() => {
     if (!authUser) return;
+    if (authUser.role !== 'teacher' && authUser.role !== 'admin') return;
 
     const refresh = () => {
-      loadClasses().catch((e) => console.error('[App] periodic loadClasses error', e));
+      loadClasses().catch((e) => console.error('[App] focus loadClasses error', e));
     };
 
     const handleVisibilityChange = () => {
@@ -182,13 +183,10 @@ function App() {
     };
 
     refresh();
-
-    const intervalId = setInterval(refresh, 7000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(intervalId);
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
