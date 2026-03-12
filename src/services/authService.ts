@@ -2,6 +2,17 @@ import { supabase, signIn, signUp, signOut } from './supabaseClient';
 
 export { signOut };
 
+type StudentCredentialSource = 'auth' | 'rpc' | 'legacy';
+
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms = 4000): Promise<T> => {
+  return await Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      window.setTimeout(() => reject(new Error('timeout')), ms)
+    ),
+  ]);
+};
+
 // Keep a minimal fallback for default demo accounts.
 const defaultStudents: Record<string, string> = {
   'john_doe': 'doe123',
@@ -15,13 +26,13 @@ const defaultStudents: Record<string, string> = {
 export const validateStudentCredentials = async (
   username: string,
   password: string
-): Promise<{ valid: boolean; userId?: string; email?: string }> => {
+): Promise<{ valid: boolean; userId?: string; email?: string; source?: StudentCredentialSource }> => {
   // Direct email sign-in (admin/teacher accounts use Supabase Auth)
   if (username.includes('@')) {
     try {
-      const res = await signIn(username, password);
+      const res = await withTimeout(signIn(username, password), 8000);
       if (!res.error && res.data?.session) {
-        return { valid: true, userId: res.data.session.user.id, email: username };
+        return { valid: true, userId: res.data.session.user.id, email: username, source: 'auth' };
       }
     } catch {}
     return { valid: false };
@@ -29,12 +40,15 @@ export const validateStudentCredentials = async (
 
   // Student login: verify password via DB function (no Supabase Auth session needed)
   try {
-    const { data, error } = await supabase.rpc('verify_student', {
-      p_username: username,
-      p_password: password,
-    });
+    const { data, error } = await withTimeout(
+      supabase.rpc('verify_student', {
+        p_username: username,
+        p_password: password,
+      }),
+      4000
+    );
     if (!error && data?.valid) {
-      return { valid: true, userId: data.id };
+      return { valid: true, userId: data.id, source: 'rpc' };
     }
   } catch {}
 
@@ -44,15 +58,18 @@ export const validateStudentCredentials = async (
     const db = raw ? JSON.parse(raw) as Record<string, string> : defaultStudents;
     if ((db[username] || '') === password) {
       try {
-        const profile = await supabase
-          .from('users')
-          .select('id')
-          .eq('username', username)
-          .maybeSingle();
+        const profile = await withTimeout(
+          supabase
+            .from('users')
+            .select('id')
+            .eq('username', username)
+            .maybeSingle(),
+          2500
+        );
         const userId = profile.data?.id;
-        return { valid: true, userId };
+        return { valid: true, userId, source: 'legacy' };
       } catch {
-        return { valid: true };
+        return { valid: true, source: 'legacy' };
       }
     }
   } catch {}

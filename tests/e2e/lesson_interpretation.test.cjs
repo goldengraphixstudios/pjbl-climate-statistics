@@ -22,7 +22,7 @@ const wait = ms => new Promise(res => setTimeout(res, ms));
     await page.type('input#username', 'student_001');
     await page.type('input#password', 'pass001');
     await page.click('button.login-button');
-    await page.waitForSelector('.portal-container', { timeout: 5000 });
+    await page.waitForSelector('.portal-container', { timeout: 15000 });
 
         // For reliability in headless E2E, set Lesson1 interpretation directly in localStorage
         await page.evaluate(() => {

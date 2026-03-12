@@ -49,7 +49,7 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
         const profile = await withTimeout(getUserProfileByIdentifier(userId), 10000);
         if (profile?.role === 'admin') role = 'admin';
         userId = profile?.id || userId;
-      } else if (!userId) {
+      } else if (result.source !== 'legacy') {
         // Look up by username to get the Supabase id
         try {
           const { data } = await withTimeout<{
@@ -95,6 +95,7 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
               id="username"
               type="text"
               placeholder="Enter your username"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -108,6 +109,7 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
