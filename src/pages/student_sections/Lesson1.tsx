@@ -3989,8 +3989,8 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                     <div className="banner">Teacher Score: {p4Score}%</div>
                   )}
                     <div className="section-actions">
-                    <button className="complete-btn" disabled={lesson1Completed || (!lesson1ReadyForFinalSubmission && !lesson1Phase4Marked)} onClick={() => {
-                      if (!lesson1ReadyForFinalSubmission && !lesson1Phase4Marked) return;
+                    <button className="complete-btn" disabled={lesson1Completed || !lesson1ReadyForFinalSubmission} onClick={() => {
+                      if (!lesson1ReadyForFinalSubmission) return;
                       // persist reflection fields and uploaded file, then mark mission complete
                       const finalize = async (uploadUrl?: string, mime?: string) => {
                         try { savePhase4Reflection(user.username, reflectionFields || {}, uploadUrl, mime); } catch (e) {}
@@ -4044,8 +4044,8 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       } else {
                         finalize();
                       }
-                    }}>{lesson1Completed ? 'Mission Complete' : lesson1Phase4Marked ? 'Update Final Submission' : 'Mission Complete'}</button>
-                    {!lesson1Completed && !lesson1Phase4Marked && !lesson1ReadyForFinalSubmission && (
+                    }}>{lesson1Completed ? 'Mission Complete' : lesson1Phase4Marked && !lesson1ReadyForFinalSubmission ? 'Saved Pending Completion' : 'Mission Complete'}</button>
+                    {!lesson1Completed && !lesson1ReadyForFinalSubmission && (
                       <div style={{ marginTop: 12, color: '#6B7280' }}>
                         Complete Phases 1 to 3, finish the peer review, and answer the reflection before the final Lesson 1 submission unlocks.
                       </div>

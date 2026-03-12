@@ -199,26 +199,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
   const activityTypeForId = (id: number): ActivityType | null =>
     id === 1 ? 'pre' : id === 2 ? 'lesson1' : id === 3 ? 'lesson2' : id === 4 ? 'lesson3' : id === 5 ? 'post' : null;
 
-  const isSectionLocked = (sectionId: number) => {
-    if (user.role === 'admin') return false;
-    if (sectionId === 6) return false;
-    const current = activityTypeForId(sectionId);
-    if (!current) return false;
-    if (activityStatuses[current]?.submitted) return false;
-    // if previous activity not satisfied
-    if (sectionId > 1) {
-      const prevType = activityTypeForId(sectionId - 1);
-      if (prevType) {
-        const prev = activityStatuses[prevType];
-        if (!prev.submitted) return true;
-      }
-    }
-    return false;
-  };
-
   const handleSectionClick = (sectionId: number) => {
-    const locked = isSectionLocked(sectionId);
-    if (locked) return;
     if (onOpenSection) {
       onOpenSection(sectionId);
     } else {
@@ -349,12 +330,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
               {sections.map((section) => (
                 <div
                   key={section.id}
-                  className={`section-card ${activeSection === section.id ? 'active' : ''} ${isSectionLocked(section.id)?'locked':''}`}
+                  className={`section-card ${activeSection === section.id ? 'active' : ''}`}
                   onClick={() => handleSectionClick(section.id)}
                 >
                   <div className="section-header">
                     <span className="section-icon">{section.icon}</span>
-                    {isSectionLocked(section.id) && <span className="section-lock-icon" title="Locked until previous section is completed">🔒</span>}
                   </div>
                   <h3>{section.title}</h3>
                   {/* status indicator based on Supabase-backed statuses */}

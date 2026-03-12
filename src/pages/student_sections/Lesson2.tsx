@@ -2334,9 +2334,9 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                     </div>
 
                       <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                      <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || lesson2Completed || (!lesson2ReadyForFinalSubmission && !submitDisabledP4)} onClick={async () => {
+                      <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || lesson2Completed || !lesson2ReadyForFinalSubmission} onClick={async () => {
                         if (lesson2Completed) return;
-                        if (!lesson2ReadyForFinalSubmission && !submitDisabledP4) {
+                        if (!lesson2ReadyForFinalSubmission) {
                           setSubmissionMessageP4('Complete Phases 1 to 3 before submitting the final output.');
                           return;
                         }
@@ -2372,13 +2372,13 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         flashAction('phase4-final', 'saved');
                         setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
                         await finalize(asset);
-                      }}>{getActionLabel('phase4-final', lesson2Completed ? 'Submitted' : submitDisabledP4 ? 'Update Submitted Output' : 'Submit Output')}</button>
+                      }}>{getActionLabel('phase4-final', lesson2Completed ? 'Submitted' : submitDisabledP4 && !lesson2ReadyForFinalSubmission ? 'Saved Pending Completion' : 'Submit Output')}</button>
                     </div>
 
                     {submissionMessageP4 && (
                       <div style={{ marginTop:12 }}>{submissionMessageP4}</div>
                     )}
-                    {!lesson2Completed && !submitDisabledP4 && !lesson2ReadyForFinalSubmission && (
+                    {!lesson2Completed && !lesson2ReadyForFinalSubmission && (
                       <div style={{ marginTop: 12, color: '#6B7280' }}>
                         Complete Phases 1 to 3 first. Final output submission unlocks after the rest of Lesson 2 is finished.
                       </div>

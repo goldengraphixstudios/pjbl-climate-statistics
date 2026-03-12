@@ -1950,10 +1950,10 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                     <div style={{height:16}} />
                     <div>
-                      <button className="save-btn" style={{padding:'14px 28px', fontSize:16}} disabled={(!finalFile && !savedFinalAsset) || lesson3Completed || (!lesson3ReadyForFinalSubmission && !finalSubmitted)} onClick={async ()=>{
+                      <button className="save-btn" style={{padding:'14px 28px', fontSize:16}} disabled={(!finalFile && !savedFinalAsset) || lesson3Completed || !lesson3ReadyForFinalSubmission} onClick={async ()=>{
                         const existingAsset = savedFinalAsset;
                         if (!finalFile && !existingAsset) return;
-                        if (!lesson3ReadyForFinalSubmission && !finalSubmitted) {
+                        if (!lesson3ReadyForFinalSubmission) {
                           setFinalSubmitStatus('Complete the earlier Lesson 3 activities and all reflection answers before submitting the final output.');
                           return;
                         }
@@ -2046,7 +2046,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           console.error('savePhase4Reflection failed', e);
                           setFinalSubmitStatus('Lesson 3 could not be finalized yet. Your saved work is still here, so you can try again.');
                         }
-                      }}>{lesson3Completed ? 'Submitted' : finalSubmitted ? 'Update Submitted Final Output' : 'Submit Final Output'}</button>
+                      }}>{lesson3Completed ? 'Submitted' : finalSubmitted && !lesson3ReadyForFinalSubmission ? 'Saved Pending Completion' : 'Submit Final Output'}</button>
                     </div>
                     {finalDraftRecovered && !lesson3Completed && (
                       <div style={{color:'var(--plot-value-primary)', marginTop:12}}>
@@ -2059,7 +2059,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                       </div>
                     )}
                     {finalSubmitted && lesson3Completed && (<div style={{color:'var(--plot-value-primary)', marginTop:12}}>Final output submitted — great work!</div>)}
-                    {!lesson3Completed && !finalSubmitted && !lesson3ReadyForFinalSubmission && (
+                    {!lesson3Completed && !lesson3ReadyForFinalSubmission && (
                       <div style={{ color:'#6B7280', marginTop:12 }}>
                         Finish every required activity and reflection response before the final Lesson 3 submission unlocks.
                       </div>
