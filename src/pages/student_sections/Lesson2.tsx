@@ -85,6 +85,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [submissionMessage3, setSubmissionMessage3] = useState<string>('');
   const [submitDisabled3, setSubmitDisabled3] = useState<boolean>(false);
   const [uploadedFile4, setUploadedFile4] = useState<File | null>(null);
+  const [uploadedFileName4, setUploadedFileName4] = useState<string>('');
   const [previewURL4, setPreviewURL4] = useState<string | null>(null);
   const [submissionMessage4, setSubmissionMessage4] = useState<string>('');
   const [submitDisabled4, setSubmitDisabled4] = useState<boolean>(false);
@@ -140,12 +141,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
   useEffect(() => {
     return () => {
-      try { if (previewURL) URL.revokeObjectURL(previewURL); } catch (e) { /* ignore */ }
-      try { if (previewURL3) URL.revokeObjectURL(previewURL3); } catch (e) { /* ignore */ }
-      try { if (previewURL4) URL.revokeObjectURL(previewURL4); } catch (e) { /* ignore */ }
-      try { if (previewURLP4) URL.revokeObjectURL(previewURLP4); } catch (e) { /* ignore */ }
+      try { if (previewURL?.startsWith('blob:')) URL.revokeObjectURL(previewURL); } catch (e) { /* ignore */ }
+      try { if (previewURL3?.startsWith('blob:')) URL.revokeObjectURL(previewURL3); } catch (e) { /* ignore */ }
+      try { if (previewURL4?.startsWith('blob:')) URL.revokeObjectURL(previewURL4); } catch (e) { /* ignore */ }
+      try { if (previewURLP4?.startsWith('blob:')) URL.revokeObjectURL(previewURLP4); } catch (e) { /* ignore */ }
     };
-  }, [previewURL, previewURL3, previewURL4]);
+  }, [previewURL, previewURL3, previewURL4, previewURLP4]);
   const [observations, setObservations] = useState<Record<number, { obs: string; affected: string; causes: string; submitted?: boolean }>>({});
   const [activity1aSubmitted, setActivity1aSubmitted] = useState<boolean>(false);
   const [activity1b, setActivity1b] = useState<{ mostUrgent: string; q1: string; q2: string; q3: string; submitted?: boolean }>({ mostUrgent: '', q1: '', q2: '', q3: '', submitted: false });
@@ -372,6 +373,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const mine = all[user.username];
       if (mine) {
         setPreviewURL4(mine.uploadUrl || null);
+        setUploadedFileName4(mine.filename || '');
         setSubmitDisabled4(!!mine.uploadUrl);
         setSubmissionMessage4(!!mine.uploadUrl ? 'File previously submitted.' : '');
       }
@@ -531,6 +533,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         if (typeof snapshot.submitDisabled3 === 'boolean') setSubmitDisabled3(snapshot.submitDisabled3);
         if (typeof snapshot.submissionMessage3 === 'string') setSubmissionMessage3(snapshot.submissionMessage3);
         if (typeof snapshot.previewURL4 === 'string') setPreviewURL4(snapshot.previewURL4);
+        if (typeof snapshot.uploadedFileName4 === 'string') setUploadedFileName4(snapshot.uploadedFileName4);
         if (typeof snapshot.submitDisabled4 === 'boolean') setSubmitDisabled4(snapshot.submitDisabled4);
         if (typeof snapshot.submissionMessage4 === 'string') setSubmissionMessage4(snapshot.submissionMessage4);
         if (typeof snapshot.p4Equation === 'string') setP4Equation(snapshot.p4Equation);
@@ -587,6 +590,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     submissionMessage3,
     submitDisabled3,
     previewURL4: previewURL4 && !previewURL4.startsWith('blob:') ? previewURL4 : null,
+    uploadedFileName4,
     submissionMessage4,
     submitDisabled4,
     p4Equation,
@@ -632,6 +636,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     submissionMessage3,
     submitDisabled3,
     previewURL4,
+    uploadedFileName4,
     submissionMessage4,
     submitDisabled4,
     p4Equation,
@@ -1843,17 +1848,33 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
                               <input id="activity4-upload" type="file" accept="application/pdf" style={{ display:'none' }} onChange={(e) => {
                                 const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                                if (previewURL4) { URL.revokeObjectURL(previewURL4); }
-                                if (f) { setPreviewURL4(URL.createObjectURL(f)); setUploadedFile4(f); } else { setPreviewURL4(null); setUploadedFile4(null); }
+                                if (previewURL4?.startsWith('blob:')) { URL.revokeObjectURL(previewURL4); }
+                                if (f) {
+                                  setPreviewURL4(URL.createObjectURL(f));
+                                  setUploadedFile4(f);
+                                  setUploadedFileName4(f.name);
+                                } else {
+                                  setPreviewURL4(null);
+                                  setUploadedFile4(null);
+                                  setUploadedFileName4('');
+                                }
                               }} />
                               <button className="save-btn" type="button" onClick={() => (document.getElementById('activity4-upload') as HTMLInputElement).click()} disabled={submitDisabled4}>Upload File</button>
-                              <div style={{ fontStyle:'italic' }}>{uploadedFile4 ? uploadedFile4.name : 'No file chosen'}</div>
+                              <div style={{ fontStyle:'italic' }}>{uploadedFile4 ? uploadedFile4.name : (uploadedFileName4 || 'No file chosen')}</div>
                             </div>
 
                             <div style={{ marginBottom:12 }}>
                               <div style={{ position:'relative', paddingBottom:'56.25%', height:0, overflow:'hidden', borderRadius:8, border:'1px solid var(--input-border)', background:'#FFF' }}>
                                 {previewURL4 ? (
-                                  <iframe src={previewURL4} title="Upload Preview" style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', border:0 }} />
+                                  previewURL4.startsWith('data:') ? (
+                                    <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'var(--plot-value-primary)', gap:8, padding:16, textAlign:'center' }}>
+                                      <div>Saved PDF uploaded successfully.</div>
+                                      {uploadedFileName4 && <div style={{ fontStyle:'italic' }}>{uploadedFileName4}</div>}
+                                      <a href={previewURL4} target="_blank" rel="noreferrer" style={{ color:'var(--plot-value-primary)', textDecoration:'underline' }}>Open saved PDF</a>
+                                    </div>
+                                  ) : (
+                                    <iframe src={previewURL4} title="Upload Preview" style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', border:0 }} />
+                                  )
                                 ) : (
                                   <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#9CA3AF' }}>Preview will appear here after upload</div>
                                 )}
@@ -1913,7 +1934,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     } catch (e) { /* ignore */ }
                                     setSubmissionMessage4('File and encodings submitted — saved.');
                                     setSubmitDisabled4(true);
-                                    setPreviewURL4(data);
+                                    setUploadedFileName4(f.name);
                                     // progress will be recomputed by central effect
                                   } catch (e) { /* ignore */ }
                                 };

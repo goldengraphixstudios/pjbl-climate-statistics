@@ -1212,13 +1212,6 @@ export const saveLesson2Phase2Activity4 = (username: string, uploadUrl: string, 
   const store = safeGetAll(LESSON2_P2_A4_KEY) as Record<string, { uploadUrl: string; mime: string; filename?: string; timestamp?: string }>;
   store[username] = { uploadUrl, mime, filename: filename || '', timestamp: new Date().toISOString() };
   safeSetItemSync(LESSON2_P2_A4_KEY, store);
-  try {
-    const current = getLesson1State(username);
-    const p2: any = { ...(current.phaseData[2] || {}) };
-    (p2 as any).a4Upload = { url: uploadUrl, mime, filename: filename || '' };
-    const phaseData = { ...current.phaseData, 2: p2 };
-    saveLesson1State(username, { ...current, phaseData });
-  } catch (e) { /* ignore */ }
   return store;
 };
 

@@ -588,3 +588,47 @@ Files touched
 - src/App.tsx
 - src/pages/portals/AdminPortal.tsx
 - src/services/responsesService.ts
+
+[2026-03-12 09:09] Lesson 3 progress reset after refresh
+
+Observed issues
+- A student could finish nearly all of Lesson 3, see the progress bar at about 85%, then after an exit/refresh the lesson progress dropped back to 0%.
+- The saved work itself was inconsistent to restore because the progress bar depended on browser-local progress state more than on the actual saved Lesson 3 activity records.
+
+Diagnosis
+- Lesson 3 progress restore depended on synchronous `localStorage` reads and a cached percent value.
+- When saved Lesson 3 state fell back to IndexedDB/localforage, the page did not fully rehydrate those records on refresh.
+- Several Lesson 3 save paths were also not mirroring the exact field names the page uses for restore, which made the fallback restore path fragile.
+
+Self-heal actions applied
+- Added async fallback-aware Lesson 3 persisted-state loading from browser storage.
+- Changed Lesson 3 progress derivation so it recomputes from actual submitted activity flags instead of relying on a fragile cached number.
+- Aligned the Lesson 3 persisted fields used by the student page restore flow.
+- Verified in a browser repro that Lesson 3 came back at 85% after refresh when data existed only in fallback storage.
+
+Files touched
+- src/pages/student_sections/Lesson3.tsx
+- src/services/progressService.ts
+
+[2026-03-12 09:09] Lesson 2 Phase 2 Activity 4 white screen on submit
+
+Observed issues
+- In Lesson 2, Phase 2, Activity 4, uploading a PDF and clicking `Submit Output` could turn the page white.
+- After reopening Lesson 2, the saved Activity 4 upload appeared missing and the student had to repeat the upload flow.
+
+Diagnosis
+- Activity 4 replaced the safe `blob:` preview URL with a persisted `data:` URL immediately after submit and rendered that `data:` URL inside an `iframe`.
+- The browser could throw a `SecurityError` while handling the `data:` document, which matched the white-screen symptom.
+- The Activity 4 UI also was not restoring the saved filename on return, so the saved upload looked missing even when it had been stored.
+- The Lesson 2 upload helper was still incorrectly mirroring the Activity 4 upload into Lesson 1 state.
+
+Self-heal actions applied
+- Stopped feeding the saved `data:` PDF directly into the Activity 4 preview `iframe`.
+- Kept inline preview for fresh `blob:` uploads, but after reload now show a stable saved-file state with the filename and an `Open saved PDF` link.
+- Added saved filename restore through Lesson 2 local/server snapshot hydration.
+- Removed the stray Lesson 1 mirror write from the Lesson 2 Activity 4 upload helper.
+- Verified in a browser repro that submit no longer produced a page error/white screen and that, after reload, the saved PDF still appeared with its filename and open link.
+
+Files touched
+- src/pages/student_sections/Lesson2.tsx
+- src/services/progressService.ts

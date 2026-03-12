@@ -810,3 +810,27 @@ How To Use Going Forward
   - `PROJECT_CONTEXT_SNAPSHOT.txt`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 09:09] Lesson 3 refresh persistence repair
+- Fixed Lesson 3 so refresh/exit no longer drops student progress back to 0 when work had already been saved.
+- Added fallback-aware Lesson 3 rehydration from browser persistence and recomputed progress from actual saved activity completion state.
+- Browser verification confirmed Lesson 3 restored at `85%` after refresh in the fallback-storage scenario.
+- Files:
+  - `src/pages/student_sections/Lesson3.tsx`
+  - `src/services/progressService.ts`
+- Commit: `0084f4f`
+- Push: pushed to `origin/main`
+
+[2026-03-12 09:09] Lesson 2 Phase 2 Activity 4 white-screen repair
+- Fixed the Activity 4 submit path so it no longer swaps the live PDF preview to a persisted `data:` URL inside an `iframe`, which was the crash path behind the white screen.
+- Restored saved Activity 4 filename display and added a stable saved-file state with an `Open saved PDF` link when revisiting the page.
+- Removed the incorrect Lesson 1 mirror write from the Lesson 2 Activity 4 upload helper.
+- Browser verification confirmed:
+  - no page-level crash on Activity 4 submit
+  - no `pageerror` during the upload/submit flow
+  - saved PDF still visible after reload with filename + open link
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+  - `src/services/progressService.ts`
+- Commit: pending
+- Push: pending
