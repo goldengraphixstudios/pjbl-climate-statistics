@@ -4,7 +4,7 @@ import '../../styles/StudentPortal.css';
 import { ActivityType, getResponsesForStudent } from '../../services/responsesService';
 import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
-import { getAssessmentScores, getLesson3PersistedState } from '../../services/progressService';
+import { getAssessmentScores, getLesson1State, getLesson3PersistedState, getUserProgress } from '../../services/progressService';
 import { getStudentState } from '../../services/studentStateService';
 import {
   hasLesson1AnyProgress,
@@ -134,6 +134,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
           post: createEmptyActivityStatus(),
           performance: createEmptyActivityStatus()
         };
+        const localProgress = getUserProgress(user.username);
+        const localLesson1State = getLesson1State(user.username);
         const finalResponses: Partial<Record<ActivityType, any>> = {};
         resps.forEach(r => {
           if (r.activity_type in mapStatus) {
@@ -147,21 +149,21 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
         mapStatus.pre.submitted = !!finalResponses.pre;
         mapStatus.post.submitted = !!finalResponses.post;
 
-        const lesson1Snapshot = lesson1State || finalResponses.lesson1?.answers?.lesson1State || null;
+        const lesson1Snapshot = lesson1State || finalResponses.lesson1?.answers?.lesson1State || localLesson1State || null;
         const lesson2Snapshot = lesson2State || finalResponses.lesson2?.answers?.lesson2State || null;
         const lesson3Snapshot = lesson3State || lesson3Persisted || null;
 
-        mapStatus.lesson1.submitted = isLesson1CompleteState(lesson1Snapshot);
-        mapStatus.lesson2.submitted = isLesson2CompleteState(lesson2Snapshot);
-        mapStatus.lesson3.submitted = isLesson3CompleteState(lesson3Snapshot);
+        mapStatus.lesson1.submitted = isLesson1CompleteState(lesson1Snapshot) || Number(localProgress[2] || 0) >= 100;
+        mapStatus.lesson2.submitted = isLesson2CompleteState(lesson2Snapshot) || Number(localProgress[3] || 0) >= 100;
+        mapStatus.lesson3.submitted = isLesson3CompleteState(lesson3Snapshot) || Number(localProgress[4] || 0) >= 100;
 
-        if (!mapStatus.lesson1.submitted && (hasLesson1AnyProgress(lesson1Snapshot) || !!finalResponses.lesson1)) {
+        if (!mapStatus.lesson1.submitted && (hasLesson1AnyProgress(lesson1Snapshot) || Number(localProgress[2] || 0) > 0 || !!finalResponses.lesson1)) {
           mapStatus.lesson1.draftSaved = true;
         }
-        if (!mapStatus.lesson2.submitted && (hasLesson2AnyProgress(lesson2Snapshot) || !!finalResponses.lesson2)) {
+        if (!mapStatus.lesson2.submitted && (hasLesson2AnyProgress(lesson2Snapshot) || Number(localProgress[3] || 0) > 0 || !!finalResponses.lesson2)) {
           mapStatus.lesson2.draftSaved = true;
         }
-        if (!mapStatus.lesson3.submitted && (lesson3Persisted?.hasAnyData || hasLesson3AnyProgress(lesson3Snapshot) || !!finalResponses.lesson3)) {
+        if (!mapStatus.lesson3.submitted && (lesson3Persisted?.hasAnyData || hasLesson3AnyProgress(lesson3Snapshot) || Number(localProgress[4] || 0) > 0 || !!finalResponses.lesson3)) {
           mapStatus.lesson3.draftSaved = true;
         }
         const postScores = getAssessmentScores()[user.username];
