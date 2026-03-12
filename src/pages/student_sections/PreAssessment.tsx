@@ -90,6 +90,7 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [itemCorrect, setItemCorrect] = useState<boolean[]>([]);
   const [part2Submitted, setPart2Submitted] = useState(false);
   const [existingResponse, setExistingResponse] = useState<any>(null);
+  const [preAssessmentNotice, setPreAssessmentNotice] = useState('');
   const existingStage = existingResponse?.answers?.__meta?.stage;
   const hasSavedPart2 = Array.isArray(existingResponse?.answers?.part2) && existingResponse.answers.part2.length === 17;
   const isLockedAfterSubmit = !!existingResponse && (existingStage === 'final' || hasSavedPart2) && user.role !== 'admin';
@@ -223,15 +224,15 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     } catch (err) {
       console.error('error saving part2 responses', err);
     }
-    setUserProgress(user.username, 1, 100);
-    setPart2Submitted(true);
-    // persist combined to responses table
+
+    let responseSaved = false;
     try {
       const prof = await getMyProfile();
       const studentId = prof?.id || await resolveStudentId(user.username);
       if (studentId) {
-        const correct = itemCorrect.filter(Boolean).length;
-        await upsertResponse({
+        const finalItemCorrect = responses.map((answer, index) => answer === answerKey[index]);
+        const correct = finalItemCorrect.filter(Boolean).length;
+        const savedResponse = await upsertResponse({
           student_id: studentId,
           activity_type: 'pre',
           answers: {
@@ -246,14 +247,27 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
             part1: responses,
             part2: part2Responses,
             part1Score: correct,
-            part1GroupScores: getGroupScores(itemCorrect)
+            part1GroupScores: getGroupScores(finalItemCorrect)
           },
-          correctness: { part1: itemCorrect }
+          correctness: { part1: finalItemCorrect }
         });
+        if (savedResponse) {
+          setExistingResponse(savedResponse);
+        }
+        responseSaved = !!savedResponse;
       }
     } catch (e) {
       console.error('upsert pre response final', e);
     }
+
+    if (!responseSaved) {
+      setPreAssessmentNotice('Your Pre-Assessment answers were saved on this device, but the final completion record did not save yet. Press Submit again to retry.');
+      return;
+    }
+
+    setUserProgress(user.username, 1, 100);
+    setPart2Submitted(true);
+    setPreAssessmentNotice('');
   };
 
   const renderPart1 = () => {
@@ -854,6 +868,11 @@ const PreAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         </div>
       </header>
       <main className="portal-content">
+        {!!preAssessmentNotice && !isLockedAfterSubmit && (
+          <section className="pre-assessment-part2" style={{ marginBottom: 16 }}>
+            <p className="scale-note">{preAssessmentNotice}</p>
+          </section>
+        )}
         {isLockedAfterSubmit ? (
           <section className="pre-assessment-part2">
             <h2>Pre-Assessment Submitted</h2>

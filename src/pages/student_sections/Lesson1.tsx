@@ -6,6 +6,7 @@ import { ActivityType, getResponseForStudentActivity, upsertResponse } from '../
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
 import { resolveStudentId } from '../../services/studentStateService';
+import { isLesson1CompleteState, isLesson1ReadyForFinalSubmissionState } from '../../services/lessonCompletion';
 import BarDualChart from '../../components/BarDualChart';
 import { climateLabels, societalLabels, getMonthlySeriesForClimate, getMonthlySeriesForSocietal, Year } from '../../services/lesson1Phase1Data';
 import { activity2Questions, activity2Validators } from '../../services/activity2Questions';
@@ -1262,6 +1263,16 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
   const [reflectionFields, setReflectionFields] = useState<Record<string, string>>({});
   const [reflectionUpload, setReflectionUpload] = useState<{ url: string; mimeType?: string } | null>(null);
   const [reflectionFile, setReflectionFile] = useState<File | null>(null);
+  const lesson1ReflectionComplete = useMemo(() => {
+    const requiredKeys = ['confidence', 'contributed', 'challenging', 'stats', 'climate', 'connection', 'extend', 'learned'];
+    return requiredKeys.every((key) => typeof reflectionFields[key] === 'string' && reflectionFields[key].trim().length > 0);
+  }, [reflectionFields]);
+  const lesson1Phase4Marked = !!((state.phaseData as any)[4]?.missionComplete);
+  const lesson1Completed = useMemo(() => isLesson1CompleteState(state), [state]);
+  const lesson1ReadyForFinalSubmission = useMemo(
+    () => isLesson1ReadyForFinalSubmissionState(state) && lesson1ReflectionComplete,
+    [lesson1ReflectionComplete, state]
+  );
 
   // Rehydrate Phase 4 saved peer-review and reflection on mount
   useEffect(() => {
@@ -1741,6 +1752,17 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
           </div>
         )}
         <div className="lesson-container">
+          {lesson1Completed && (
+            <div className="banner" style={{ marginBottom: 16 }}>
+              Lesson 1 is complete. Your submitted answers are now locked.
+            </div>
+          )}
+          {!lesson1Completed && lesson1Phase4Marked && !lesson1ReadyForFinalSubmission && (
+            <div className="banner" style={{ marginBottom: 16 }}>
+              Your final Lesson 1 submission is saved, but the lesson remains in progress until Phases 1 to 3 are completed.
+            </div>
+          )}
+          <fieldset disabled={lesson1Completed} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <ProgressBar progress={progressPct} />
 
           <div className="accordion">
@@ -3787,7 +3809,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, paddingLeft: 14, color: '#4D7061' }}>
                         {['Very clear','Mostly clear','Confusing'].map((opt) => (
                           <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input type="checkbox" checked={peerAnswers[0].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onChange={() => {
+                            <input type="checkbox" checked={peerAnswers[0].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || lesson1Completed} onChange={() => {
                               setPeerAnswers(prev => {
                                 const copy = prev.map(a => a.slice());
                                 const idx = copy[0].indexOf(opt);
@@ -3804,7 +3826,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, paddingLeft: 14, color: '#4D7061' }}>
                         {['Strong support','Some support','Weak support'].map((opt) => (
                           <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input type="checkbox" checked={peerAnswers[1].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onChange={() => {
+                            <input type="checkbox" checked={peerAnswers[1].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || lesson1Completed} onChange={() => {
                               setPeerAnswers(prev => {
                                 const copy = prev.map(a => a.slice());
                                 const idx = copy[1].indexOf(opt);
@@ -3821,7 +3843,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, paddingLeft: 14, color: '#4D7061' }}>
                         {['Yes, very specific','Somewhat','Too vague'].map((opt) => (
                           <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input type="checkbox" checked={peerAnswers[2].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onChange={() => {
+                            <input type="checkbox" checked={peerAnswers[2].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || lesson1Completed} onChange={() => {
                               setPeerAnswers(prev => {
                                 const copy = prev.map(a => a.slice());
                                 const idx = copy[2].indexOf(opt);
@@ -3838,7 +3860,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, paddingLeft: 14, color: '#4D7061' }}>
                         {['Yes','Somewhat','No'].map((opt) => (
                           <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input type="checkbox" checked={peerAnswers[3].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onChange={() => {
+                            <input type="checkbox" checked={peerAnswers[3].includes(opt)} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || lesson1Completed} onChange={() => {
                               setPeerAnswers(prev => {
                                 const copy = prev.map(a => a.slice());
                                 const idx = copy[3].indexOf(opt);
@@ -3857,12 +3879,12 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       <input value={peerStrength} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted} onChange={(e)=>setPeerStrength(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
 
                       <label style={{ fontWeight: 800 }}>ONE SUGGESTION <span style={{ fontWeight: 500 }}>for improvement:</span></label>
-                      <input value={peerSuggestion} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=>setPeerSuggestion(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                      <input value={peerSuggestion} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || lesson1Completed} onChange={(e)=>setPeerSuggestion(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
 
                       <label style={{ fontWeight: 500 }}>Username of Peer reviewer:</label>
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, alignItems: 'center' }}>
-                        <input value={peerReviewer} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=>setPeerReviewer(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
-                        <button style={{ width: '100%', padding: '12px 10px', borderRadius: 10, border: 'none', background: ((state.phaseData as any)[4]?.peerReviewSubmitted || peerSubmitted || (state.phaseData as any)[4]?.missionComplete ? '#E5EDF9' : '#C4E8D4'), color: '#2F5242', fontWeight: 800, cursor: ((state.phaseData as any)[4]?.peerReviewSubmitted || peerSubmitted || (state.phaseData as any)[4]?.missionComplete ? 'not-allowed' : 'pointer') }} disabled={!!(state.phaseData as any)[4]?.peerReviewSubmitted || peerSubmitted || !!(state.phaseData as any)[4]?.missionComplete} onClick={() => {
+                        <input value={peerReviewer} disabled={peerSubmitted || !!(state.phaseData as any)[4]?.peerReviewSubmitted || lesson1Completed} onChange={(e)=>setPeerReviewer(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                        <button style={{ width: '100%', padding: '12px 10px', borderRadius: 10, border: 'none', background: ((state.phaseData as any)[4]?.peerReviewSubmitted || peerSubmitted || lesson1Completed ? '#E5EDF9' : '#C4E8D4'), color: '#2F5242', fontWeight: 800, cursor: ((state.phaseData as any)[4]?.peerReviewSubmitted || peerSubmitted || lesson1Completed ? 'not-allowed' : 'pointer') }} disabled={!!(state.phaseData as any)[4]?.peerReviewSubmitted || peerSubmitted || lesson1Completed} onClick={() => {
                           const payload = {
                             q1: peerAnswers[0], q2: peerAnswers[1], q3: peerAnswers[2], q4: peerAnswers[3], strength: peerStrength, suggestion: peerSuggestion, reviewer: peerReviewer
                           };
@@ -3881,17 +3903,17 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                         <span>1. How confident am I in my correlation calculation?</span>
-                        <input value={reflectionFields.confidence || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, confidence: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242', fontStyle: 'italic' }} placeholder="1 (not confident) -> 5 (very confident)" />
+                        <input value={reflectionFields.confidence || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, confidence: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242', fontStyle: 'italic' }} placeholder="1 (not confident) -> 5 (very confident)" />
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <span>2. What contributed to this confidence level?</span>
-                        <input value={reflectionFields.contributed || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, contributed: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                        <input value={reflectionFields.contributed || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, contributed: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <span>3. What was most challenging about this project?</span>
-                        <input value={reflectionFields.challenging || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, challenging: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                        <input value={reflectionFields.challenging || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, challenging: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3899,27 +3921,27 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 14 }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                             <span style={{ minWidth: 80 }}>a. Statistics:</span>
-                            <input value={reflectionFields.stats || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, stats: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                            <input value={reflectionFields.stats || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, stats: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                             <span style={{ minWidth: 80 }}>b. Climate:</span>
-                            <input value={reflectionFields.climate || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, climate: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                            <input value={reflectionFields.climate || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, climate: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                             <span style={{ minWidth: 80 }}>c. The connection between them:</span>
-                            <input value={reflectionFields.connection || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, connection: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                            <input value={reflectionFields.connection || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, connection: e.target.value}))} style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                           </div>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <span>5. If I could extend this project, I would investigate:</span>
-                        <input value={reflectionFields.extend || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, extend: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                        <input value={reflectionFields.extend || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, extend: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <span>6. One thing I learned about myself as a learner:</span>
-                        <input value={reflectionFields.learned || ''} disabled={!!(state.phaseData as any)[4]?.missionComplete} onChange={(e)=> setReflectionFields(prev=> ({...prev, learned: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
+                        <input value={reflectionFields.learned || ''} disabled={lesson1Completed} onChange={(e)=> setReflectionFields(prev=> ({...prev, learned: e.target.value}))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C4E8D4', background: '#FFFFFF', color: '#2F5242' }} />
                       </div>
                     </div>
 
@@ -3929,7 +3951,7 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                         <span style={{ fontWeight: 600 }}>Upload file</span>
                         <input
                           type="file"
-                          disabled={!!(state.phaseData as any)[4]?.missionComplete}
+                          disabled={lesson1Completed}
                           onChange={(e)=>{
                             const f = e.target.files?.[0] || null;
                             setReflectionFile(f);
@@ -3967,7 +3989,8 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                     <div className="banner">Teacher Score: {p4Score}%</div>
                   )}
                     <div className="section-actions">
-                    <button className="complete-btn" disabled={!!(state.phaseData as any)[4]?.missionComplete} onClick={() => {
+                    <button className="complete-btn" disabled={lesson1Completed || (!lesson1ReadyForFinalSubmission && !lesson1Phase4Marked)} onClick={() => {
+                      if (!lesson1ReadyForFinalSubmission && !lesson1Phase4Marked) return;
                       // persist reflection fields and uploaded file, then mark mission complete
                       const finalize = async (uploadUrl?: string, mime?: string) => {
                         try { savePhase4Reflection(user.username, reflectionFields || {}, uploadUrl, mime); } catch (e) {}
@@ -4021,12 +4044,18 @@ const Lesson1: React.FC<Lesson1Props> = ({ user, onBack }) => {
                       } else {
                         finalize();
                       }
-                    }}>Mission Complete</button>
+                    }}>{lesson1Completed ? 'Mission Complete' : lesson1Phase4Marked ? 'Update Final Submission' : 'Mission Complete'}</button>
+                    {!lesson1Completed && !lesson1Phase4Marked && !lesson1ReadyForFinalSubmission && (
+                      <div style={{ marginTop: 12, color: '#6B7280' }}>
+                        Complete Phases 1 to 3, finish the peer review, and answer the reflection before the final Lesson 1 submission unlocks.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           </div>
+          </fieldset>
         </div>
       </main>
     </div>

@@ -84,6 +84,35 @@ export const getStudentPassword = (username: string): string => {
   return getPasswordCache()[username] || '';
 };
 
+const readCachedClasses = (): ClassRow[] => {
+  try {
+    const raw = localStorage.getItem('teacherClasses');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const pwCache = getPasswordCache();
+    return parsed.map((classItem: any) => ({
+      id: classItem.id || '',
+      name: classItem.name || `Grade ${classItem.grade || ''} - ${classItem.section || ''}`.trim(),
+      grade: classItem.grade || '',
+      section: classItem.section || '',
+      students: Array.isArray(classItem.students)
+        ? classItem.students.map((student: any) => ({
+            id: student.id || '',
+            name: student.name || student.username || '',
+            email: student.email || '',
+            username: student.username || '',
+            password: student.password || pwCache[student.username || ''] || '',
+            section: classItem.section || student.section || '',
+            hasLoggedIn: !!student.hasLoggedIn,
+          }))
+        : [],
+    }));
+  } catch {
+    return [];
+  }
+};
+
 export const resetStudentPassword = async (
   studentId: string,
   username: string,
@@ -203,6 +232,8 @@ export const getAllClasses = async (): Promise<ClassRow[]> => {
 
   if (error) {
     console.error('[classService] getAllClasses error', error);
+    const cached = readCachedClasses();
+    if (cached.length > 0) return cached;
     return [];
   }
   if (!classRows || classRows.length === 0) return [];

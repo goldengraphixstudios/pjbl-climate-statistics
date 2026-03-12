@@ -9,6 +9,7 @@ import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../servic
 import { getMyProfile } from '../../services/profilesService';
 import { uploadStudentFileAsset } from '../../services/fileAssetService';
 import { getStudentState, resolveStudentId, upsertStudentState } from '../../services/studentStateService';
+import { isLesson2CompleteState, isLesson2ReadyForFinalSubmission } from '../../services/lessonCompletion';
 
 interface AuthUser {
   username: string;
@@ -99,6 +100,19 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [previewURLP4, setPreviewURLP4] = useState<string | null>(null);
   const [submissionMessageP4, setSubmissionMessageP4] = useState<string>('');
   const [submitDisabledP4, setSubmitDisabledP4] = useState<boolean>(false);
+  const lesson2CompletionState = useMemo(() => ({
+    completedPhases,
+    displayProgress,
+    submitDisabledP4,
+  }), [completedPhases, displayProgress, submitDisabledP4]);
+  const lesson2ReadyForFinalSubmission = useMemo(
+    () => isLesson2ReadyForFinalSubmission(lesson2CompletionState),
+    [lesson2CompletionState]
+  );
+  const lesson2Completed = useMemo(
+    () => isLesson2CompleteState(lesson2CompletionState),
+    [lesson2CompletionState]
+  );
   const [actionFlash, setActionFlash] = useState<Record<string, 'saved' | 'updated'>>({});
   const [analysisInputs, setAnalysisInputs] = useState<{
     part1_researchQuestion: string;
@@ -755,7 +769,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   };
 
   useEffect(() => {
-    if (!lesson2SnapshotLoaded.current || submitDisabledP4) return;
+    if (!lesson2SnapshotLoaded.current || lesson2Completed) return;
 
     if (lesson2ResponseSyncTimeout.current) {
       window.clearTimeout(lesson2ResponseSyncTimeout.current);
@@ -771,7 +785,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         lesson2ResponseSyncTimeout.current = null;
       }
     };
-  }, [lesson2Snapshot, submitDisabledP4]);
+  }, [lesson2Snapshot, lesson2Completed]);
   
 
   const canSubmitA3 = () => {
@@ -875,6 +889,17 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
           </div>
         )}
         <div className="lesson-container">
+          {lesson2Completed && (
+            <div className="banner" style={{ marginBottom: 16 }}>
+              Lesson 2 is complete. Your submitted answers are now locked.
+            </div>
+          )}
+          {!lesson2Completed && submitDisabledP4 && !lesson2ReadyForFinalSubmission && (
+            <div className="banner" style={{ marginBottom: 16 }}>
+              Your final output is saved, but Lesson 2 remains in progress until Phases 1 to 3 are completed.
+            </div>
+          )}
+          <fieldset disabled={lesson2Completed} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <ProgressBar progress={displayProgress} />
           <div className="accordion">
             {/* Overview - collapsed by default */}
@@ -2295,7 +2320,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           console.error('lesson2 phase4 draft upload failed', e);
                         }
                       }} />
-                      <button className="save-btn" type="button" onClick={() => (document.getElementById('phase4-upload') as HTMLInputElement).click()} disabled={submitDisabledP4}>Upload File</button>
+                      <button className="save-btn" type="button" onClick={() => (document.getElementById('phase4-upload') as HTMLInputElement).click()} disabled={lesson2Completed}>Upload File</button>
                       <div style={{ fontStyle:'italic' }}>{uploadedFileP4 ? uploadedFileP4.name : (uploadedFileNameP4 || (previewURLP4 ? 'Previously uploaded file' : 'No file chosen'))}</div>
                     </div>
 
@@ -2309,8 +2334,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                     </div>
 
                       <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                      <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || submitDisabledP4} onClick={async () => {
-                        if (submitDisabledP4) return;
+                      <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || lesson2Completed || (!lesson2ReadyForFinalSubmission && !submitDisabledP4)} onClick={async () => {
+                        if (lesson2Completed) return;
+                        if (!lesson2ReadyForFinalSubmission && !submitDisabledP4) {
+                          setSubmissionMessageP4('Complete Phases 1 to 3 before submitting the final output.');
+                          return;
+                        }
                         const f = uploadedFileP4;
                         const finalize = async (uploadAsset?: { url: string; filename?: string; mimeType?: string } | null) => {
                           try {
@@ -2343,17 +2372,23 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         flashAction('phase4-final', 'saved');
                         setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
                         await finalize(asset);
-                      }}>{getActionLabel('phase4-final', submitDisabledP4 ? 'Submitted' : 'Submit Output')}</button>
+                      }}>{getActionLabel('phase4-final', lesson2Completed ? 'Submitted' : submitDisabledP4 ? 'Update Submitted Output' : 'Submit Output')}</button>
                     </div>
 
                     {submissionMessageP4 && (
                       <div style={{ marginTop:12 }}>{submissionMessageP4}</div>
+                    )}
+                    {!lesson2Completed && !submitDisabledP4 && !lesson2ReadyForFinalSubmission && (
+                      <div style={{ marginTop: 12, color: '#6B7280' }}>
+                        Complete Phases 1 to 3 first. Final output submission unlocks after the rest of Lesson 2 is finished.
+                      </div>
                     )}
                   </div>
                 </div>
               )}
             </div>
           </div>
+          </fieldset>
         </div>
       </main>
     </div>

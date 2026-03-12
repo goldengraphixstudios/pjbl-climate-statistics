@@ -8,6 +8,7 @@ import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../servic
 import { getMyProfile } from '../../services/profilesService';
 import { resolveFileAsset, uploadStudentFileAsset } from '../../services/fileAssetService';
 import { getStudentState, resolveStudentId, upsertStudentState } from '../../services/studentStateService';
+import { isLesson3CompleteState, isLesson3ReadyForFinalSubmission } from '../../services/lessonCompletion';
 
 interface AuthUser {
   username: string;
@@ -280,6 +281,53 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
     setLesson3ExtraPct(derivedLesson3ExtraPct);
     try { localStorage.setItem('lesson3_extra_progress', String(derivedLesson3ExtraPct)); } catch {}
   }, [derivedLesson3ExtraPct, lesson3ExtraPct]);
+  const lesson3CompletionState = useMemo(() => ({
+    completedPhases,
+    lesson3ExtraPct: derivedLesson3ExtraPct,
+    recallLocked,
+    submitted2,
+    p2a1Submitted,
+    p2a2Submitted,
+    p2a3Submitted,
+    p3Submitted,
+    peerSubmitted,
+    finalConfidence,
+    finalConfidenceReason,
+    finalChallenge,
+    finalStatsChange,
+    finalClimateChange,
+    finalConnectionChange,
+    finalExtension,
+    finalLearnerInsight,
+    finalSubmitted,
+  }), [
+    completedPhases,
+    derivedLesson3ExtraPct,
+    recallLocked,
+    submitted2,
+    p2a1Submitted,
+    p2a2Submitted,
+    p2a3Submitted,
+    p3Submitted,
+    peerSubmitted,
+    finalConfidence,
+    finalConfidenceReason,
+    finalChallenge,
+    finalStatsChange,
+    finalClimateChange,
+    finalConnectionChange,
+    finalExtension,
+    finalLearnerInsight,
+    finalSubmitted,
+  ]);
+  const lesson3ReadyForFinalSubmission = useMemo(
+    () => isLesson3ReadyForFinalSubmission(lesson3CompletionState),
+    [lesson3CompletionState]
+  );
+  const lesson3Completed = useMemo(
+    () => isLesson3CompleteState(lesson3CompletionState),
+    [lesson3CompletionState]
+  );
 
   // Load previously saved Phase4 reflection/upload if present
   useEffect(() => {
@@ -623,6 +671,17 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
           </div>
         )}
         <div className="lesson-container">
+          {lesson3Completed && (
+            <div className="banner" style={{ marginBottom: 16 }}>
+              Lesson 3 is complete. Your submitted answers are now locked.
+            </div>
+          )}
+          {!lesson3Completed && finalSubmitted && !lesson3ReadyForFinalSubmission && (
+            <div className="banner" style={{ marginBottom: 16 }}>
+              Your final output is saved, but Lesson 3 remains in progress until the earlier required activities are completed.
+            </div>
+          )}
+          <fieldset disabled={lesson3Completed} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <ProgressBar progress={Math.min(100, progressPct + lesson3ExtraPct)} />
           <div className="accordion">
             <div className="accordion-item overview">
@@ -1873,7 +1932,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                     <div style={{fontWeight:700, textAlign:'left'}}>Upload your Final Output here.</div>
                     <div style={{height:8}} />
                     <div style={{display:'flex', alignItems:'center', gap:12}}>
-                      <input type="file" accept="application/pdf" disabled={finalSubmitted} onChange={(e)=>{ const f = e.target.files?.[0] ?? null; setFinalFile(f); setFinalSubmitStatus(''); if (f) { try { setFinalPreview(URL.createObjectURL(f)); } catch { setFinalPreview(null); } setFinalDraftRecovered(true); } }} />
+                      <input type="file" accept="application/pdf" disabled={lesson3Completed} onChange={(e)=>{ const f = e.target.files?.[0] ?? null; setFinalFile(f); setFinalSubmitStatus(''); if (f) { try { setFinalPreview(URL.createObjectURL(f)); } catch { setFinalPreview(null); } setFinalDraftRecovered(true); } }} />
                     </div>
 
                     <div style={{height:12}} />
@@ -1891,9 +1950,13 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                     <div style={{height:16}} />
                     <div>
-                      <button className="save-btn" style={{padding:'14px 28px', fontSize:16}} disabled={(!finalFile && !savedFinalAsset) || finalSubmitted} onClick={async ()=>{
+                      <button className="save-btn" style={{padding:'14px 28px', fontSize:16}} disabled={(!finalFile && !savedFinalAsset) || lesson3Completed || (!lesson3ReadyForFinalSubmission && !finalSubmitted)} onClick={async ()=>{
                         const existingAsset = savedFinalAsset;
                         if (!finalFile && !existingAsset) return;
+                        if (!lesson3ReadyForFinalSubmission && !finalSubmitted) {
+                          setFinalSubmitStatus('Complete the earlier Lesson 3 activities and all reflection answers before submitting the final output.');
+                          return;
+                        }
                         const wasAlreadySubmitted = finalSubmitted;
 
                         const reflection = {
@@ -1983,9 +2046,9 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           console.error('savePhase4Reflection failed', e);
                           setFinalSubmitStatus('Lesson 3 could not be finalized yet. Your saved work is still here, so you can try again.');
                         }
-                      }}>Submit Final Output</button>
+                      }}>{lesson3Completed ? 'Submitted' : finalSubmitted ? 'Update Submitted Final Output' : 'Submit Final Output'}</button>
                     </div>
-                    {finalDraftRecovered && !finalSubmitted && (
+                    {finalDraftRecovered && !lesson3Completed && (
                       <div style={{color:'var(--plot-value-primary)', marginTop:12}}>
                         Saved Lesson 3 work was restored. You can submit the final output without re-uploading the PDF.
                       </div>
@@ -1995,12 +2058,18 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         {finalSubmitStatus}
                       </div>
                     )}
-                    {finalSubmitted && (<div style={{color:'var(--plot-value-primary)', marginTop:12}}>Final output submitted — great work!</div>)}
+                    {finalSubmitted && lesson3Completed && (<div style={{color:'var(--plot-value-primary)', marginTop:12}}>Final output submitted — great work!</div>)}
+                    {!lesson3Completed && !finalSubmitted && !lesson3ReadyForFinalSubmission && (
+                      <div style={{ color:'#6B7280', marginTop:12 }}>
+                        Finish every required activity and reflection response before the final Lesson 3 submission unlocks.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           </div>
+          </fieldset>
         </div>
       </main>
     </div>

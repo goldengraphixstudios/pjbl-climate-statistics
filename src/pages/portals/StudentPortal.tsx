@@ -6,6 +6,14 @@ import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
 import { getAssessmentScores, getLesson3PersistedState } from '../../services/progressService';
 import { getStudentState } from '../../services/studentStateService';
+import {
+  hasLesson1AnyProgress,
+  hasLesson2AnyProgress,
+  hasLesson3AnyProgress,
+  isLesson1CompleteState,
+  isLesson2CompleteState,
+  isLesson3CompleteState,
+} from '../../services/lessonCompletion';
 import ConfettiOverlay from '../../components/ConfettiOverlay';
 
 interface AuthUser {
@@ -65,56 +73,6 @@ function isFinalActivityResponse(response: { answers?: any }) {
   return !stage || stage === 'final';
 }
 
-function hasLesson3DraftState(state: any) {
-  if (!state || typeof state !== 'object') return false;
-
-  const booleanKeys = [
-    'recallLocked',
-    'submitted2',
-    'p2a1Submitted',
-    'p2a2Submitted',
-    'p2a3Submitted',
-    'p3Submitted',
-    'peerSubmitted',
-    'finalSubmitted',
-  ];
-  if (booleanKeys.some((key) => state[key] === true)) return true;
-
-  if (Array.isArray(state.completedPhases) && state.completedPhases.length > 0) return true;
-  if (typeof state.lesson3ExtraPct === 'number' && state.lesson3ExtraPct > 0) return true;
-
-  const textKeys = [
-    'recallA',
-    'recallB',
-    'recallC',
-    'finalConsiderations',
-    'uploadedDiagramPreview',
-    'p2a1Preview',
-    'p2a2Preview',
-    'p2a3Preview',
-    'p2a3Answer',
-    'p3Preview',
-    'peer1Answer',
-    'peer2Answer',
-    'peer3Answer',
-    'peer4Answer',
-    'peerStrength',
-    'peerSuggestion',
-    'peerReviewerUsername',
-    'finalConfidence',
-    'finalConfidenceReason',
-    'finalChallenge',
-    'finalStatsChange',
-    'finalClimateChange',
-    'finalConnectionChange',
-    'finalExtension',
-    'finalLearnerInsight',
-    'finalPreview',
-  ];
-
-  return textKeys.some((key) => typeof state[key] === 'string' && state[key].trim().length > 0);
-}
-
 const getActivityStatusLabel = (status?: {
   submitted: boolean;
   draftSaved?: boolean;
@@ -158,9 +116,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
         }
         if (!resolvedId || cancelled) return;
 
-        const [resps, fbs, lesson3Persisted, lesson3State] = await Promise.all([
+        const [resps, fbs, lesson1State, lesson2State, lesson3Persisted, lesson3State] = await Promise.all([
           getResponsesForStudent(resolvedId),
           getFeedbackForStudent(resolvedId),
+          getStudentState(resolvedId, 'lesson1').catch(() => null),
+          getStudentState(resolvedId, 'lesson2').catch(() => null),
           getLesson3PersistedState(user.username).catch(() => null),
           getStudentState(resolvedId, 'lesson3').catch(() => null),
         ]);
@@ -174,16 +134,34 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
           post: createEmptyActivityStatus(),
           performance: createEmptyActivityStatus()
         };
+        const finalResponses: Partial<Record<ActivityType, any>> = {};
         resps.forEach(r => {
           if (r.activity_type in mapStatus) {
             if (isFinalActivityResponse(r)) {
-              mapStatus[r.activity_type].submitted = true;
+              finalResponses[r.activity_type] = r;
             } else {
               mapStatus[r.activity_type].draftSaved = true;
             }
           }
         });
-        if (!mapStatus.lesson3.submitted && (lesson3Persisted?.hasAnyData || hasLesson3DraftState(lesson3State))) {
+        mapStatus.pre.submitted = !!finalResponses.pre;
+        mapStatus.post.submitted = !!finalResponses.post;
+
+        const lesson1Snapshot = lesson1State || finalResponses.lesson1?.answers?.lesson1State || null;
+        const lesson2Snapshot = lesson2State || finalResponses.lesson2?.answers?.lesson2State || null;
+        const lesson3Snapshot = lesson3State || lesson3Persisted || null;
+
+        mapStatus.lesson1.submitted = isLesson1CompleteState(lesson1Snapshot);
+        mapStatus.lesson2.submitted = isLesson2CompleteState(lesson2Snapshot);
+        mapStatus.lesson3.submitted = isLesson3CompleteState(lesson3Snapshot);
+
+        if (!mapStatus.lesson1.submitted && (hasLesson1AnyProgress(lesson1Snapshot) || !!finalResponses.lesson1)) {
+          mapStatus.lesson1.draftSaved = true;
+        }
+        if (!mapStatus.lesson2.submitted && (hasLesson2AnyProgress(lesson2Snapshot) || !!finalResponses.lesson2)) {
+          mapStatus.lesson2.draftSaved = true;
+        }
+        if (!mapStatus.lesson3.submitted && (lesson3Persisted?.hasAnyData || hasLesson3AnyProgress(lesson3Snapshot) || !!finalResponses.lesson3)) {
           mapStatus.lesson3.draftSaved = true;
         }
         const postScores = getAssessmentScores()[user.username];
@@ -226,6 +204,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
     if (sectionId === 6) return false;
     const current = activityTypeForId(sectionId);
     if (!current) return false;
+    if (activityStatuses[current]?.submitted) return false;
     // if previous activity not satisfied
     if (sectionId > 1) {
       const prevType = activityTypeForId(sectionId - 1);
