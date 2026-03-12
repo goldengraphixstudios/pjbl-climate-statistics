@@ -1650,12 +1650,31 @@ export const saveLesson3Phase4Reflection = async (
     const store: Record<string, any> = storeRaw ? JSON.parse(storeRaw) : {};
     const existing = store[username] || {};
     const ts = new Date().toISOString();
-    store[username] = { ...existing, reflection: reflection || {}, uploadUrl: uploadUrl || existing.uploadUrl, mimeType: mimeType || existing.mimeType, timestamp: ts, completed: true };
+    store[username] = {
+      ...existing,
+      reflection: reflection || {},
+      uploadUrl: uploadUrl || existing.uploadUrl,
+      mimeType: mimeType || existing.mimeType,
+      timestamp: ts,
+      completed: true,
+      submitted: !!existing.submitted
+    };
     localStorage.setItem(LESSON3_P4_COMPLETE_KEY, JSON.stringify(store));
   } catch (err) {
     try {
       const storeRaw = (await awaitSafeGet(LESSON3_P4_COMPLETE_KEY)) || {};
-      const store = { ...(storeRaw as Record<string, any>), [username]: { ...(storeRaw[username] || {}), reflection: reflection || {}, uploadUrl: uploadUrl || storeRaw[username]?.uploadUrl, mimeType: mimeType || storeRaw[username]?.mimeType, timestamp: new Date().toISOString(), completed: true } };
+      const store = {
+        ...(storeRaw as Record<string, any>),
+        [username]: {
+          ...(storeRaw[username] || {}),
+          reflection: reflection || {},
+          uploadUrl: uploadUrl || storeRaw[username]?.uploadUrl,
+          mimeType: mimeType || storeRaw[username]?.mimeType,
+          timestamp: new Date().toISOString(),
+          completed: true,
+          submitted: !!storeRaw[username]?.submitted
+        }
+      };
       await awaitSafeSet(LESSON3_P4_COMPLETE_KEY, store);
     } catch (e) { console.error('Failed to save lesson3 phase4 reflection', e); }
   }
@@ -1687,7 +1706,7 @@ export const saveLesson3Phase4Reflection = async (
         finalExtension: reflection?.extend || '',
         finalLearnerInsight: reflection?.learned || '',
         finalPreview: publicUrl || null,
-        finalSubmitted: true,
+        finalSubmitted: !!(existing as any)?.finalSubmitted,
       };
       await upsertStudentState(student_id, 'lesson3', merged);
     } catch {
@@ -1696,12 +1715,63 @@ export const saveLesson3Phase4Reflection = async (
   })();
 };
 
-export const getLesson3Phase4CompleteAll = (): Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }> => {
-  return safeGetAll(LESSON3_P4_COMPLETE_KEY) as Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>;
+export const markLesson3Phase4Submitted = async (username: string) => {
+  try {
+    const storeRaw = localStorage.getItem(LESSON3_P4_COMPLETE_KEY);
+    const store: Record<string, any> = storeRaw ? JSON.parse(storeRaw) : {};
+    const existing = store[username] || {};
+    store[username] = {
+      ...existing,
+      completed: true,
+      submitted: true,
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem(LESSON3_P4_COMPLETE_KEY, JSON.stringify(store));
+  } catch (err) {
+    try {
+      const storeRaw = (await awaitSafeGet(LESSON3_P4_COMPLETE_KEY)) || {};
+      const store = {
+        ...(storeRaw as Record<string, any>),
+        [username]: {
+          ...(storeRaw[username] || {}),
+          completed: true,
+          submitted: true,
+          timestamp: new Date().toISOString()
+        }
+      };
+      await awaitSafeSet(LESSON3_P4_COMPLETE_KEY, store);
+    } catch (e) {
+      console.error('Failed to mark lesson3 phase4 as submitted', e);
+    }
+  }
+
+  try {
+    const student_id = await resolveStudentId(username);
+    if (!student_id) return;
+    const ss = await supabase
+      .from('student_state')
+      .select('state')
+      .eq('student_id', student_id)
+      .eq('lesson_slug', 'lesson3')
+      .limit(1)
+      .maybeSingle();
+    const existing = ss.data?.state || {};
+    await upsertStudentState(student_id, 'lesson3', {
+      ...(existing as any),
+      finalSubmitted: true,
+    });
+  } catch {
+    // ignore
+  }
+};
+
+export const getLesson3Phase4CompleteAll = (): Record<string, { completed?: boolean; submitted?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }> => {
+  return safeGetAll(LESSON3_P4_COMPLETE_KEY) as Record<string, { completed?: boolean; submitted?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>;
 };
 
 export interface Lesson3PersistedState {
   hasAnyData: boolean;
+  hasFinalDraft: boolean;
   recallA: string;
   recallB: string;
   recallC: string;
@@ -1757,7 +1827,7 @@ export const getLesson3PersistedState = async (username: string): Promise<Lesson
     safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; interpretation?: string; timestamp?: string }>>(LESSON3_P2_A3_KEY, {}),
     safeGetAllAsync<Record<string, { fileDataUrl?: string; filename?: string; timestamp?: string }>>(LESSON3_P3_A1_KEY, {}),
     safeGetAllAsync<Record<string, { submitted?: boolean; review?: any; timestamp?: string }>>(LESSON3_P4_REVIEW_KEY, {}),
-    safeGetAllAsync<Record<string, { completed?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>>(LESSON3_P4_COMPLETE_KEY, {}),
+    safeGetAllAsync<Record<string, { completed?: boolean; submitted?: boolean; reflection?: any; uploadUrl?: string; mimeType?: string; timestamp?: string }>>(LESSON3_P4_COMPLETE_KEY, {}),
   ]);
 
   const a1 = a1All[username];
@@ -1777,7 +1847,8 @@ export const getLesson3PersistedState = async (username: string): Promise<Lesson
   const p2a3Submitted = !!p2a3;
   const p3Submitted = !!p3;
   const peerSubmitted = !!(review?.submitted || review?.review);
-  const finalSubmitted = !!(finalEntry?.completed || finalEntry?.uploadUrl || finalEntry?.reflection);
+  const hasFinalDraft = !!(finalEntry?.uploadUrl || finalEntry?.reflection);
+  const finalSubmitted = !!finalEntry?.submitted;
   const lesson3ExtraPct = Math.min(
     100,
     (recallLocked ? 10 : 0) +
@@ -1792,6 +1863,7 @@ export const getLesson3PersistedState = async (username: string): Promise<Lesson
 
   return {
     hasAnyData: !!(a1 || a2 || p2a1 || p2a2 || p2a3 || p3 || review || finalEntry),
+    hasFinalDraft,
     recallA: a1?.researchQuestion || '',
     recallB: a1?.regressionEquation || '',
     recallC: a1?.interpretation || '',

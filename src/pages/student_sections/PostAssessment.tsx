@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '../../styles/StudentPortal.css';
 import '../../styles/PreAssessment.css';
-import { setUserProgress, savePostAssessmentPart1Score, savePostAssessmentPart1Responses, savePostAssessmentPart2Responses } from '../../services/progressService';
-import { ActivityType, upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
+import { getAssessmentScores, setUserProgress, savePostAssessmentPart1Score, savePostAssessmentPart1Responses, savePostAssessmentPart2Responses } from '../../services/progressService';
+import { upsertResponse, getResponseForStudentActivity } from '../../services/responsesService';
 import { getMyProfile } from '../../services/profilesService';
 import { resolveStudentId } from '../../services/studentStateService';
 
@@ -56,6 +56,25 @@ const getGroupScores = (itemCorrect: boolean[]) => ({
   lc56: itemCorrect.slice(10, 15).filter(Boolean).length,
 });
 
+const isOptionValue = (value: unknown): value is Option =>
+  value === 'A' || value === 'B' || value === 'C' || value === 'D';
+
+const normalizeOptionResponses = (value: unknown, total: number): (Option | null)[] => {
+  if (!Array.isArray(value)) return Array(total).fill(null);
+  return Array.from({ length: total }, (_, index) => {
+    const current = value[index];
+    return isOptionValue(current) ? current : null;
+  });
+};
+
+const normalizeLikertResponses = (value: unknown, total: number) => {
+  if (!Array.isArray(value)) return Array(total).fill(0);
+  return Array.from({ length: total }, (_, index) => {
+    const current = Number(value[index] || 0);
+    return current >= 1 && current <= 4 ? current : 0;
+  });
+};
+
 const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const displayName = (() => {
     const raw = localStorage.getItem('teacherClasses');
@@ -77,12 +96,35 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [part2Responses, setPart2Responses] = useState<number[]>(Array(17).fill(0));
   const [part2Submitted, setPart2Submitted] = useState(false);
   const [existingResponse, setExistingResponse] = useState<any>(null);
+  const [postAssessmentNotice, setPostAssessmentNotice] = useState('');
   const existingStage = existingResponse?.answers?.__meta?.stage;
   const hasSavedPart2 = Array.isArray(existingResponse?.answers?.part2) && existingResponse.answers.part2.length === 17;
   const isLockedAfterSubmit = !!existingResponse && (existingStage === 'final' || hasSavedPart2) && user.role !== 'admin';
 
   useEffect(() => {
     const load = async () => {
+      const localEntry = getAssessmentScores()[user.username] || {};
+      const localPart1 = normalizeOptionResponses(localEntry.postPart1Responses, totalQuestions);
+      const localPart2 = normalizeLikertResponses(localEntry.postPart2Responses, 17);
+      const hasLocalPart1 = localPart1.some((value) => !!value);
+      const hasCompletedLocalPart1 = localPart1.every((value) => !!value);
+      const hasLocalPart2 = localPart2.some((value) => value > 0);
+
+      if (hasLocalPart1) {
+        setResponses(localPart1);
+      }
+      if (hasLocalPart2) {
+        setPart2Responses(localPart2);
+      }
+      if (hasCompletedLocalPart1 || hasLocalPart2) {
+        setPhase('part2');
+      }
+      if (hasLocalPart2) {
+        setPostAssessmentNotice('Saved Post Assessment answers were restored. Press Submit to finalize your work.');
+      } else if (hasCompletedLocalPart1) {
+        setPostAssessmentNotice('Saved Post Assessment Part 1 answers were restored. Continue to Part 2 when ready.');
+      }
+
       try {
         const prof = await getMyProfile();
         const studentId = prof?.id || await resolveStudentId(user.username);
@@ -90,13 +132,17 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         const resp = await getResponseForStudentActivity(studentId, 'post');
         if (resp) {
           setExistingResponse(resp);
-          if (resp.answers?.part1) setResponses(resp.answers.part1);
+          if (resp.answers?.part1) setResponses(normalizeOptionResponses(resp.answers.part1, totalQuestions));
           if (resp.answers?.part2) {
-            setPart2Responses(resp.answers.part2);
+            setPart2Responses(normalizeLikertResponses(resp.answers.part2, 17));
             setPart2Submitted(true);
             setPhase('part2');
+            setPostAssessmentNotice('');
           } else if (resp.answers?.__meta?.stage === 'part1') {
             setPhase('part2');
+            if (!hasLocalPart2) {
+              setPostAssessmentNotice('Saved Post Assessment Part 1 answers were restored. Continue to Part 2 when ready.');
+            }
           }
         }
       } catch (e) {
@@ -104,9 +150,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
       }
     };
     load();
-    const pollId = setInterval(load, 10000);
-    return () => clearInterval(pollId);
-  }, []);
+  }, [totalQuestions, user.username]);
 
   const globalIndexStartForSet = (setIdx: number) => setQuestionCounts.slice(0, setIdx).reduce((a,b)=>a+b, 0);
   const isSetComplete = (setIdx: number) => {
@@ -139,7 +183,7 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         const prof = await getMyProfile();
         const studentId = prof?.id || await resolveStudentId(user.username);
         if (studentId) {
-          await upsertResponse({
+          const savedResponse = await upsertResponse({
             student_id: studentId,
             activity_type: 'post',
             answers: {
@@ -157,9 +201,13 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
             },
             correctness: { part1: itemCorrect }
           });
+          if (savedResponse) {
+            setExistingResponse(savedResponse);
+          }
         }
       } catch (e) {
         console.error('upsert post response part1', e);
+        setPostAssessmentNotice('Saved Post Assessment Part 1 answers were restored. Continue to Part 2 when ready.');
       }
       return;
     }
@@ -170,15 +218,14 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
     if (isLockedAfterSubmit) return;
     if (user.role !== 'admin' && part2Responses.some(v => v === 0)) return;
     savePostAssessmentPart2Responses(user.username, part2Responses);
-    setUserProgress(user.username, 5, 100);
-    setPart2Submitted(true);
     try {
       const prof = await getMyProfile();
       const studentId = prof?.id || await resolveStudentId(user.username);
+      let responseSaved = false;
       if (studentId) {
         const itemCorrect = responses.map((r, i) => r === answerKey[i]);
         const correct = itemCorrect.filter(Boolean).length;
-        await upsertResponse({
+        const savedResponse = await upsertResponse({
           student_id: studentId,
           activity_type: 'post',
           answers: {
@@ -197,9 +244,21 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
           },
           correctness: { part1: itemCorrect }
         });
+        if (savedResponse) {
+          setExistingResponse(savedResponse);
+        }
+        responseSaved = !!savedResponse;
       }
+      if (!responseSaved) {
+        setPostAssessmentNotice('Your Post Assessment answers were saved on this device, but the final completion record did not save yet. Press Submit again to retry.');
+        return;
+      }
+      setUserProgress(user.username, 5, 100);
+      setPart2Submitted(true);
+      setPostAssessmentNotice('');
     } catch (e) {
       console.error('upsert post response final', e);
+      setPostAssessmentNotice('Your Post Assessment answers were saved on this device, but the final completion record did not save yet. Press Submit again to retry.');
     }
   };
 
@@ -765,6 +824,11 @@ const PostAssessment: React.FC<SectionPageProps> = ({ user, onBack }) => {
         </div>
       </header>
       <main className="portal-content">
+        {!!postAssessmentNotice && !isLockedAfterSubmit && (
+          <section className="pre-assessment-part2" style={{ marginBottom: 16 }}>
+            <p className="scale-note">{postAssessmentNotice}</p>
+          </section>
+        )}
         {isLockedAfterSubmit ? (
           <section className="pre-assessment-part2">
             <h2>Post-Assessment Submitted</h2>

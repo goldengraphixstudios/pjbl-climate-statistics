@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { HeaderStudentIcon } from '../../components/RoleIcons';
-import ProgressBar from '../../components/ProgressBar';
 import '../../styles/StudentPortal.css';
 import { ActivityType, getResponsesForStudent } from '../../services/responsesService';
 import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { getAssessmentScores, getLesson3PersistedState } from '../../services/progressService';
+import { getStudentState } from '../../services/studentStateService';
 import ConfettiOverlay from '../../components/ConfettiOverlay';
 
 interface AuthUser {
@@ -45,13 +46,84 @@ const sections = [
   { id: 6, title: 'Performance Summary', icon: '📚' }
 ];
 
-const getActivityStatusLabel = (status?: {
+type ActivityStatus = {
   submitted: boolean;
+  draftSaved: boolean;
   feedback?: any;
   acknowledged: boolean;
-}, activityType?: ActivityType | 'performance') => {
-  if (!status?.submitted) return 'Not started';
-  return 'Completed';
+};
+
+const createEmptyActivityStatus = (): ActivityStatus => ({
+  submitted: false,
+  draftSaved: false,
+  feedback: undefined,
+  acknowledged: false,
+});
+
+function isFinalActivityResponse(response: { answers?: any }) {
+  const stage = response?.answers?.__meta?.stage;
+  return !stage || stage === 'final';
+}
+
+function hasLesson3DraftState(state: any) {
+  if (!state || typeof state !== 'object') return false;
+
+  const booleanKeys = [
+    'recallLocked',
+    'submitted2',
+    'p2a1Submitted',
+    'p2a2Submitted',
+    'p2a3Submitted',
+    'p3Submitted',
+    'peerSubmitted',
+    'finalSubmitted',
+  ];
+  if (booleanKeys.some((key) => state[key] === true)) return true;
+
+  if (Array.isArray(state.completedPhases) && state.completedPhases.length > 0) return true;
+  if (typeof state.lesson3ExtraPct === 'number' && state.lesson3ExtraPct > 0) return true;
+
+  const textKeys = [
+    'recallA',
+    'recallB',
+    'recallC',
+    'finalConsiderations',
+    'uploadedDiagramPreview',
+    'p2a1Preview',
+    'p2a2Preview',
+    'p2a3Preview',
+    'p2a3Answer',
+    'p3Preview',
+    'peer1Answer',
+    'peer2Answer',
+    'peer3Answer',
+    'peer4Answer',
+    'peerStrength',
+    'peerSuggestion',
+    'peerReviewerUsername',
+    'finalConfidence',
+    'finalConfidenceReason',
+    'finalChallenge',
+    'finalStatsChange',
+    'finalClimateChange',
+    'finalConnectionChange',
+    'finalExtension',
+    'finalLearnerInsight',
+    'finalPreview',
+  ];
+
+  return textKeys.some((key) => typeof state[key] === 'string' && state[key].trim().length > 0);
+}
+
+const getActivityStatusLabel = (status?: {
+  submitted: boolean;
+  draftSaved?: boolean;
+  feedback?: any;
+  acknowledged: boolean;
+}) => {
+  if (status?.submitted) return 'Completed';
+  if (status?.draftSaved) return 'In progress';
+  return 'Not started';
 };
 
 const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, onOpenSection, initialTab }) => {
@@ -59,18 +131,14 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
   const [activeTab, setActiveTab] = useState<'overview' | 'sections'>('overview');
   // statuses for each activity
   const [activityStatuses, setActivityStatuses] = useState<
-    Record<ActivityType | 'performance', {
-      submitted: boolean;
-      feedback?: any;
-      acknowledged: boolean;
-    }>
+    Record<ActivityType | 'performance', ActivityStatus>
   >({
-    pre: { submitted: false, feedback: undefined, acknowledged: false },
-    lesson1: { submitted: false, feedback: undefined, acknowledged: false },
-    lesson2: { submitted: false, feedback: undefined, acknowledged: false },
-    lesson3: { submitted: false, feedback: undefined, acknowledged: false },
-    post: { submitted: false, feedback: undefined, acknowledged: false },
-    performance: { submitted: false, feedback: undefined, acknowledged: false }
+    pre: createEmptyActivityStatus(),
+    lesson1: createEmptyActivityStatus(),
+    lesson2: createEmptyActivityStatus(),
+    lesson3: createEmptyActivityStatus(),
+    post: createEmptyActivityStatus(),
+    performance: createEmptyActivityStatus()
   });
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
@@ -79,59 +147,70 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
 
   // load statuses from Supabase
   useEffect(() => {
-    let studentId = '';
-    let pollId: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
 
-    const load = async (sid?: string) => {
+    const load = async () => {
       try {
-        const id = sid || studentId || user?.id || '';
-        if (!id) return;
-        const resolvedId = id;
-        const resps = await getResponsesForStudent(resolvedId);
-        const fbs = await getFeedbackForStudent(resolvedId);
-        const mapStatus: any = {
-          pre: { submitted: false, feedback: undefined, acknowledged: false },
-          lesson1: { submitted: false, feedback: undefined, acknowledged: false },
-          lesson2: { submitted: false, feedback: undefined, acknowledged: false },
-          lesson3: { submitted: false, feedback: undefined, acknowledged: false },
-          post: { submitted: false, feedback: undefined, acknowledged: false }
+        let resolvedId = user?.id || '';
+        if (!resolvedId) {
+          const prof = await getMyProfile();
+          resolvedId = prof?.id || '';
+        }
+        if (!resolvedId || cancelled) return;
+
+        const [resps, fbs, lesson3Persisted, lesson3State] = await Promise.all([
+          getResponsesForStudent(resolvedId),
+          getFeedbackForStudent(resolvedId),
+          getLesson3PersistedState(user.username).catch(() => null),
+          getStudentState(resolvedId, 'lesson3').catch(() => null),
+        ]);
+        if (cancelled) return;
+
+        const mapStatus: Record<ActivityType | 'performance', ActivityStatus> = {
+          pre: createEmptyActivityStatus(),
+          lesson1: createEmptyActivityStatus(),
+          lesson2: createEmptyActivityStatus(),
+          lesson3: createEmptyActivityStatus(),
+          post: createEmptyActivityStatus(),
+          performance: createEmptyActivityStatus()
         };
         resps.forEach(r => {
           if (r.activity_type in mapStatus) {
-            mapStatus[r.activity_type].submitted = true;
+            if (isFinalActivityResponse(r)) {
+              mapStatus[r.activity_type].submitted = true;
+            } else {
+              mapStatus[r.activity_type].draftSaved = true;
+            }
           }
         });
+        if (!mapStatus.lesson3.submitted && (lesson3Persisted?.hasAnyData || hasLesson3DraftState(lesson3State))) {
+          mapStatus.lesson3.draftSaved = true;
+        }
+        const postScores = getAssessmentScores()[user.username];
+        const hasLocalPostDraft =
+          (Array.isArray(postScores?.postPart1Responses) && postScores.postPart1Responses.some((value: string) => !!value)) ||
+          (Array.isArray(postScores?.postPart2Responses) && postScores.postPart2Responses.some((value: number) => Number(value) > 0));
+        if (!mapStatus.post.submitted && hasLocalPostDraft) {
+          mapStatus.post.draftSaved = true;
+        }
         fbs.forEach(f => {
           if (f.activity_type in mapStatus) {
             mapStatus[f.activity_type].feedback = f;
             mapStatus[f.activity_type].acknowledged = !!f.acknowledged;
           }
         });
-        setActivityStatuses({ ...mapStatus, performance: { submitted: false, feedback: undefined, acknowledged: false } });
+        setActivityStatuses(mapStatus);
       } catch (e) {
         console.error('failed to load activity statuses', e);
       }
     };
 
-    const init = async () => {
-      studentId = user?.id || '';
-      if (!studentId) {
-        const prof = await getMyProfile();
-        studentId = prof?.id || '';
-      }
-      if (!studentId) return;
-      await load(studentId);
-      pollId = setInterval(() => load(studentId), 10000);
-    };
-
-    init();
+    load();
 
     return () => {
-      if (pollId) {
-        clearInterval(pollId);
-      }
+      cancelled = true;
     };
-  }, [user, user?.id]);
+  }, [user?.id, user.username]);
 
   useEffect(() => {
     // Show confetti for first newly completed section not yet rewarded
@@ -304,7 +383,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
                     const type = activityTypeForId(section.id);
                     if (!type) return null;
                     const st = activityStatuses[type];
-                    const label = getActivityStatusLabel(st, type);
+                    const label = getActivityStatusLabel(st);
                     return <p className="progress-text">{label}</p>;
                   })()}
                 </div>

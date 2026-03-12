@@ -2,11 +2,11 @@ import '../../styles/StudentPortal.css';
 import '../../styles/Lesson.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ProgressBar from '../../components/ProgressBar';
-import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1All, getUserProgress, saveLesson3Phase1Activity2, getLesson3Phase1Activity2All, saveLesson3Phase2Activity1, getLesson3Phase2Activity1All, saveLesson3Phase2Activity2, getLesson3Phase2Activity2All, saveLesson3Phase2Activity3, getLesson3Phase2Activity3All, saveLesson3Phase3Activity1, getLesson3Phase3Activity1All, saveLesson3Phase4PeerReview, getLesson3Phase4ReviewAll, saveLesson3Phase4Reflection, getLesson3Phase4CompleteAll, getLesson3PersistedState } from '../../services/progressService';
-import { ActivityType, upsertResponse } from '../../services/responsesService';
+import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1All, getUserProgress, saveLesson3Phase1Activity2, getLesson3Phase1Activity2All, saveLesson3Phase2Activity1, getLesson3Phase2Activity1All, saveLesson3Phase2Activity2, getLesson3Phase2Activity2All, saveLesson3Phase2Activity3, getLesson3Phase2Activity3All, saveLesson3Phase3Activity1, getLesson3Phase3Activity1All, saveLesson3Phase4PeerReview, getLesson3Phase4ReviewAll, saveLesson3Phase4Reflection, markLesson3Phase4Submitted, getLesson3Phase4CompleteAll, getLesson3PersistedState } from '../../services/progressService';
+import { getResponseForStudentActivity, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
-import { uploadStudentFileAsset } from '../../services/fileAssetService';
+import { resolveFileAsset, uploadStudentFileAsset } from '../../services/fileAssetService';
 import { getStudentState, resolveStudentId, upsertStudentState } from '../../services/studentStateService';
 
 interface AuthUser {
@@ -39,6 +39,8 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [completedPhases, setCompletedPhases] = useState<number[]>([]);
   const progressPct = useMemo(() => Math.round((completedPhases.length / 4) * 100), [completedPhases]);
   const [serverFeedback, setServerFeedback] = useState<any>(null);
+  const [finalDraftRecovered, setFinalDraftRecovered] = useState<boolean>(false);
+  const [finalSubmitStatus, setFinalSubmitStatus] = useState<string>('');
   
   useEffect(() => { setUserProgress(user.username, 4, progressPct); }, [progressPct, user.username]);
   
@@ -49,14 +51,31 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
         const prof = await getMyProfile();
         const studentId = prof?.id || await resolveStudentId(user.username);
         if (!studentId) return;
-        const fb = await getFeedbackForStudentActivity(studentId, 'lesson3');
+        const [fb, response] = await Promise.all([
+          getFeedbackForStudentActivity(studentId, 'lesson3').catch(() => null),
+          getResponseForStudentActivity(studentId, 'lesson3').catch(() => null),
+        ]);
         if (fb) setServerFeedback(fb);
+        const responseStage = response?.answers?.__meta?.stage;
+        const isFinalResponse = !!response && (!responseStage || responseStage === 'final');
+        if (isFinalResponse) {
+          const finalAsset = resolveFileAsset(response?.answers?.phase4_reflection, {
+            filename: response?.answers?.phase4_reflection_name,
+            mimeType: response?.answers?.phase4_reflection_mime,
+          });
+          if (finalAsset?.url) {
+            setFinalPreview(finalAsset.url);
+          }
+          setFinalSubmitted(true);
+          setFinalDraftRecovered(false);
+          setFinalSubmitStatus('');
+        }
       } catch (e) {
         console.error('load lesson3 feedback', e);
       }
     };
     load();
-  }, []);
+  }, [user.username]);
 
   useEffect(() => {
     setOpen({ overview: false, p1: false, p2: false, p3: false, p4: false });
@@ -280,7 +299,12 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setFinalLearnerInsight(refl.learned || '');
         // preview
         setFinalPreview(entryAny.uploadUrl || null);
-        setFinalSubmitted(true);
+        if (entryAny.submitted) {
+          setFinalSubmitted(true);
+          setFinalDraftRecovered(false);
+        } else {
+          setFinalDraftRecovered(true);
+        }
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -338,7 +362,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
           setPeerSubmitted(true);
         }
 
-        if (persisted.finalSubmitted) {
+        if (persisted.hasFinalDraft) {
           setFinalConfidence(persisted.finalConfidence);
           setFinalConfidenceReason(persisted.finalConfidenceReason);
           setFinalChallenge(persisted.finalChallenge);
@@ -348,7 +372,12 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
           setFinalExtension(persisted.finalExtension);
           setFinalLearnerInsight(persisted.finalLearnerInsight);
           setFinalPreview(persisted.finalPreview);
-          setFinalSubmitted(true);
+          if (persisted.finalSubmitted) {
+            setFinalSubmitted(true);
+            setFinalDraftRecovered(false);
+          } else {
+            setFinalDraftRecovered(true);
+          }
         }
       } catch (e) {
         console.error('hydrate lesson3 local fallback failed', e);
@@ -406,7 +435,20 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
         if (typeof snapshot.finalExtension === 'string') setFinalExtension(snapshot.finalExtension);
         if (typeof snapshot.finalLearnerInsight === 'string') setFinalLearnerInsight(snapshot.finalLearnerInsight);
         if (typeof snapshot.finalPreview === 'string') setFinalPreview(snapshot.finalPreview);
-        if (typeof snapshot.finalSubmitted === 'boolean') setFinalSubmitted(snapshot.finalSubmitted);
+        const hasRecoveredFinalDraft = !!(
+          (typeof snapshot.finalPreview === 'string' && snapshot.finalPreview.trim()) ||
+          (typeof snapshot.finalConfidence === 'string' && snapshot.finalConfidence.trim()) ||
+          (typeof snapshot.finalConfidenceReason === 'string' && snapshot.finalConfidenceReason.trim()) ||
+          (typeof snapshot.finalChallenge === 'string' && snapshot.finalChallenge.trim()) ||
+          (typeof snapshot.finalStatsChange === 'string' && snapshot.finalStatsChange.trim()) ||
+          (typeof snapshot.finalClimateChange === 'string' && snapshot.finalClimateChange.trim()) ||
+          (typeof snapshot.finalConnectionChange === 'string' && snapshot.finalConnectionChange.trim()) ||
+          (typeof snapshot.finalExtension === 'string' && snapshot.finalExtension.trim()) ||
+          (typeof snapshot.finalLearnerInsight === 'string' && snapshot.finalLearnerInsight.trim())
+        );
+        if (hasRecoveredFinalDraft) {
+          setFinalDraftRecovered(true);
+        }
       } finally {
         lesson3SnapshotLoaded.current = true;
       }
@@ -414,6 +456,12 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
     hydrateFromServer();
   }, [user.username]);
+
+  useEffect(() => {
+    if (!finalSubmitted) return;
+    setFinalDraftRecovered(false);
+    setFinalSubmitStatus('');
+  }, [finalSubmitted]);
 
   const getLesson3StudentId = async () => {
     const prof = await getMyProfile();
@@ -439,6 +487,11 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
       mimeType: fallbackMimeType,
     });
   };
+
+  const savedFinalAsset = useMemo(() => resolveFileAsset(finalPreview, {
+    filename: finalFile?.name || `Lesson3_Final_${user.username}.pdf`,
+    mimeType: finalFile?.type || 'application/pdf',
+  }), [finalFile, finalPreview, user.username]);
 
   const lesson3Snapshot = useMemo(() => ({
     version: 1,
@@ -1820,7 +1873,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                     <div style={{fontWeight:700, textAlign:'left'}}>Upload your Final Output here.</div>
                     <div style={{height:8}} />
                     <div style={{display:'flex', alignItems:'center', gap:12}}>
-                      <input type="file" accept="application/pdf" disabled={finalSubmitted} onChange={(e)=>{ const f = e.target.files?.[0] ?? null; setFinalFile(f); if (f) { try { setFinalPreview(URL.createObjectURL(f)); } catch { setFinalPreview(null); } } else setFinalPreview(null); }} />
+                      <input type="file" accept="application/pdf" disabled={finalSubmitted} onChange={(e)=>{ const f = e.target.files?.[0] ?? null; setFinalFile(f); setFinalSubmitStatus(''); if (f) { try { setFinalPreview(URL.createObjectURL(f)); } catch { setFinalPreview(null); } setFinalDraftRecovered(true); } }} />
                     </div>
 
                     <div style={{height:12}} />
@@ -1838,14 +1891,10 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                     <div style={{height:16}} />
                     <div>
-                      <button className="save-btn" style={{padding:'14px 28px', fontSize:16}} disabled={!finalFile || finalSubmitted} onClick={async ()=>{
-                        if (!finalFile) return;
-                        // avoid double-save
-                        let alreadySaved = false;
-                        try {
-                          const all = getLesson3Phase4CompleteAll();
-                          if (all && all[user.username]) alreadySaved = true;
-                        } catch (e) {}
+                      <button className="save-btn" style={{padding:'14px 28px', fontSize:16}} disabled={(!finalFile && !savedFinalAsset) || finalSubmitted} onClick={async ()=>{
+                        const existingAsset = savedFinalAsset;
+                        if (!finalFile && !existingAsset) return;
+                        const wasAlreadySubmitted = finalSubmitted;
 
                         const reflection = {
                           confidence: finalConfidence || '',
@@ -1859,17 +1908,26 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                         };
 
                         try {
-                          const asset = await persistLesson3FileAsset('phase4-final', finalFile, finalPreview, finalFile.name, finalFile.type);
+                          const fallbackFilename = finalFile?.name || existingAsset?.filename || `Lesson3_Final_${user.username}.pdf`;
+                          const fallbackMimeType = finalFile?.type || existingAsset?.mimeType || 'application/pdf';
+                          const asset = await persistLesson3FileAsset(
+                            'phase4-final',
+                            finalFile,
+                            existingAsset?.url || finalPreview,
+                            fallbackFilename,
+                            fallbackMimeType
+                          );
                           const finalUrl = asset?.url || finalPreview || null;
                           if (!finalUrl) return;
                           setFinalPreview(finalUrl);
-                          await saveLesson3Phase4Reflection(user.username, reflection, finalUrl, asset?.mimeType || finalFile.type);
-                          setFinalSubmitted(true);
+                          setFinalDraftRecovered(true);
+                          await saveLesson3Phase4Reflection(user.username, reflection, finalUrl, asset?.mimeType || fallbackMimeType);
 
+                          let responseSaved = false;
                           try {
                             const studentId = await getLesson3StudentId();
                             if (studentId) {
-                              await upsertResponse({
+                              const savedResponse = await upsertResponse({
                                 student_id: studentId,
                                 activity_type: 'lesson3',
                                 answers: {
@@ -1881,18 +1939,35 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                     username: user.username,
                                     stage: 'final'
                                   },
-                                  phase4_reflection: asset || { url: finalUrl, filename: finalFile.name, mimeType: finalFile.type },
-                                  phase4_reflection_name: asset?.filename || finalFile.name,
-                                  phase4_reflection_mime: asset?.mimeType || finalFile.type
+                                  phase4_reflection: asset || { url: finalUrl, filename: fallbackFilename, mimeType: fallbackMimeType },
+                                  phase4_reflection_name: asset?.filename || fallbackFilename,
+                                  phase4_reflection_mime: asset?.mimeType || fallbackMimeType
                                 }
                               });
+                              responseSaved = !!savedResponse;
                             }
                           } catch (e) {
                             console.error('upsert lesson3 response', e);
                           }
 
+                          if (!responseSaved) {
+                            setFinalSubmitStatus('Your saved final output was restored, but Lesson 3 is not finalized yet. Press Submit Final Output again to retry.');
+                            return;
+                          }
+
                           try {
-                            if (!alreadySaved) {
+                            await markLesson3Phase4Submitted(user.username);
+                          } catch (e) {
+                            console.error('mark lesson3 phase4 submitted', e);
+                          }
+
+                          setFinalSubmitted(true);
+                          setFinalDraftRecovered(false);
+                          setFinalSubmitStatus('');
+                          setFinalFile(null);
+
+                          try {
+                            if (!wasAlreadySubmitted) {
                               const current = getUserProgress(user.username) || {1:0,2:0,3:0,4:0,5:0};
                               const cur = Number(current[4] || 0) || 0;
                               const extra = Math.min(100 - cur, 15);
@@ -1906,9 +1981,20 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           } catch (e) { /* ignore */ }
                         } catch (e) {
                           console.error('savePhase4Reflection failed', e);
+                          setFinalSubmitStatus('Lesson 3 could not be finalized yet. Your saved work is still here, so you can try again.');
                         }
                       }}>Submit Final Output</button>
                     </div>
+                    {finalDraftRecovered && !finalSubmitted && (
+                      <div style={{color:'var(--plot-value-primary)', marginTop:12}}>
+                        Saved Lesson 3 work was restored. You can submit the final output without re-uploading the PDF.
+                      </div>
+                    )}
+                    {!!finalSubmitStatus && (
+                      <div style={{color:'#9a3412', marginTop:12}}>
+                        {finalSubmitStatus}
+                      </div>
+                    )}
                     {finalSubmitted && (<div style={{color:'var(--plot-value-primary)', marginTop:12}}>Final output submitted — great work!</div>)}
                   </div>
                 </div>
