@@ -834,3 +834,18 @@ How To Use Going Forward
   - `src/services/progressService.ts`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 15:58] Auth outage messaging and staff email fallback hardening
+- Added shared auth error classification so Supabase/Cloudflare outages surface as service-unavailable instead of looking like bad credentials.
+- Staff login now accepts `username or email`, uses cached username-to-email hints when available, and verifies staff role after sign-in instead of depending entirely on a pre-login `users` lookup.
+- Student login no longer fails hard when the secondary profile-enrichment lookup is unavailable after credentials are already valid.
+- App session restore now refresh-caches known staff username/email hints for later login attempts in the same browser.
+- Files:
+  - `src/services/supabaseClient.ts`
+  - `src/services/authService.ts`
+  - `src/pages/auth/StudentLogin.tsx`
+  - `src/pages/auth/AdminLogin.tsx`
+  - `src/App.tsx`
+  - `README.md`
+- Commit: pending
+- Push: pending

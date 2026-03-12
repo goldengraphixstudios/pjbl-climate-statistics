@@ -5,6 +5,9 @@ const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 const isBrowser = typeof window !== 'undefined';
 const isGithubPagesHost = isBrowser && /(^|\.)github\.io$/i.test(window.location.hostname);
+const STAFF_LOGIN_HINTS_KEY = 'staffLoginHintsV1';
+
+export type AuthFailureReason = 'invalid' | 'timeout' | 'service_unavailable' | 'unknown';
 
 export function clearStaleSupabaseAuthStorage() {
   if (!isBrowser) return;
@@ -28,6 +31,72 @@ export function clearStaleSupabaseAuthStorage() {
   try {
     clearMatchingKeys(window.sessionStorage);
   } catch {}
+}
+
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message?: unknown }).message ?? '');
+  }
+  return '';
+}
+
+function readStaffLoginHints(): Record<string, string> {
+  if (!isBrowser) return {};
+  try {
+    const raw = window.localStorage.getItem(STAFF_LOGIN_HINTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, string> : {};
+  } catch {
+    return {};
+  }
+}
+
+export function cacheStaffLoginHint(username: string | null | undefined, email: string | null | undefined) {
+  if (!isBrowser || !username || !email) return;
+  try {
+    const hints = readStaffLoginHints();
+    hints[username.trim().toLowerCase()] = email.trim();
+    window.localStorage.setItem(STAFF_LOGIN_HINTS_KEY, JSON.stringify(hints));
+  } catch {}
+}
+
+export function getCachedStaffEmail(username: string): string | null {
+  const key = username.trim().toLowerCase();
+  if (!key) return null;
+  return readStaffLoginHints()[key] || null;
+}
+
+export function getAuthFailureReason(error: unknown): AuthFailureReason {
+  const message = getErrorMessage(error).toLowerCase();
+  if (message === 'timeout') return 'timeout';
+  if (
+    message.includes('web server is down') ||
+    message.includes('error code 521') ||
+    message.includes('cloudflare') ||
+    message.includes('<!doctype html') ||
+    message.includes('failed to fetch') ||
+    message.includes('fetch failed') ||
+    message.includes('networkerror') ||
+    message.includes('network request failed') ||
+    message.includes('load failed')
+  ) {
+    return 'service_unavailable';
+  }
+  return message ? 'unknown' : 'invalid';
+}
+
+export function getFriendlyAuthErrorMessage(error: unknown, fallback = 'Login failed. Please try again.'): string {
+  const reason = getAuthFailureReason(error);
+  if (reason === 'timeout') {
+    return 'Login timed out. Please check your connection and try again.';
+  }
+  if (reason === 'service_unavailable') {
+    return 'Login service is temporarily unavailable. Please try again later.';
+  }
+  return fallback;
 }
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

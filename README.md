@@ -42,6 +42,8 @@ See:
 ### Staff
 
 Teacher and Admin accounts use Supabase Auth sign-in.
+The staff login form accepts either `username` or `email`.
+If username lookup is unavailable, signing in with the staff email is the more reliable path.
 
 ### Students
 
@@ -63,11 +65,13 @@ That means:
 ### Teacher
 
 - Username: `teacher01`
+- Email: `teacher01@pjbl.local`
 - Password: `cbnhs`
 
 ### Admin
 
 - Username: `sirmarco`
+- Email: `sirmarco@pjbl.local`
 - Password: `101997`
 
 ### Students

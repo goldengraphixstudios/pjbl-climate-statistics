@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StudentCapIcon } from '../../components/RoleIcons';
 import { validateStudentCredentials } from '../../services/authService';
-import { supabase, getUserProfileByIdentifier } from '../../services/supabaseClient';
+import { getFriendlyAuthErrorMessage, supabase, getUserProfileByIdentifier } from '../../services/supabaseClient';
 import '../../styles/Auth.css';
 
 interface StudentLoginProps {
@@ -37,7 +37,13 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
         validateStudentCredentials(normalizedUsername, normalizedPassword)
       );
       if (!result.valid) {
-        setError('Invalid credentials. Please contact your teacher for login details.');
+        if (result.reason === 'service_unavailable') {
+          setError('Login service is temporarily unavailable. Please try again later.');
+        } else if (result.reason === 'timeout') {
+          setError('Login timed out. Please check your connection and try again.');
+        } else {
+          setError('Invalid credentials. Please contact your teacher for login details.');
+        }
         return;
       }
 
@@ -46,9 +52,13 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
       let role: 'student' | 'admin' = 'student';
 
       if (userId) {
-        const profile = await withTimeout(getUserProfileByIdentifier(userId), 10000);
-        if (profile?.role === 'admin') role = 'admin';
-        userId = profile?.id || userId;
+        try {
+          const profile = await withTimeout(getUserProfileByIdentifier(userId), 10000);
+          if (profile?.role === 'admin') role = 'admin';
+          userId = profile?.id || userId;
+        } catch (profileError) {
+          console.warn('Student login profile lookup skipped', profileError);
+        }
       } else if (result.source !== 'legacy') {
         // Look up by username to get the Supabase id
         try {
@@ -67,14 +77,14 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, onBack }) => {
             userId = data.id;
             if (data.role === 'admin') role = 'admin';
           }
-        } catch {}
+        } catch (lookupError) {
+          console.warn('Student login username lookup skipped', lookupError);
+        }
       }
 
       onLogin(normalizedUsername, role, userId);
     } catch (err) {
-      const message = err instanceof Error && err.message === 'timeout'
-        ? 'Login timed out. Please check your connection and try again.'
-        : 'Login failed. Please try again.';
+      const message = getFriendlyAuthErrorMessage(err, 'Login failed. Please try again.');
       setError(message);
       console.error('Student login error', err);
     } finally {

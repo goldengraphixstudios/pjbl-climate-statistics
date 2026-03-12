@@ -1,8 +1,9 @@
-import { supabase, signIn, signUp, signOut } from './supabaseClient';
+import { getAuthFailureReason, supabase, signIn, signUp, signOut } from './supabaseClient';
 
 export { signOut };
 
 type StudentCredentialSource = 'auth' | 'rpc' | 'legacy';
+export type StudentCredentialFailureReason = 'invalid' | 'timeout' | 'service_unavailable';
 
 const withTimeout = async <T,>(promise: PromiseLike<T>, ms = 4000): Promise<T> => {
   return await Promise.race([
@@ -21,12 +22,19 @@ const defaultStudents: Record<string, string> = {
   'test_user': 'testpass123'
 };
 
+const toStudentFailureReason = (error: unknown): StudentCredentialFailureReason => {
+  const reason = getAuthFailureReason(error);
+  if (reason === 'timeout') return 'timeout';
+  if (reason === 'service_unavailable') return 'service_unavailable';
+  return 'invalid';
+};
+
 // ─── Validate credentials & return userId ────────────────────────────────────
 
 export const validateStudentCredentials = async (
   username: string,
   password: string
-): Promise<{ valid: boolean; userId?: string; email?: string; source?: StudentCredentialSource }> => {
+): Promise<{ valid: boolean; userId?: string; email?: string; source?: StudentCredentialSource; reason?: StudentCredentialFailureReason }> => {
   // Direct email sign-in (admin/teacher accounts use Supabase Auth)
   if (username.includes('@')) {
     try {
@@ -34,11 +42,15 @@ export const validateStudentCredentials = async (
       if (!res.error && res.data?.session) {
         return { valid: true, userId: res.data.session.user.id, email: username, source: 'auth' };
       }
-    } catch {}
-    return { valid: false };
+      if (res.error) return { valid: false, reason: toStudentFailureReason(res.error) };
+    } catch (error) {
+      return { valid: false, reason: toStudentFailureReason(error) };
+    }
+    return { valid: false, reason: 'invalid' };
   }
 
   // Student login: verify password via DB function (no Supabase Auth session needed)
+  let rpcFailureReason: StudentCredentialFailureReason | null = null;
   try {
     const { data, error } = await withTimeout(
       supabase.rpc('verify_student', {
@@ -50,7 +62,10 @@ export const validateStudentCredentials = async (
     if (!error && data?.valid) {
       return { valid: true, userId: data.id, source: 'rpc' };
     }
-  } catch {}
+    if (error) rpcFailureReason = toStudentFailureReason(error);
+  } catch (error) {
+    rpcFailureReason = toStudentFailureReason(error);
+  }
 
   // Legacy localStorage fallback (for demo accounts that pre-date Supabase)
   try {
@@ -74,7 +89,7 @@ export const validateStudentCredentials = async (
     }
   } catch {}
 
-  return { valid: false };
+  return { valid: false, reason: rpcFailureReason || 'invalid' };
 };
 
 // ─── Register a student (called by teacher from ClassManagement) ─────────────

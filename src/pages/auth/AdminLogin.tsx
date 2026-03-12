@@ -1,12 +1,29 @@
 import React, { useState } from 'react';
 import { AdminShieldIcon } from '../../components/RoleIcons';
 import '../../styles/Auth.css';
-import { clearStaleSupabaseAuthStorage, signIn, supabase } from '../../services/supabaseClient';
+import {
+  cacheStaffLoginHint,
+  clearStaleSupabaseAuthStorage,
+  getAuthFailureReason,
+  getCachedStaffEmail,
+  getFriendlyAuthErrorMessage,
+  getUserProfileByIdentifier,
+  signIn,
+  signOut,
+  supabase,
+} from '../../services/supabaseClient';
 
 interface AdminLoginProps {
   onLogin: (username: string, role: 'admin', id?: string) => void;
   onBack: () => void;
 }
+
+type StaffProfile = {
+  id: string;
+  email: string | null;
+  username: string | null;
+  role: string | null;
+};
 
 const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
@@ -28,56 +45,145 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
     (async () => {
       try {
-        const normalizedUsername = username.trim();
+        const normalizedIdentifier = username.trim();
+        const normalizedPassword = password;
+
         if (typeof window !== 'undefined' && /(^|\.)github\.io$/i.test(window.location.hostname)) {
           clearStaleSupabaseAuthStorage();
         }
 
-        // Resolve username to email via users table, then Supabase signIn.
-        const profileRes = await withTimeout<{
-          data: { id: string; email: string; username: string; role: string } | null;
-          error?: unknown;
-        }>(
-          supabase
-            .from('users')
-            .select('id, email, username, role')
-            .eq('username', normalizedUsername)
-            .maybeSingle(),
-          10000
-        );
+        let sawServiceFailure = false;
+        let usernameLookupBlocked = false;
+        let resolvedProfile: StaffProfile | null = null;
+        const attemptedEmails = new Set<string>();
 
-        const email = normalizedUsername.includes('@')
-          ? normalizedUsername
-          : profileRes.data?.email || null;
+        const trySignIn = async (email: string | null) => {
+          if (!email || attemptedEmails.has(email)) return null;
+          attemptedEmails.add(email);
 
-        if (!email) {
-          setError('Account not found. Please check your username.');
+          try {
+            const res = await withTimeout(signIn(email, normalizedPassword), 10000);
+            if (!res.error && res.data?.session) {
+              return { email, res };
+            }
+            if (res.error) {
+              const reason = getAuthFailureReason(res.error);
+              if (reason === 'service_unavailable' || reason === 'timeout') {
+                sawServiceFailure = true;
+              }
+            }
+          } catch (signInError) {
+            const reason = getAuthFailureReason(signInError);
+            if (reason === 'service_unavailable' || reason === 'timeout') {
+              sawServiceFailure = true;
+            }
+          }
+
+          return null;
+        };
+
+        const directCandidates = normalizedIdentifier.includes('@')
+          ? [normalizedIdentifier]
+          : [getCachedStaffEmail(normalizedIdentifier), `${normalizedIdentifier}@pjbl.local`];
+
+        let authResult: { email: string; res: Awaited<ReturnType<typeof signIn>> } | null = null;
+
+        for (const candidate of directCandidates) {
+          authResult = await trySignIn(candidate);
+          if (authResult) break;
+        }
+
+        if (!authResult && !normalizedIdentifier.includes('@') && !sawServiceFailure) {
+          try {
+            const profileRes = await withTimeout<{
+              data: StaffProfile | null;
+              error?: unknown;
+            }>(
+              supabase
+                .from('users')
+                .select('id, email, username, role')
+                .eq('username', normalizedIdentifier)
+                .maybeSingle(),
+              4000
+            );
+
+            if (profileRes.error) {
+              const reason = getAuthFailureReason(profileRes.error);
+              if (reason === 'service_unavailable' || reason === 'timeout') {
+                sawServiceFailure = true;
+              } else {
+                usernameLookupBlocked = true;
+              }
+            }
+
+            resolvedProfile = profileRes.data;
+            authResult = await trySignIn(resolvedProfile?.email || null);
+          } catch (profileLookupError) {
+            const reason = getAuthFailureReason(profileLookupError);
+            if (reason === 'service_unavailable' || reason === 'timeout') {
+              sawServiceFailure = true;
+            } else {
+              usernameLookupBlocked = true;
+            }
+          }
+        }
+
+        if (!authResult) {
+          if (usernameLookupBlocked) {
+            setError('Username lookup is unavailable. Please sign in with your staff email.');
+            return;
+          }
+          setError(
+            sawServiceFailure
+              ? 'Authentication service is unavailable right now. Please try again later.'
+              : 'Invalid credentials. Please try again.'
+          );
           return;
         }
 
-        const res = await withTimeout(signIn(email, password));
-        if (res.error) {
-          setError('Invalid credentials. Please try again.');
-          return;
+        const sessionUser = authResult.res.data?.session?.user || null;
+        const profileIdentifier = sessionUser?.email || sessionUser?.id || authResult.email;
+
+        if (!resolvedProfile || !resolvedProfile.id || !resolvedProfile.role || !resolvedProfile.username) {
+          try {
+            const postAuthProfile = await withTimeout(getUserProfileByIdentifier(profileIdentifier), 5000);
+            if (postAuthProfile) {
+              resolvedProfile = {
+                id: postAuthProfile.id,
+                email: postAuthProfile.email || sessionUser?.email || authResult.email,
+                username: postAuthProfile.username || resolvedProfile?.username || normalizedIdentifier,
+                role: postAuthProfile.role || resolvedProfile?.role || null,
+              };
+            }
+          } catch (profileError) {
+            await signOut().catch(() => {});
+            setError(getFriendlyAuthErrorMessage(profileError, 'Unable to verify staff account. Please try again.'));
+            return;
+          }
         }
 
-        const role = profileRes.data?.role;
-        if (role && role !== 'admin' && role !== 'teacher') {
+        const role = resolvedProfile?.role;
+        if (!role) {
+          await signOut().catch(() => {});
+          setError('Unable to verify staff account. Please use your staff email or try again later.');
+          return;
+        }
+        if (role !== 'admin' && role !== 'teacher') {
+          await signOut().catch(() => {});
           setError('This account does not have admin access.');
           return;
         }
 
-        const displayUsername = profileRes.data?.username || normalizedUsername;
-        const appUserId = profileRes.data?.id || res.data?.session?.user?.id;
+        const displayUsername = resolvedProfile?.username || normalizedIdentifier;
+        const appUserId = resolvedProfile?.id || sessionUser?.id;
+        cacheStaffLoginHint(displayUsername, resolvedProfile?.email || sessionUser?.email || authResult.email);
         onLogin(displayUsername, 'admin', appUserId);
-      } catch (e) {
-        const message = e instanceof Error && e.message === 'timeout'
-          ? 'Login timed out. Please check your connection and try again.'
-          : 'Login failed. Please try again.';
-        setError(message);
-        console.error(e);
+      } catch (submitError) {
+        setError(getFriendlyAuthErrorMessage(submitError, 'Login failed. Please try again.'));
+        console.error(submitError);
       } finally {
         setIsLoading(false);
       }
@@ -92,11 +198,12 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
         <h2>Teacher / Administrator Login</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">Username or Email</label>
             <input
               id="username"
               type="text"
-              placeholder="Enter your username"
+              placeholder="Enter your username or email"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -110,6 +217,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

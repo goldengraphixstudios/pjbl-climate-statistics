@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, getUserProfileByIdentifier, signOut } from './services/supabaseClient';
+import { cacheStaffLoginHint, supabase, getUserProfileByIdentifier, signOut } from './services/supabaseClient';
 import './styles/App.css';
 import LandingPage from './pages/LandingPage';
 import StudentLogin from './pages/auth/StudentLogin';
@@ -112,7 +112,8 @@ function App() {
   const [classes, setClasses] = useState<LegacyClass[]>([]);
   const [portalTab, setPortalTab] = useState<'overview' | 'sections'>('overview');
 
-  // Load classes from Supabase on mount
+  // Load classes only after auth is established; the landing and login screens
+  // do not need live class data.
   const loadClasses = async () => {
     try {
       const rows = await getAllClasses();
@@ -140,6 +141,10 @@ function App() {
         if (session) {
           const user = session.user;
           const profile = await getUserProfileByIdentifier(user.email || user.id);
+          cacheStaffLoginHint(
+            profile?.username || storedAppSession?.authUser?.username || '',
+            user.email || profile?.email || ''
+          );
           const role = (profile && (profile.role as UserRole)) || storedAppSession?.authUser?.role || 'student';
           const restoredUser = {
             id: profile?.id || storedAppSession?.authUser?.id || user.id,
@@ -163,7 +168,6 @@ function App() {
       }
     })();
 
-    loadClasses();
   }, []);
 
   useEffect(() => {
