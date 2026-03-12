@@ -6,6 +6,7 @@ import { setUserProgress, saveLesson3Phase1Activity1, getLesson3Phase1Activity1A
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { uploadStudentFileAsset } from '../../services/fileAssetService';
 import { getStudentState, resolveStudentId, upsertStudentState } from '../../services/studentStateService';
 
 interface AuthUser {
@@ -413,6 +414,31 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
     hydrateFromServer();
   }, [user.username]);
+
+  const getLesson3StudentId = async () => {
+    const prof = await getMyProfile();
+    return prof?.id || await resolveStudentId(user.username);
+  };
+
+  const persistLesson3FileAsset = async (
+    activityKey: string,
+    file?: File | null,
+    existingValue?: string | null,
+    fallbackFilename?: string,
+    fallbackMimeType?: string,
+  ) => {
+    const studentId = await getLesson3StudentId();
+    if (!studentId) return null;
+    return await uploadStudentFileAsset({
+      studentId,
+      lessonSlug: 'lesson3',
+      activityKey,
+      file,
+      existingValue,
+      filename: fallbackFilename,
+      mimeType: fallbackMimeType,
+    });
+  };
 
   const lesson3Snapshot = useMemo(() => ({
     version: 1,
@@ -927,25 +953,29 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 if (all && all[user.username]) alreadySaved = true;
                               } catch (e) { /* ignore */ }
 
-                              // read file to dataURL if a new file was uploaded
                               let fileDataUrl: string | undefined = undefined;
                               let filename: string | undefined = undefined;
-                              if (uploadedDiagram) {
-                                filename = uploadedDiagram.name;
-                                try {
-                                  fileDataUrl = await new Promise<string>((res, rej) => {
-                                    const r = new FileReader();
-                                    r.onload = () => res(String(r.result || ''));
-                                    r.onerror = () => rej(new Error('read error'));
-                                    r.readAsDataURL(uploadedDiagram);
-                                  });
-                                } catch (e) { console.error('file read failed', e); }
-                              } else if (uploadedDiagramPreview) {
-                                fileDataUrl = uploadedDiagramPreview;
+                              let resolvedPreview = uploadedDiagramPreview;
+                              try {
+                                const asset = await persistLesson3FileAsset(
+                                  'phase1-activity2',
+                                  uploadedDiagram,
+                                  uploadedDiagramPreview,
+                                  uploadedDiagram?.name,
+                                  uploadedDiagram?.type,
+                                );
+                                if (asset?.url) {
+                                  fileDataUrl = asset.url;
+                                  filename = asset.filename;
+                                  resolvedPreview = asset.url;
+                                  setUploadedDiagramPreview(asset.url);
+                                }
+                              } catch (e) {
+                                console.error('lesson3 phase1 activity2 upload failed', e);
                               }
 
                               try {
-                                await saveLesson3Phase1Activity2(user.username, { fileDataUrl, filename, considerations: finalConsiderations.trim(), timestamp: new Date().toISOString() });
+                                await saveLesson3Phase1Activity2(user.username, { fileDataUrl: fileDataUrl || resolvedPreview || undefined, filename, considerations: finalConsiderations.trim(), timestamp: new Date().toISOString() });
                               } catch (e) { console.error('save failed', e); }
 
                               setSubmitted2(true);
@@ -1057,14 +1087,17 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 const all = getLesson3Phase2Activity1All();
                                 if (all && all[user.username]) alreadySaved = true;
                               } catch (e) { /* ignore */ }
-                              // read file to dataURL and save
                               let fileDataUrl: string | undefined = undefined;
+                              let filename = p2a1File.name;
                               try {
-                                fileDataUrl = await new Promise<string>((res, rej) => {
-                                  const r = new FileReader(); r.onload = () => res(String(r.result || '')); r.onerror = () => rej(new Error('read error')); r.readAsDataURL(p2a1File);
-                                });
-                              } catch (e) { console.error('read failed', e); }
-                              try { await saveLesson3Phase2Activity1(user.username, { fileDataUrl, filename: p2a1File.name, timestamp: new Date().toISOString() }); } catch (e) { console.error('save failed', e); }
+                                const asset = await persistLesson3FileAsset('phase2-activity1', p2a1File, p2a1Preview, p2a1File.name, p2a1File.type);
+                                if (asset?.url) {
+                                  fileDataUrl = asset.url;
+                                  filename = asset.filename || p2a1File.name;
+                                  setP2a1Preview(asset.url);
+                                }
+                              } catch (e) { console.error('lesson3 phase2 activity1 upload failed', e); }
+                              try { await saveLesson3Phase2Activity1(user.username, { fileDataUrl: fileDataUrl || p2a1Preview || undefined, filename, timestamp: new Date().toISOString() }); } catch (e) { console.error('save failed', e); }
                               setP2a1Submitted(true);
                               // award 8% if not previously saved
                               try {
@@ -1170,16 +1203,19 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 if (all && all[user.username]) alreadySaved = true;
                               } catch (e) { /* ignore */ }
 
-                              // read file to dataURL
                               let fileDataUrl: string | undefined = undefined;
+                              let filename = p2a2File.name;
                               try {
-                                fileDataUrl = await new Promise<string>((res, rej) => {
-                                  const r = new FileReader(); r.onload = () => res(String(r.result || '')); r.onerror = () => rej(new Error('read error')); r.readAsDataURL(p2a2File);
-                                });
-                              } catch (e) { console.error('read failed', e); }
+                                const asset = await persistLesson3FileAsset('phase2-activity2', p2a2File, p2a2Preview, p2a2File.name, p2a2File.type);
+                                if (asset?.url) {
+                                  fileDataUrl = asset.url;
+                                  filename = asset.filename || p2a2File.name;
+                                  setP2a2Preview(asset.url);
+                                }
+                              } catch (e) { console.error('lesson3 phase2 activity2 upload failed', e); }
 
                               try {
-                                await saveLesson3Phase2Activity2(user.username, { fileDataUrl, filename: p2a2File.name, timestamp: new Date().toISOString() });
+                                await saveLesson3Phase2Activity2(user.username, { fileDataUrl: fileDataUrl || p2a2Preview || undefined, filename, timestamp: new Date().toISOString() });
                               } catch (e) { console.error('save failed', e); }
 
                               setP2a2Submitted(true);
@@ -1297,22 +1333,25 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 if (all && all[user.username]) alreadySaved = true;
                               } catch (e) { /* ignore */ }
 
-                              // read file to dataURL if file present
                               let fileDataUrl: string | undefined = undefined;
                               let filename: string | undefined = undefined;
-                              if (p2a3File) {
-                                filename = p2a3File.name;
-                                try {
-                                  fileDataUrl = await new Promise<string>((res, rej) => {
-                                    const r = new FileReader(); r.onload = () => res(String(r.result || '')); r.onerror = () => rej(new Error('read error')); r.readAsDataURL(p2a3File);
-                                  });
-                                } catch (e) { console.error('read failed', e); }
-                              } else if (p2a3Preview) {
-                                fileDataUrl = p2a3Preview;
-                              }
+                              try {
+                                const asset = await persistLesson3FileAsset(
+                                  'phase2-activity3',
+                                  p2a3File,
+                                  p2a3Preview,
+                                  p2a3File?.name,
+                                  p2a3File?.type,
+                                );
+                                if (asset?.url) {
+                                  fileDataUrl = asset.url;
+                                  filename = asset.filename;
+                                  setP2a3Preview(asset.url);
+                                }
+                              } catch (e) { console.error('lesson3 phase2 activity3 upload failed', e); }
 
                               try {
-                                await saveLesson3Phase2Activity3(user.username, { fileDataUrl, filename, interpretation: p2a3Answer.trim(), timestamp: new Date().toISOString() });
+                                await saveLesson3Phase2Activity3(user.username, { fileDataUrl: fileDataUrl || p2a3Preview || undefined, filename, interpretation: p2a3Answer.trim(), timestamp: new Date().toISOString() });
                               } catch (e) { console.error('save failed', e); }
 
                               setP2a3Submitted(true);
@@ -1426,16 +1465,19 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           if (all && all[user.username]) alreadySaved = true;
                         } catch (e) { /* ignore */ }
 
-                        // read file to dataURL
                         let fileDataUrl: string | undefined = undefined;
+                        let filename = p3File.name;
                         try {
-                          fileDataUrl = await new Promise<string>((res, rej) => {
-                            const r = new FileReader(); r.onload = () => res(String(r.result || '')); r.onerror = () => rej(new Error('read error')); r.readAsDataURL(p3File);
-                          });
-                        } catch (e) { console.error('read failed', e); }
+                          const asset = await persistLesson3FileAsset('phase3-activity1', p3File, p3Preview, p3File.name, p3File.type);
+                          if (asset?.url) {
+                            fileDataUrl = asset.url;
+                            filename = asset.filename || p3File.name;
+                            setP3Preview(asset.url);
+                          }
+                        } catch (e) { console.error('lesson3 phase3 activity1 upload failed', e); }
 
                         try {
-                          await saveLesson3Phase3Activity1(user.username, { fileDataUrl, filename: p3File.name, timestamp: new Date().toISOString() });
+                          await saveLesson3Phase3Activity1(user.username, { fileDataUrl: fileDataUrl || p3Preview || undefined, filename, timestamp: new Date().toISOString() });
                         } catch (e) { console.error('save failed', e); }
 
                         setP3Submitted(true);
@@ -1805,70 +1847,65 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           if (all && all[user.username]) alreadySaved = true;
                         } catch (e) {}
 
-                        // read file as data URL
+                        const reflection = {
+                          confidence: finalConfidence || '',
+                          contributed: finalConfidenceReason || '',
+                          challenging: finalChallenge || '',
+                          stats: finalStatsChange || '',
+                          climate: finalClimateChange || '',
+                          connection: finalConnectionChange || '',
+                          extend: finalExtension || '',
+                          learned: finalLearnerInsight || ''
+                        };
+
                         try {
-                          const fr = new FileReader();
-                          fr.onload = async (ev) => {
-                            const dataUrl = (ev.target as any)?.result || null;
-                            try {
-                              const reflection = {
-                                confidence: finalConfidence || '',
-                                contributed: finalConfidenceReason || '',
-                                challenging: finalChallenge || '',
-                                stats: finalStatsChange || '',
-                                climate: finalClimateChange || '',
-                                connection: finalConnectionChange || '',
-                                extend: finalExtension || '',
-                                learned: finalLearnerInsight || ''
-                              };
-                              await saveLesson3Phase4Reflection(user.username, reflection, dataUrl, finalFile.type);
-                            } catch (e) { console.error('savePhase4Reflection failed', e); }
+                          const asset = await persistLesson3FileAsset('phase4-final', finalFile, finalPreview, finalFile.name, finalFile.type);
+                          const finalUrl = asset?.url || finalPreview || null;
+                          if (!finalUrl) return;
+                          setFinalPreview(finalUrl);
+                          await saveLesson3Phase4Reflection(user.username, reflection, finalUrl, asset?.mimeType || finalFile.type);
+                          setFinalSubmitted(true);
 
-                            setFinalSubmitted(true);
-                            
-                            // upsert lesson3 response record
-                            try {
-                              const prof = await getMyProfile();
-                              const studentId = prof?.id || await resolveStudentId(user.username);
-                              if (studentId) {
-                                await upsertResponse({
-                                  student_id: studentId,
-                                  activity_type: 'lesson3',
-                                  answers: {
-                                    __meta: {
-                                      schemaVersion: 1,
-                                      source: 'student-portal',
-                                      activityType: 'lesson3',
-                                      submittedAt: new Date().toISOString(),
-                                      username: user.username,
-                                      stage: 'final'
-                                    },
-                                    phase4_reflection: dataUrl || ''
-                                  }
-                                });
-                              }
-                            } catch (e) {
-                              console.error('upsert lesson3 response', e);
-                            }
-
-                            // award 15% one-time
-                            try {
-                              if (!alreadySaved) {
-                                const current = getUserProgress(user.username) || {1:0,2:0,3:0,4:0,5:0};
-                                const cur = Number(current[4] || 0) || 0;
-                                const extra = Math.min(100 - cur, 15);
-                                if (extra > 0) {
-                                  const newExtra = Math.min(100, lesson3ExtraPct + extra);
-                                  setLesson3ExtraPct(newExtra);
-                                  try { localStorage.setItem('lesson3_extra_progress', String(newExtra)); } catch {}
-                                  setUserProgress(user.username, 4, Math.min(100, cur + extra));
+                          try {
+                            const studentId = await getLesson3StudentId();
+                            if (studentId) {
+                              await upsertResponse({
+                                student_id: studentId,
+                                activity_type: 'lesson3',
+                                answers: {
+                                  __meta: {
+                                    schemaVersion: 1,
+                                    source: 'student-portal',
+                                    activityType: 'lesson3',
+                                    submittedAt: new Date().toISOString(),
+                                    username: user.username,
+                                    stage: 'final'
+                                  },
+                                  phase4_reflection: asset || { url: finalUrl, filename: finalFile.name, mimeType: finalFile.type },
+                                  phase4_reflection_name: asset?.filename || finalFile.name,
+                                  phase4_reflection_mime: asset?.mimeType || finalFile.type
                                 }
+                              });
+                            }
+                          } catch (e) {
+                            console.error('upsert lesson3 response', e);
+                          }
+
+                          try {
+                            if (!alreadySaved) {
+                              const current = getUserProgress(user.username) || {1:0,2:0,3:0,4:0,5:0};
+                              const cur = Number(current[4] || 0) || 0;
+                              const extra = Math.min(100 - cur, 15);
+                              if (extra > 0) {
+                                const newExtra = Math.min(100, lesson3ExtraPct + extra);
+                                setLesson3ExtraPct(newExtra);
+                                try { localStorage.setItem('lesson3_extra_progress', String(newExtra)); } catch {}
+                                setUserProgress(user.username, 4, Math.min(100, cur + extra));
                               }
-                            } catch (e) { /* ignore */ }
-                          };
-                          fr.readAsDataURL(finalFile);
+                            }
+                          } catch (e) { /* ignore */ }
                         } catch (e) {
-                          console.error('file read failed', e);
+                          console.error('savePhase4Reflection failed', e);
                         }
                       }}>Submit Final Output</button>
                     </div>

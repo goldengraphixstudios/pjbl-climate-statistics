@@ -6,6 +6,7 @@ import ClassManagement from '../../components/teacher/ClassManagement';
 import StudentList from '../../components/teacher/StudentList';
 import { FeedbackRow, getFeedbackForStudents } from '../../services/feedbackService';
 import { ActivityType, ResponseRow, getResponsesForStudents, teacherUpdateScore } from '../../services/responsesService';
+import { getFileAssetFilename, isImageFileAsset, isPdfFileAsset, resolveFileAsset } from '../../services/fileAssetService';
 import { getStudentState, type LessonSlug } from '../../services/studentStateService';
 import { getClassRecord } from '../../services/submissionsService';
 import * as XLSX from 'xlsx';
@@ -116,6 +117,64 @@ function formatDisplayName(full: string) {
   return `${last}, ${first}`;
 }
 
+function getLesson2FinalUpload(response?: ResponseRow | null) {
+  return response?.answers?.phase4_upload || response?.answers?.phase4_upload_url || null;
+}
+
+function getLesson3FinalUpload(response?: ResponseRow | null, state?: any) {
+  return response?.answers?.phase4_reflection || state?.finalPreview || null;
+}
+
+function getFileAssetLabel(value: unknown, fallbackFilename?: string) {
+  return getFileAssetFilename(value, fallbackFilename);
+}
+
+function getLessonSubmissionAsset(response?: ResponseRow | null) {
+  if (!response) return null;
+
+  if (response.activity_type === 'lesson2') {
+    const lesson2State = response.answers?.lesson2State || {};
+    return resolveFileAsset(getLesson2FinalUpload(response) || lesson2State.previewURLP4, {
+      filename: response.answers?.phase4_upload_name || lesson2State.uploadedFileNameP4,
+      mimeType: response.answers?.phase4_upload_mime,
+    });
+  }
+
+  if (response.activity_type === 'lesson3') {
+    const lesson3State = response.answers?.lesson3State || {};
+    return resolveFileAsset(getLesson3FinalUpload(response, lesson3State), {
+      filename: response.answers?.phase4_reflection_name,
+      mimeType: response.answers?.phase4_reflection_mime,
+    });
+  }
+
+  return null;
+}
+
+async function downloadFileAsset(value: unknown, fallbackFilename?: string) {
+  const asset = resolveFileAsset(value, { filename: fallbackFilename });
+  if (!asset?.url) return;
+
+  try {
+    const response = await fetch(asset.url);
+    if (!response.ok) throw new Error(`download_failed:${response.status}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = asset.filename || fallbackFilename || 'download';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+    return;
+  } catch (error) {
+    console.error('downloadFileAsset fallback', error);
+  }
+
+  window.open(asset.url, '_blank', 'noopener,noreferrer');
+}
+
 function getLessonSubmissionPreview(response?: ResponseRow | null) {
   if (!response) return { summary: 'No submission yet', detail: '' };
   const stage = response.answers?.__meta?.stage;
@@ -153,15 +212,18 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
   }
 
   if (response.activity_type === 'lesson2') {
-    const upload = response.answers?.phase4_upload;
-    if (typeof upload === 'string' && upload.trim()) {
-      const filename = upload.split('/').pop() || upload;
+    const lesson2State = response.answers?.lesson2State || {};
+    const upload = getLesson2FinalUpload(response) || lesson2State.previewURLP4;
+    const uploadAsset = resolveFileAsset(upload, {
+      filename: response.answers?.phase4_upload_name || lesson2State.uploadedFileNameP4,
+      mimeType: response.answers?.phase4_upload_mime,
+    });
+    if (uploadAsset) {
       return {
         summary: 'Upload submitted',
-        detail: filename.length > 40 ? `${filename.slice(0, 37)}...` : filename
+        detail: getFileAssetLabel(uploadAsset, response.answers?.phase4_upload_name || lesson2State.uploadedFileNameP4)
       };
     }
-    const lesson2State = response.answers?.lesson2State;
     if (lesson2State && typeof lesson2State === 'object') {
       const progress = typeof lesson2State.displayProgress === 'number' ? `${lesson2State.displayProgress}% progress` : 'Draft saved';
       return {
@@ -174,11 +236,15 @@ function getLessonSubmissionPreview(response?: ResponseRow | null) {
 
   if (response.activity_type === 'lesson3') {
     const state = response.answers?.lesson3State || {};
-    const reflection = response.answers?.phase4_reflection;
-    if (typeof reflection === 'string' && reflection.trim()) {
+    const reflection = getLesson3FinalUpload(response, state);
+    const reflectionAsset = resolveFileAsset(reflection, {
+      filename: response.answers?.phase4_reflection_name,
+      mimeType: response.answers?.phase4_reflection_mime,
+    });
+    if (reflectionAsset) {
       return {
-        summary: reflection.startsWith('data:') ? 'Reflection image submitted' : 'Reflection submitted',
-        detail: reflection.startsWith('data:') ? 'Canvas export captured' : reflection.slice(0, 80)
+        summary: 'Final output submitted',
+        detail: getFileAssetLabel(reflectionAsset, response.answers?.phase4_reflection_name)
       };
     }
     if (stage === 'draft') {
@@ -249,8 +315,9 @@ function downloadCsvFile(rows: string[][], filename: string) {
 
 function formatReviewValue(value: any): string {
   if (value == null || value === '') return '—';
+  const asset = resolveFileAsset(value);
+  if (asset) return getFileAssetLabel(asset);
   if (typeof value === 'string') {
-    if (value.startsWith('data:')) return '[uploaded file]';
     return value;
   }
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
@@ -261,6 +328,61 @@ function formatReviewValue(value: any): string {
     return normalized.length ? normalized.join(', ') : '—';
   }
   return JSON.stringify(value, null, 2);
+}
+
+function renderReviewFieldValue(value: any, fallbackFilename?: string) {
+  const asset = resolveFileAsset(value, { filename: fallbackFilename });
+  if (asset) {
+    const label = getFileAssetLabel(asset, fallbackFilename);
+    const actions = (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <a
+          href={asset.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: '#0b61c9', fontWeight: 600 }}
+        >
+          Open {label}
+        </a>
+        <button
+          type="button"
+          onClick={() => { downloadFileAsset(asset, fallbackFilename).catch(() => {}); }}
+          style={{
+            border: '1px solid #cbd5e1',
+            background: '#fff',
+            color: '#0b61c9',
+            borderRadius: 8,
+            padding: '6px 10px',
+            cursor: 'pointer',
+            fontWeight: 600
+          }}
+        >
+          Download
+        </button>
+      </div>
+    );
+    if (isImageFileAsset(asset)) {
+      return (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {actions}
+          <img src={asset.url} alt={label} style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #dbe6f3' }} />
+        </div>
+      );
+    }
+    if (isPdfFileAsset(asset)) {
+      return (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {actions}
+          <iframe src={asset.url} title={label} style={{ width: '100%', minHeight: 420, border: '1px solid #dbe6f3', borderRadius: 8 }} />
+        </div>
+      );
+    }
+    return (
+      actions
+    );
+  }
+
+  return formatReviewValue(value);
 }
 
 function formatScenarioObservation(value: any) {
@@ -905,6 +1027,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                   const key = getScoreKey(row.id, activityType);
                   const scoreValue = getScoreDraft(row.id, activityType, response.teacher_score ?? null);
                   const isDraftOnly = response.id.startsWith('draft-');
+                  const submissionAsset = getLessonSubmissionAsset(response);
+                  const submissionAssetLabel = submissionAsset
+                    ? getFileAssetLabel(submissionAsset)
+                    : null;
                   return (
                     <tr key={key}>
                       <td style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>
@@ -917,6 +1043,25 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                         <div className="lesson-meta">
                           Submitted {new Date(response.updated_at).toLocaleString()}
                         </div>
+                        {submissionAsset && (
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                            <a
+                              href={submissionAsset.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="download-btn lesson-feedback-button"
+                            >
+                              Open File
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => { downloadFileAsset(submissionAsset, submissionAssetLabel || undefined).catch(() => {}); }}
+                              className="download-btn lesson-feedback-button"
+                            >
+                              Download File
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td style={{ minWidth: 180 }}>
                         <div className="lesson-score-cell">
@@ -2714,7 +2859,16 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                         })
                         .map((item: { label: string; value: any }) => {
                           const formatted = formatReviewValue(item.value);
-                          const multiline = formatted.includes('\n') || formatted.length > 120;
+                          const asset = resolveFileAsset(item.value);
+                          const multiline = !!asset || formatted.includes('\n') || formatted.length > 120;
+                          const renderedValue = renderReviewFieldValue(
+                            item.value,
+                            item.label === 'Final output upload'
+                              ? (reviewRow.response.answers?.phase4_upload_name || reviewRow.response.answers?.lesson2State?.uploadedFileNameP4)
+                              : item.label === 'Final reflection output'
+                                ? reviewRow.response.answers?.phase4_reflection_name
+                                : undefined,
+                          );
                           return (
                             <div
                               key={`${section.title}-${item.label}`}
@@ -2737,7 +2891,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ user, onLogout, classes, onCr
                                   minHeight: multiline ? 72 : 'auto'
                                 }}
                               >
-                                {formatted}
+                                {renderedValue}
                               </div>
                             </div>
                           );

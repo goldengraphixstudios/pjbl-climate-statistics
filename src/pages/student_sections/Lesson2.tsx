@@ -7,6 +7,7 @@ import { activity2bAnswerKey, lesson2Phase2Activity1Validators, lesson2Phase2Act
 import { ActivityType, upsertResponse } from '../../services/responsesService';
 import { getFeedbackForStudentActivity, acknowledgeFeedback } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
+import { uploadStudentFileAsset } from '../../services/fileAssetService';
 import { getStudentState, resolveStudentId, upsertStudentState } from '../../services/studentStateService';
 
 interface AuthUser {
@@ -94,6 +95,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [p4Interpretation, setP4Interpretation] = useState<string>('');
   const [p4Locked, setP4Locked] = useState<boolean>(false);
   const [uploadedFileP4, setUploadedFileP4] = useState<File | null>(null);
+  const [uploadedFileNameP4, setUploadedFileNameP4] = useState<string>('');
   const [previewURLP4, setPreviewURLP4] = useState<string | null>(null);
   const [submissionMessageP4, setSubmissionMessageP4] = useState<string>('');
   const [submitDisabledP4, setSubmitDisabledP4] = useState<boolean>(false);
@@ -399,6 +401,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const mine = all[user.username];
       if (mine) {
         setPreviewURLP4(mine.uploadUrl || null);
+        setUploadedFileNameP4(mine.filename || '');
         setSubmitDisabledP4(!!mine.submitted);
         setSubmissionMessageP4(mine.submitted ? 'File previously submitted.' : 'File uploaded (not yet submitted)');
       }
@@ -545,6 +548,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         if (snapshot.analysis2Inputs) setAnalysis2Inputs(snapshot.analysis2Inputs);
         if (typeof snapshot.analysis2Submitted === 'boolean') setAnalysis2Submitted(snapshot.analysis2Submitted);
         if (typeof snapshot.previewURLP4 === 'string') setPreviewURLP4(snapshot.previewURLP4);
+        if (typeof snapshot.uploadedFileNameP4 === 'string') setUploadedFileNameP4(snapshot.uploadedFileNameP4);
         if (typeof snapshot.submitDisabledP4 === 'boolean') setSubmitDisabledP4(snapshot.submitDisabledP4);
         if (typeof snapshot.submissionMessageP4 === 'string') setSubmissionMessageP4(snapshot.submissionMessageP4);
         if (typeof snapshot.a3Var1 === 'string') setA3Var1(snapshot.a3Var1);
@@ -602,6 +606,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     analysis2Inputs,
     analysis2Submitted,
     previewURLP4: previewURLP4 && !previewURLP4.startsWith('blob:') ? previewURLP4 : null,
+    uploadedFileNameP4,
     submissionMessageP4,
     submitDisabledP4,
     a3Var1,
@@ -648,6 +653,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     analysis2Inputs,
     analysis2Submitted,
     previewURLP4,
+    uploadedFileNameP4,
     submissionMessageP4,
     submitDisabledP4,
     a3Var1,
@@ -698,12 +704,36 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     return idle;
   };
 
+  const getLesson2StudentId = async () => {
+    const prof = await getMyProfile();
+    return prof?.id || await resolveStudentId(user.username);
+  };
+
+  const persistLesson2FileAsset = async (
+    activityKey: string,
+    file?: File | null,
+    existingValue?: string | null,
+    fallbackFilename?: string,
+    fallbackMimeType?: string,
+  ) => {
+    const studentId = await getLesson2StudentId();
+    if (!studentId) return null;
+    return await uploadStudentFileAsset({
+      studentId,
+      lessonSlug: 'lesson2',
+      activityKey,
+      file,
+      existingValue,
+      filename: fallbackFilename,
+      mimeType: fallbackMimeType,
+    });
+  };
+
   const persistLesson2Response = async (
     stage: 'draft' | 'final' = 'draft',
     extraAnswers: Record<string, any> = {}
   ) => {
-    const prof = await getMyProfile();
-    const studentId = prof?.id || await resolveStudentId(user.username);
+    const studentId = await getLesson2StudentId();
     if (!studentId) return;
 
     await upsertResponse({
@@ -1200,12 +1230,10 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             </div>
                             <div className="section-actions" style={{ marginTop:12, justifyContent:'flex-end' }}>
                               <button className="save-btn" onClick={() => {
-                                // require all predictors and responses filled
                                 if (pairAnswers.slice(0,5).some(p => !p.predictor || !p.response)) return;
                                 try {
                                   const wasSubmitted = pairSubmitted;
                                   saveLesson2Phase1Activity2b(user.username, pairAnswers.slice(0,5));
-                                  // compute checks
                                   const checks = pairAnswers.slice(0,5).map((p, idx) => {
                                     try {
                                       const key = activity2bAnswerKey[idx];
@@ -1604,24 +1632,23 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                             <div className="gap-3" />
                             <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                              <button className="save-btn" type="button" disabled={!uploadedFile || phase2A2Submitted} onClick={() => {
+                              <button className="save-btn" type="button" disabled={!uploadedFile || phase2A2Submitted} onClick={async () => {
                                 if (phase2A2Submitted) return;
                                 const f = uploadedFile;
                                 if (!f) return;
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  try {
-                                    const data = ev.target?.result as string;
-                                    saveLesson2Phase2Activity2(user.username, data, f.type, f.name);
-                                    setPhase2A2Submitted(true);
-                                    setSubmissionMessage('File submitted — preview saved.');
-                                    // ensure preview displays persisted data URL
-                                    setPreviewURL(data);
-                                    flashAction('phase2-activity2', 'saved');
-                                    // progress will be recomputed by central effect
-                                  } catch (e) { /* ignore */ }
-                                };
-                                reader.readAsDataURL(f);
+                                try {
+                                  const asset = await persistLesson2FileAsset('phase2-activity2', f, null, f.name, f.type);
+                                  if (!asset?.url) return;
+                                  saveLesson2Phase2Activity2(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name);
+                                  setPhase2A2Submitted(true);
+                                  setSubmissionMessage('File submitted - preview saved.');
+                                  setPreviewURL(asset.url);
+                                  setUploadedFileName(asset.filename || f.name);
+                                  flashAction('phase2-activity2', 'saved');
+                                } catch (e) {
+                                  console.error('lesson2 phase2 activity2 upload failed', e);
+                                  setSubmissionMessage('Upload failed. Please try again.');
+                                }
                               }}>{getActionLabel('phase2-activity2', phase2A2Submitted ? 'Submitted' : 'Submit Output')}</button>
                             </div>
 
@@ -1751,22 +1778,21 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               <div className="gap-3" />
 
                               <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                                <button className="save-btn" type="button" disabled={!uploadedFile3 || submitDisabled3} onClick={() => {
+                                <button className="save-btn" type="button" disabled={!uploadedFile3 || submitDisabled3} onClick={async () => {
                                   if (submitDisabled3) return;
                                   const f = uploadedFile3;
                                   if (!f) return;
-                                  const reader = new FileReader();
-                                  reader.onload = (ev) => {
-                                    try {
-                                      const data = ev.target?.result as string;
-                                      saveLesson2Phase2Activity3(user.username, data, f.type, f.name);
-                                      setSubmissionMessage3('File submitted — preview saved.');
-                                      setSubmitDisabled3(true);
-                                      setPreviewURL3(data);
-                                      // progress will be recomputed by central effect
-                                    } catch (e) { /* ignore */ }
-                                  };
-                                  reader.readAsDataURL(f);
+                                  try {
+                                    const asset = await persistLesson2FileAsset('phase2-activity3', f, null, f.name, f.type);
+                                    if (!asset?.url) return;
+                                    saveLesson2Phase2Activity3(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name);
+                                    setSubmissionMessage3('File submitted - preview saved.');
+                                    setSubmitDisabled3(true);
+                                    setPreviewURL3(asset.url);
+                                  } catch (e) {
+                                    console.error('lesson2 phase2 activity3 upload failed', e);
+                                    setSubmissionMessage3('Upload failed. Please try again.');
+                                  }
                                 }}>{submitDisabled3 ? 'Submitted' : 'Submit Output'}</button>
                               </div>
 
@@ -1917,28 +1943,26 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             <div className="gap-3" />
 
                             <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                              <button className="save-btn" type="button" disabled={submitDisabled4 || !uploadedFile4 || !p4Equation.trim() || !p4YIntercept.trim() || !p4Interpretation.trim()} onClick={() => {
+                              <button className="save-btn" type="button" disabled={submitDisabled4 || !uploadedFile4 || !p4Equation.trim() || !p4YIntercept.trim() || !p4Interpretation.trim()} onClick={async () => {
                                 if (submitDisabled4) return;
                                 const f = uploadedFile4;
                                 if (!f) return;
-                                const reader = new FileReader();
-                                    reader.onload = async (ev) => {
+                                try {
+                                  const asset = await persistLesson2FileAsset('phase2-activity4', f, null, f.name, f.type);
+                                  if (!asset?.url) return;
+                                  saveLesson2Phase2Activity4(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name);
                                   try {
-                                    const data = ev.target?.result as string;
-                                    // persist uploaded file for teacher preview
-                                    saveLesson2Phase2Activity4(user.username, data, f.type, f.name);
-                                    // persist interpretation and encodings
-                                    try {
-                                      await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1: '', var2: '' });
-                                      setP4Locked(true);
-                                    } catch (e) { /* ignore */ }
-                                    setSubmissionMessage4('File and encodings submitted — saved.');
-                                    setSubmitDisabled4(true);
-                                    setUploadedFileName4(f.name);
-                                    // progress will be recomputed by central effect
+                                    await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1: '', var2: '' });
+                                    setP4Locked(true);
                                   } catch (e) { /* ignore */ }
-                                };
-                                reader.readAsDataURL(f);
+                                  setSubmissionMessage4('File and encodings submitted - saved.');
+                                  setSubmitDisabled4(true);
+                                  setUploadedFileName4(asset.filename || f.name);
+                                  setPreviewURL4(asset.url);
+                                } catch (e) {
+                                  console.error('lesson2 phase2 activity4 upload failed', e);
+                                  setSubmissionMessage4('Upload failed. Please try again.');
+                                }
                               }}>{submitDisabled4 ? 'Submitted' : 'Submit Output'}</button>
                             </div>
 
@@ -2244,25 +2268,35 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                     <div style={{ height:24 }} />
                       <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
-                      <input id="phase4-upload" type="file" accept="application/pdf,image/*" style={{ display:'none' }} onChange={(e) => {
+                      <input id="phase4-upload" type="file" accept="application/pdf,image/*" style={{ display:'none' }} onChange={async (e) => {
                         const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                        try { if (previewURLP4) { URL.revokeObjectURL(previewURLP4); } } catch (e) {}
-                        if (f) {
-                          setPreviewURLP4(URL.createObjectURL(f));
-                          setUploadedFileP4(f);
-                          // persist uploaded file immediately so it survives logout
-                          try {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              const data = ev.target?.result as string;
-                              try { saveLesson2Phase4Activity1(user.username, data, f.type, f.name, false); } catch (e) { /* ignore */ }
-                            };
-                            reader.readAsDataURL(f);
-                          } catch (e) { /* ignore */ }
-                        } else { setPreviewURLP4(null); setUploadedFileP4(null); }
+                        try { if (previewURLP4?.startsWith('blob:')) { URL.revokeObjectURL(previewURLP4); } } catch (e) {}
+                        if (!f) {
+                          setPreviewURLP4(null);
+                          setUploadedFileP4(null);
+                          setUploadedFileNameP4('');
+                          return;
+                        }
+
+                        const localPreview = URL.createObjectURL(f);
+                        setPreviewURLP4(localPreview);
+                        setUploadedFileP4(f);
+                        setUploadedFileNameP4(f.name);
+
+                        try {
+                          const asset = await persistLesson2FileAsset('phase4-draft', f, null, f.name, f.type);
+                          if (!asset?.url) return;
+                          try { if (localPreview.startsWith('blob:')) URL.revokeObjectURL(localPreview); } catch (e) {}
+                          setPreviewURLP4(asset.url);
+                          setUploadedFileNameP4(asset.filename || f.name);
+                          saveLesson2Phase4Activity1(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name, false);
+                          setSubmissionMessageP4('File uploaded. Submit Output when ready.');
+                        } catch (e) {
+                          console.error('lesson2 phase4 draft upload failed', e);
+                        }
                       }} />
                       <button className="save-btn" type="button" onClick={() => (document.getElementById('phase4-upload') as HTMLInputElement).click()} disabled={submitDisabledP4}>Upload File</button>
-                      <div style={{ fontStyle:'italic' }}>{uploadedFileP4 ? uploadedFileP4.name : (previewURLP4 ? 'Previously uploaded file' : 'No file chosen')}</div>
+                      <div style={{ fontStyle:'italic' }}>{uploadedFileP4 ? uploadedFileP4.name : (uploadedFileNameP4 || (previewURLP4 ? 'Previously uploaded file' : 'No file chosen'))}</div>
                     </div>
 
                     <div style={{ height:24 }} />
@@ -2275,46 +2309,40 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                     </div>
 
                       <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                      <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || submitDisabledP4} onClick={() => {
+                      <button className="save-btn" type="button" disabled={!(uploadedFileP4 || previewURLP4) || submitDisabledP4} onClick={async () => {
                         if (submitDisabledP4) return;
                         const f = uploadedFileP4;
-                        const finalize = async (uploadUrl?: string) => {
+                        const finalize = async (uploadAsset?: { url: string; filename?: string; mimeType?: string } | null) => {
                           try {
                             await persistLesson2Response('final', {
-                              phase4_upload: uploadUrl || previewURLP4
+                              phase4_upload: uploadAsset || null,
+                              phase4_upload_name: uploadAsset?.filename || uploadedFileNameP4 || '',
+                              phase4_upload_mime: uploadAsset?.mimeType || ''
                             });
                           } catch (e) {
                             console.error('upsert lesson2 response', e);
                           }
                         };
-                        
-                        if (f) {
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            try {
-                              const data = ev.target?.result as string;
-                              saveLesson2Phase4Activity1(user.username, data, f.type, f.name, true);
-                              setSubmissionMessageP4('Submitted — saved.');
-                              setSubmitDisabledP4(true);
-                              setPreviewURLP4(data);
-                              flashAction('phase4-final', 'saved');
-                              setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
-                              finalize(data);
-                            } catch (e) { /* ignore */ }
-                          };
-                          reader.readAsDataURL(f);
-                        } else if (previewURLP4) {
-                          // If user previously uploaded (persisted) but file object not present, use previewURLP4 already stored
-                          try {
-                            // mark as submitted in storage
-                            saveLesson2Phase4Activity1(user.username, previewURLP4, 'application/pdf', (uploadedFileP4 as File | null)?.name || 'uploaded', true);
-                          } catch (e) { /* ignore */ }
-                          setSubmissionMessageP4('Submitted — saved.');
-                          setSubmitDisabledP4(true);
-                          flashAction('phase4-final', 'saved');
-                          setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
-                          finalize();
-                        }
+
+                        const asset = await persistLesson2FileAsset(
+                          'phase4-final',
+                          f,
+                          previewURLP4,
+                          f?.name || uploadedFileNameP4 || 'lesson2-phase4-upload.pdf',
+                          f?.type || 'application/pdf',
+                        );
+                        if (!asset?.url) return;
+
+                        try {
+                          saveLesson2Phase4Activity1(user.username, asset.url, asset.mimeType || f?.type || 'application/pdf', asset.filename || f?.name || uploadedFileNameP4 || 'uploaded', true);
+                        } catch (e) { /* ignore */ }
+                        setSubmissionMessageP4('Submitted - saved.');
+                        setSubmitDisabledP4(true);
+                        setPreviewURLP4(asset.url);
+                        setUploadedFileNameP4(asset.filename || f?.name || uploadedFileNameP4);
+                        flashAction('phase4-final', 'saved');
+                        setOpen({ overview:false, p1:false, p2:false, p3:false, p4:false });
+                        await finalize(asset);
                       }}>{getActionLabel('phase4-final', submitDisabledP4 ? 'Submitted' : 'Submit Output')}</button>
                     </div>
 
@@ -2333,5 +2361,8 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 };
 
 export default Lesson2;
+
+
+
 
 

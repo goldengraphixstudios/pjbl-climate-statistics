@@ -457,7 +457,7 @@ export const saveLesson3Phase1Activity2 = async (username: string, payload: { fi
       const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
-      if (payload.fileDataUrl && payload.filename) {
+      if (payload.fileDataUrl?.startsWith('data:') && payload.filename) {
         try {
           const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
           const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
@@ -507,7 +507,7 @@ export const saveLesson3Phase2Activity1 = async (username: string, payload: { fi
       const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
-      if (payload.fileDataUrl && payload.filename) {
+      if (payload.fileDataUrl?.startsWith('data:') && payload.filename) {
         try {
           const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
           const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
@@ -559,7 +559,7 @@ export const saveLesson3Phase2Activity2 = async (username: string, payload: { fi
       const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
-      if (payload.fileDataUrl && payload.filename) {
+      if (payload.fileDataUrl?.startsWith('data:') && payload.filename) {
         try {
           const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
           const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
@@ -606,7 +606,7 @@ export const saveLesson3Phase2Activity3 = async (username: string, payload: { fi
       const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
-      if (payload.fileDataUrl && payload.filename) {
+      if (payload.fileDataUrl?.startsWith('data:') && payload.filename) {
         try {
           const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
           const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
@@ -654,7 +654,7 @@ export const saveLesson3Phase3Activity1 = async (username: string, payload: { fi
       const student_id = await resolveStudentId(username);
       if (!student_id) return;
       let publicUrl = payload.fileDataUrl;
-      if (payload.fileDataUrl && payload.filename) {
+      if (payload.fileDataUrl?.startsWith('data:') && payload.filename) {
         try {
           const uploadPath = `lesson3/${student_id}/${Date.now()}-${payload.filename}`;
           const up = await import('../services/supabaseClient').then(m => m.uploadDataUrlToStorage('uploads', uploadPath, payload.fileDataUrl!));
