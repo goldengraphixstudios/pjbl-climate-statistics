@@ -1,16 +1,18 @@
 PJBL Climate Statistics - Delivery Checklist
-Date: 2026-03-10
+Date: 2026-03-12
 
-PHASE 1 - Database & Form Collection
+PHASE 1 - Data Model, Auth, and Persistence
 [x] Supabase project setup and configuration
-[x] Form data collection stores student answers
-[x] Pre-assessment rows include answers and correctness
-[x] Post-assessment rows include answers and correctness
-[x] Lesson 1/2/3 submissions stored in Supabase responses
-[~] Support registered and unregistered student submission flow
-[x] Standardize row structure across all assessments and lessons
-[x] Define source-of-truth model for final submissions vs draft lesson state
-[~] Confirm session-detail requirements and add missing fields if needed
+[x] Final assessment submissions stored in `responses`
+[x] Final lesson submissions stored in `responses`
+[x] Lesson draft/in-progress state stored in `student_state`
+[x] Standardize submission metadata across assessments and lessons
+[x] Student auth works through custom RPC verification
+[x] Staff auth works through Supabase Auth
+[x] Staff login supports username or email
+[x] Password reset / reissue workflow exists
+[x] Shared lesson completion derivation added in `lessonCompletion.ts`
+[~] Legacy `student_progress` / browser-only state still exists and should be retired further over time
 
 PHASE 2 - Student Portal
 [x] Student can submit pre-assessment
@@ -18,74 +20,76 @@ PHASE 2 - Student Portal
 [x] Student can submit Lesson 1 final output
 [x] Student can submit Lesson 2 final output
 [x] Student can submit Lesson 3 final output
-[x] Student can view teacher feedback on pre/post
-[x] Student can view teacher feedback on Lesson 1/2/3 pages
-[x] Student can view performance summary
-[~] Performance summary reflects pre/post scoring correctly
-[ ] Performance summary reflects Lesson 1 teacher score
-[ ] Performance summary reflects Lesson 2 teacher score
-[ ] Performance summary reflects Lesson 3 teacher score
-[x] Require feedback acknowledgment before unlocking next activity
-[~] Re-test locking flow after acknowledgment requirement is restored
+[x] Student progression is completion-based
+[x] Lesson feedback remains visible on lesson pages
+[x] Assessment feedback removed from the active UI flow
+[x] Student dashboard supports `Not started`, `In progress`, and `Completed`
+[x] Student dashboard uses local progress fallback to avoid false resets
+[x] Lesson 3 resume/final-submit sync hardened
+[x] Post-Assessment resume/final-submit sync hardened
+[x] Performance summary exists
+[~] Performance summary reflects lesson scores through live response data, but still needs final full-path manual QA
+[~] Performance summary polling remains active while the page is open
 
 PHASE 3 - Teacher / Admin Combined Portal
 [x] Single combined Teacher/Admin portal
-[x] Masterlist of all enrolled students
+[x] Masterlist of enrolled students
 [x] Per-section student listing
-[x] Written feedback on pre-assessment
-[x] Written feedback on post-assessment
-[~] Written feedback on Lesson 1/2/3 exists on student side, but active teacher workflow needs full audit
+[x] Create class workflow
 [x] Class record tab exists
+[x] Pre-assessment results tab exists
+[x] Post-assessment results tab exists
+[x] Lesson 1 output review tab exists
+[x] Lesson 2 output review tab exists
+[x] Lesson 3 output review tab exists
+[x] Assessment review modal exists
+[x] Structured lesson review modal exists
+[x] Draft-only lesson work can appear in admin outputs
+[x] Teacher scoring UI exists for Lesson 1
+[x] Teacher scoring UI exists for Lesson 2
+[x] Teacher scoring UI exists for Lesson 3
+[x] Lesson feedback workflow exists
 [x] CSV/download support exists
 [x] Overview dashboard exists
-[x] Pre/post data visualization exists
-[x] Add Lesson 1 final output review table to active combined portal
-[x] Add Lesson 2 final output review table to active combined portal
-[x] Add Lesson 3 final output review table to active combined portal
-[x] Add teacher scoring UI for Lesson 1 final outputs
-[x] Add teacher scoring UI for Lesson 2 final outputs
-[x] Add teacher scoring UI for Lesson 3 final outputs
-[x] Save Lesson 1 scores to responses.teacher_score
-[x] Save Lesson 2 scores to responses.teacher_score
-[x] Save Lesson 3 scores to responses.teacher_score
-[~] Show live saved lesson scores in student performance summary
-[x] Show live saved lesson scores in class record
-[~] Add lesson analytics/visualization to combined portal
-[~] Remove or retire old localStorage-only teacher scoring paths
+[x] Pre/post visualization exists
+[x] Admin portal background polling reduced to avoid excessive Supabase reads
+[~] Final audit of inactive legacy teacher/admin code paths is still worth doing
 
-PHASE 4 - Integration & Deployment
+PHASE 4 - Integration, Deploy, and Handover
 [x] GitHub repo connected
-[x] Work log file created
-[~] Supabase integration active, with lesson draft snapshots now persisted to student_state
-[x] Role-based staff access exists
-[~] Student auth works through custom RPC flow
+[x] Work log files created
+[x] GitHub Pages deployment configured
+[x] Live site deployed
+[x] Handover documentation present
+[x] Context snapshot present
+[x] Verification checklist present
+[x] Final signoff checklist present
 [~] Final cross-role testing
 [~] Teacher workflow QA
 [~] Student workflow QA
 [~] Admin workflow QA
-[x] Push cleanup checkpoints to client repository
-[x] Final handover documentation
 
-NEXT EXECUTION ORDER
-1. Audit Lesson 1/2/3 final submission payloads and current storage shape
-2. Build active combined-portal review/scoring UI for Lesson 1/2/3
-3. Persist teacher lesson scores to responses.teacher_score
-4. Reflect lesson scores in student performance summary and class record
-5. Restore acknowledgment-required unlocking logic
-6. Finish lesson analytics and downloadable reports
-7. Final QA pass across Student / Teacher / Admin
-8. Prepare handover notes and push final state
+CURRENT EXECUTION ORDER
+1. Run full manual QA using the updated verification and final signoff checklists
+2. Confirm lesson score reflection in student summary and class record on live data
+3. Confirm resume/retry behavior for Lesson 3 and Post-Assessment on real student accounts
+4. Confirm deploy target is current after the last functional fix
+5. Retire or isolate remaining inactive legacy state code where practical
 
-CURRENT LESSON STORAGE FINDINGS
+CURRENT STORAGE MAP
+- Pre-Assessment
+  - final source of truth: `responses.activity_type = 'pre'`
 - Lesson 1
-  - final output source of truth: `responses.activity_type = 'lesson1'`
+  - final source of truth: `responses.activity_type = 'lesson1'`
   - draft/in-progress source of truth: `student_state.lesson_slug = 'lesson1'`
 - Lesson 2
-  - final output source of truth: `responses.activity_type = 'lesson2'`
+  - final source of truth: `responses.activity_type = 'lesson2'`
   - draft/in-progress source of truth: `student_state.lesson_slug = 'lesson2'`
 - Lesson 3
-  - final output source of truth: `responses.activity_type = 'lesson3'`
+  - final source of truth: `responses.activity_type = 'lesson3'`
   - draft/in-progress source of truth: `student_state.lesson_slug = 'lesson3'`
+- Post-Assessment
+  - final source of truth: `responses.activity_type = 'post'`
 
 CURRENT BLOCKER
-- Remaining work is primarily end-to-end QA and retirement of inactive legacy localStorage-era teacher portal code paths.
+- Remaining work is primarily final end-to-end QA and cleanup of leftover legacy state logic, not core feature implementation.

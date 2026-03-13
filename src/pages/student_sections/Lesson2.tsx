@@ -83,6 +83,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [submissionMessage, setSubmissionMessage] = useState<string>('');
 
   const [uploadedFile3, setUploadedFile3] = useState<File | null>(null);
+  const [uploadedFileName3, setUploadedFileName3] = useState<string>('');
   const [previewURL3, setPreviewURL3] = useState<string | null>(null);
   const [submissionMessage3, setSubmissionMessage3] = useState<string>('');
   const [submitDisabled3, setSubmitDisabled3] = useState<boolean>(false);
@@ -100,6 +101,11 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
   const [previewURLP4, setPreviewURLP4] = useState<string | null>(null);
   const [submissionMessageP4, setSubmissionMessageP4] = useState<string>('');
   const [submitDisabledP4, setSubmitDisabledP4] = useState<boolean>(false);
+  const toPersistablePreviewUrl = (value: string | null) => {
+    if (!value) return null;
+    if (value.startsWith('blob:') || value.startsWith('data:')) return null;
+    return value;
+  };
   const lesson2CompletionState = useMemo(() => ({
     completedPhases,
     displayProgress,
@@ -367,6 +373,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setPreviewURL(mine.uploadUrl || null);
         setUploadedFileName(mine.filename || '');
         setPhase2A2Submitted(!!mine.uploadUrl);
+        setSubmissionMessage(!!mine.uploadUrl ? 'Saved upload restored. You can update and submit again if needed.' : '');
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -377,8 +384,9 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
       const mine = all[user.username];
       if (mine) {
         setPreviewURL3(mine.uploadUrl || null);
+        setUploadedFileName3(mine.filename || '');
         setSubmitDisabled3(!!mine.uploadUrl);
-        setSubmissionMessage3(!!mine.uploadUrl ? 'File previously submitted.' : '');
+        setSubmissionMessage3(!!mine.uploadUrl ? 'Saved upload restored. You can update and submit again if needed.' : '');
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -391,7 +399,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         setPreviewURL4(mine.uploadUrl || null);
         setUploadedFileName4(mine.filename || '');
         setSubmitDisabled4(!!mine.uploadUrl);
-        setSubmissionMessage4(!!mine.uploadUrl ? 'File previously submitted.' : '');
+        setSubmissionMessage4(!!mine.uploadUrl ? 'Saved upload restored. You can update and submit again if needed.' : '');
       }
     } catch (e) { /* ignore */ }
     try {
@@ -403,7 +411,6 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         const enc = ((interp as any).encodings || {});
         setP4Equation(enc?.equation || '');
         setP4YIntercept(enc?.yIntercept || '');
-        setP4Locked(true);
       }
     } catch (e) { /* ignore */ }
   }, [user.username]);
@@ -481,7 +488,10 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     const phase1Contrib = (activity1aSubmitted ? 5 : 0) + (videoSubmitted ? 5 : 0) + (pairSubmitted ? 5 : 0) + (a3Submitted ? 5 : 0) + (exitSubmitted ? 5 : 0);
 
     // Phase 2: Activity1=5%, Activity2=5%, Activity3=5%, Activity4=10% (total 25%)
-    const phase2Contrib = (phase2A1Submitted ? 5 : 0) + (phase2A2Submitted ? 5 : 0) + (submitDisabled3 ? 5 : 0) + (submitDisabled4 ? 10 : 0);
+    const phase2Activity2Done = phase2A2Submitted || !!(previewURL && !previewURL.startsWith('blob:'));
+    const phase2Activity3Done = submitDisabled3 || !!(previewURL3 && !previewURL3.startsWith('blob:'));
+    const phase2Activity4Done = submitDisabled4 || (!!previewURL4 && !previewURL4.startsWith('blob:') && !!p4Equation.trim() && !!p4YIntercept.trim() && !!p4Interpretation.trim());
+    const phase2Contrib = (phase2A1Submitted ? 5 : 0) + (phase2Activity2Done ? 5 : 0) + (phase2Activity3Done ? 5 : 0) + (phase2Activity4Done ? 10 : 0);
 
     // Phase 3: Activity1 (Critical Analysis Framework) = 10%, Activity2 (Worksheet) = 15%
     const phase3Contrib = (analysisSubmitted ? 10 : 0) + (analysis2Submitted ? 15 : 0);
@@ -500,7 +510,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
     const total = Math.min(100, phase1Contrib + phase2Contrib + phase3Contrib + phase4Contrib);
     setDisplayProgress(total);
-  }, [observations, activity1aSubmitted, videoSubmitted, pairSubmitted, a3Submitted, exitSubmitted, phase2A1Submitted, phase2A2Submitted, submitDisabled3, submitDisabled4, analysisSubmitted, analysis2Submitted, submitDisabledP4]);
+  }, [observations, activity1aSubmitted, videoSubmitted, pairSubmitted, a3Submitted, exitSubmitted, phase2A1Submitted, phase2A2Submitted, previewURL, previewURL3, submitDisabled3, previewURL4, submitDisabled4, p4Equation, p4YIntercept, p4Interpretation, analysisSubmitted, analysis2Submitted, submitDisabledP4]);
 
   useEffect(() => {
     const hydrateFromServer = async () => {
@@ -547,6 +557,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
         if (typeof snapshot.previewURL === 'string') setPreviewURL(snapshot.previewURL);
         if (typeof snapshot.uploadedFileName === 'string') setUploadedFileName(snapshot.uploadedFileName);
         if (typeof snapshot.previewURL3 === 'string') setPreviewURL3(snapshot.previewURL3);
+        if (typeof snapshot.uploadedFileName3 === 'string') setUploadedFileName3(snapshot.uploadedFileName3);
         if (typeof snapshot.submitDisabled3 === 'boolean') setSubmitDisabled3(snapshot.submitDisabled3);
         if (typeof snapshot.submissionMessage3 === 'string') setSubmissionMessage3(snapshot.submissionMessage3);
         if (typeof snapshot.previewURL4 === 'string') setPreviewURL4(snapshot.previewURL4);
@@ -602,12 +613,13 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     phase2A1Checks,
     phase2A1Submitted,
     phase2A2Submitted,
-    previewURL: previewURL && !previewURL.startsWith('blob:') ? previewURL : null,
+    previewURL: toPersistablePreviewUrl(previewURL),
     uploadedFileName,
-    previewURL3: previewURL3 && !previewURL3.startsWith('blob:') ? previewURL3 : null,
+    previewURL3: toPersistablePreviewUrl(previewURL3),
+    uploadedFileName3,
     submissionMessage3,
     submitDisabled3,
-    previewURL4: previewURL4 && !previewURL4.startsWith('blob:') ? previewURL4 : null,
+    previewURL4: toPersistablePreviewUrl(previewURL4),
     uploadedFileName4,
     submissionMessage4,
     submitDisabled4,
@@ -619,7 +631,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     analysisSubmitted,
     analysis2Inputs,
     analysis2Submitted,
-    previewURLP4: previewURLP4 && !previewURLP4.startsWith('blob:') ? previewURLP4 : null,
+    previewURLP4: toPersistablePreviewUrl(previewURLP4),
     uploadedFileNameP4,
     submissionMessageP4,
     submitDisabledP4,
@@ -652,6 +664,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
     previewURL,
     uploadedFileName,
     previewURL3,
+    uploadedFileName3,
     submissionMessage3,
     submitDisabled3,
     previewURL4,
@@ -1636,12 +1649,12 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                             <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
                               <input id="activity2-upload" type="file" accept="application/pdf" style={{ display:'none' }} onChange={(e) => {
-                                if (phase2A2Submitted) return;
+                                if (lesson2Completed) return;
                                 const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                                if (previewURL) { try { URL.revokeObjectURL(previewURL); } catch(e){} }
+                                if (previewURL?.startsWith('blob:')) { try { URL.revokeObjectURL(previewURL); } catch(e){} }
                                 if (f) { setPreviewURL(URL.createObjectURL(f)); setUploadedFile(f); setUploadedFileName(f.name); } else { setPreviewURL(null); setUploadedFile(null); setUploadedFileName(''); }
                               }} />
-                              <button className="save-btn" type="button" disabled={phase2A2Submitted} onClick={() => (document.getElementById('activity2-upload') as HTMLInputElement).click()}>Upload File</button>
+                              <button className="save-btn" type="button" disabled={lesson2Completed} onClick={() => (document.getElementById('activity2-upload') as HTMLInputElement).click()}>Upload File</button>
                               <div style={{ fontStyle:'italic' }}>{uploadedFileName || (uploadedFile ? uploadedFile.name : 'No file chosen')}</div>
                             </div>
 
@@ -1657,24 +1670,30 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                             <div className="gap-3" />
                             <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                              <button className="save-btn" type="button" disabled={!uploadedFile || phase2A2Submitted} onClick={async () => {
-                                if (phase2A2Submitted) return;
+                              <button className="save-btn" type="button" disabled={lesson2Completed || !(uploadedFile || previewURL)} onClick={async () => {
+                                if (lesson2Completed) return;
                                 const f = uploadedFile;
-                                if (!f) return;
                                 try {
-                                  const asset = await persistLesson2FileAsset('phase2-activity2', f, null, f.name, f.type);
+                                  const hadSavedOutput = phase2A2Submitted || !!(previewURL && !previewURL.startsWith('blob:'));
+                                  const asset = await persistLesson2FileAsset(
+                                    'phase2-activity2',
+                                    f,
+                                    previewURL,
+                                    f?.name || uploadedFileName || 'lesson2-phase2-activity2.pdf',
+                                    f?.type || 'application/pdf',
+                                  );
                                   if (!asset?.url) return;
-                                  saveLesson2Phase2Activity2(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name);
+                                  saveLesson2Phase2Activity2(user.username, asset.url, asset.mimeType || f?.type || 'application/pdf', asset.filename || f?.name || uploadedFileName);
                                   setPhase2A2Submitted(true);
                                   setSubmissionMessage('File submitted - preview saved.');
                                   setPreviewURL(asset.url);
-                                  setUploadedFileName(asset.filename || f.name);
-                                  flashAction('phase2-activity2', 'saved');
+                                  setUploadedFileName(asset.filename || f?.name || uploadedFileName);
+                                  flashAction('phase2-activity2', hadSavedOutput ? 'updated' : 'saved');
                                 } catch (e) {
                                   console.error('lesson2 phase2 activity2 upload failed', e);
                                   setSubmissionMessage('Upload failed. Please try again.');
                                 }
-                              }}>{getActionLabel('phase2-activity2', phase2A2Submitted ? 'Submitted' : 'Submit Output')}</button>
+                              }}>{getActionLabel('phase2-activity2', phase2A2Submitted || !!(previewURL && !previewURL.startsWith('blob:')) ? 'Update Output' : 'Submit Output')}</button>
                             </div>
 
                             {submissionMessage && (
@@ -1777,13 +1796,13 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                               <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
                                   <input id="activity3-upload" type="file" accept="application/pdf" style={{ display:'none' }} onChange={(e) => {
-                                    if (submitDisabled3) return;
+                                    if (lesson2Completed) return;
                                     const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
                                     try { if (previewURL3) { URL.revokeObjectURL(previewURL3); } } catch (e) { /* ignore */ }
-                                    if (f) { setPreviewURL3(URL.createObjectURL(f)); setUploadedFile3(f); } else { setPreviewURL3(null); setUploadedFile3(null); }
+                                    if (f) { setPreviewURL3(URL.createObjectURL(f)); setUploadedFile3(f); setUploadedFileName3(f.name); } else { setPreviewURL3(null); setUploadedFile3(null); setUploadedFileName3(''); }
                                   }} />
-                                  <button className="save-btn" type="button" onClick={() => (document.getElementById('activity3-upload') as HTMLInputElement).click()} disabled={submitDisabled3}>Upload File</button>
-                                  <div style={{ fontStyle:'italic' }}>{uploadedFile3 ? uploadedFile3.name : 'No file chosen'}</div>
+                                  <button className="save-btn" type="button" onClick={() => (document.getElementById('activity3-upload') as HTMLInputElement).click()} disabled={lesson2Completed}>Upload File</button>
+                                  <div style={{ fontStyle:'italic' }}>{uploadedFile3 ? uploadedFile3.name : (uploadedFileName3 || 'No file chosen')}</div>
                               </div>
 
                               <div style={{ marginBottom:12 }}>
@@ -1803,22 +1822,30 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               <div className="gap-3" />
 
                               <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                                <button className="save-btn" type="button" disabled={!uploadedFile3 || submitDisabled3} onClick={async () => {
-                                  if (submitDisabled3) return;
+                                <button className="save-btn" type="button" disabled={lesson2Completed || !(uploadedFile3 || previewURL3)} onClick={async () => {
+                                  if (lesson2Completed) return;
                                   const f = uploadedFile3;
-                                  if (!f) return;
                                   try {
-                                    const asset = await persistLesson2FileAsset('phase2-activity3', f, null, f.name, f.type);
+                                    const hadSavedOutput = submitDisabled3 || !!(previewURL3 && !previewURL3.startsWith('blob:'));
+                                    const asset = await persistLesson2FileAsset(
+                                      'phase2-activity3',
+                                      f,
+                                      previewURL3,
+                                      f?.name || uploadedFileName3 || 'lesson2-phase2-activity3.pdf',
+                                      f?.type || 'application/pdf',
+                                    );
                                     if (!asset?.url) return;
-                                    saveLesson2Phase2Activity3(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name);
+                                    saveLesson2Phase2Activity3(user.username, asset.url, asset.mimeType || f?.type || 'application/pdf', asset.filename || f?.name || uploadedFileName3);
                                     setSubmissionMessage3('File submitted - preview saved.');
                                     setSubmitDisabled3(true);
                                     setPreviewURL3(asset.url);
+                                    setUploadedFileName3(asset.filename || f?.name || uploadedFileName3);
+                                    flashAction('phase2-activity3', hadSavedOutput ? 'updated' : 'saved');
                                   } catch (e) {
                                     console.error('lesson2 phase2 activity3 upload failed', e);
                                     setSubmissionMessage3('Upload failed. Please try again.');
                                   }
-                                }}>{submitDisabled3 ? 'Submitted' : 'Submit Output'}</button>
+                                }}>{getActionLabel('phase2-activity3', submitDisabled3 || !!(previewURL3 && !previewURL3.startsWith('blob:')) ? 'Update Output' : 'Submit Output')}</button>
                               </div>
 
                               {submissionMessage3 && (
@@ -1898,6 +1925,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                             <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
                               <input id="activity4-upload" type="file" accept="application/pdf" style={{ display:'none' }} onChange={(e) => {
+                                if (lesson2Completed) return;
                                 const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
                                 if (previewURL4?.startsWith('blob:')) { URL.revokeObjectURL(previewURL4); }
                                 if (f) {
@@ -1910,7 +1938,7 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   setUploadedFileName4('');
                                 }
                               }} />
-                              <button className="save-btn" type="button" onClick={() => (document.getElementById('activity4-upload') as HTMLInputElement).click()} disabled={submitDisabled4}>Upload File</button>
+                              <button className="save-btn" type="button" onClick={() => (document.getElementById('activity4-upload') as HTMLInputElement).click()} disabled={lesson2Completed}>Upload File</button>
                               <div style={{ fontStyle:'italic' }}>{uploadedFile4 ? uploadedFile4.name : (uploadedFileName4 || 'No file chosen')}</div>
                             </div>
 
@@ -1943,21 +1971,21 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             <div className="gap-3" />
 
                             <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>A. My Regression Line Equation:</div>
-                            <input value={p4Equation} onChange={(e)=>setP4Equation(e.target.value)} onBlur={async ()=>{ try { await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1:'', var2:'' }); } catch(e){} }} disabled={p4Locked} style={{ width:'100%', padding:12, border:'1px solid #FFD4E4', borderRadius:10, background:'#FFF5F9', marginBottom:8 }} placeholder="Enter regression equation (e.g., y = 24.5x - 45)" />
+                            <input value={p4Equation} onChange={(e)=>setP4Equation(e.target.value)} onBlur={async ()=>{ try { await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1:'', var2:'' }); } catch(e){} }} disabled={lesson2Completed} style={{ width:'100%', padding:12, border:'1px solid #FFD4E4', borderRadius:10, background:'#FFF5F9', marginBottom:8 }} placeholder="Enter regression equation (e.g., y = 24.5x - 45)" />
                             <div style={{ fontStyle:'italic', fontSize:'0.9rem', color:'#6B7280', marginBottom:12 }}>Regression Line Equation: y = bx + a   or  y = a + bx      |  Example: y = 24.5x - 45</div>
 
                             <div className="gap-3" />
                             <div className="gap-3" />
 
                             <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>B. y-Intercept Interpretation:</div>
-                            <input value={p4YIntercept} onChange={(e)=>setP4YIntercept(e.target.value)} onBlur={async ()=>{ try { await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1:'', var2:'' }); } catch(e){} }} disabled={p4Locked} style={{ width:'100%', padding:12, border:'1px solid #FFD4E4', borderRadius:10, background:'#FFF5F9', marginBottom:8 }} placeholder="Enter y-intercept interpretation" />
+                            <input value={p4YIntercept} onChange={(e)=>setP4YIntercept(e.target.value)} onBlur={async ()=>{ try { await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1:'', var2:'' }); } catch(e){} }} disabled={lesson2Completed} style={{ width:'100%', padding:12, border:'1px solid #FFD4E4', borderRadius:10, background:'#FFF5F9', marginBottom:8 }} placeholder="Enter y-intercept interpretation" />
                             <div style={{ fontStyle:'italic', fontSize:'0.9rem', color:'#6B7280', marginBottom:12 }}>Sample: The best fit line begins at [value of y-intercept].</div>
 
                             <div className="gap-3" />
                             <div className="gap-3" />
 
                             <div style={{ fontWeight:700, textAlign:'left', marginBottom:8 }}>C. My Regression Line Equation's Interpretation:</div>
-                            <textarea value={p4Interpretation} onChange={(e)=>setP4Interpretation(e.target.value)} onBlur={async ()=>{ try { await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1:'', var2:'' }); } catch(e){} }} rows={3} disabled={p4Locked} style={{ width:'100%', padding:12, border:'1px solid #FFD4E4', borderRadius:10, background:'#FFF5F9', marginBottom:8 }} placeholder="Describe the interpretation of your regression equation" />
+                            <textarea value={p4Interpretation} onChange={(e)=>setP4Interpretation(e.target.value)} onBlur={async ()=>{ try { await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1:'', var2:'' }); } catch(e){} }} rows={3} disabled={lesson2Completed} style={{ width:'100%', padding:12, border:'1px solid #FFD4E4', borderRadius:10, background:'#FFF5F9', marginBottom:8 }} placeholder="Describe the interpretation of your regression equation" />
                             <div style={{ fontStyle:'italic', fontSize:'0.9rem', color:'#6B7280', marginBottom:12 }}>Templates:
                               <div>For positive slope: As [name of IV] increases, the [name of DV] also increases by [value of slope without the positive sign].</div>
                               <div>For negative slope: As [name of IV] decreases, the [name of DV] also increases by [value of slope without the negative sign].</div>
@@ -1968,27 +1996,33 @@ const Lesson2: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             <div className="gap-3" />
 
                             <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                              <button className="save-btn" type="button" disabled={submitDisabled4 || !uploadedFile4 || !p4Equation.trim() || !p4YIntercept.trim() || !p4Interpretation.trim()} onClick={async () => {
-                                if (submitDisabled4) return;
+                              <button className="save-btn" type="button" disabled={lesson2Completed || !(uploadedFile4 || previewURL4) || !p4Equation.trim() || !p4YIntercept.trim() || !p4Interpretation.trim()} onClick={async () => {
+                                if (lesson2Completed) return;
                                 const f = uploadedFile4;
-                                if (!f) return;
                                 try {
-                                  const asset = await persistLesson2FileAsset('phase2-activity4', f, null, f.name, f.type);
+                                  const hadSavedOutput = submitDisabled4 || !!(previewURL4 && !previewURL4.startsWith('blob:'));
+                                  const asset = await persistLesson2FileAsset(
+                                    'phase2-activity4',
+                                    f,
+                                    previewURL4,
+                                    f?.name || uploadedFileName4 || 'lesson2-phase2-activity4.pdf',
+                                    f?.type || 'application/pdf',
+                                  );
                                   if (!asset?.url) return;
-                                  saveLesson2Phase2Activity4(user.username, asset.url, asset.mimeType || f.type, asset.filename || f.name);
+                                  saveLesson2Phase2Activity4(user.username, asset.url, asset.mimeType || f?.type || 'application/pdf', asset.filename || f?.name || uploadedFileName4);
                                   try {
                                     await saveLesson2Phase2Activity4Interpret(user.username, p4Interpretation, { encodings: { equation: p4Equation, yIntercept: p4YIntercept, interpretation: p4Interpretation }, var1: '', var2: '' });
-                                    setP4Locked(true);
                                   } catch (e) { /* ignore */ }
                                   setSubmissionMessage4('File and encodings submitted - saved.');
                                   setSubmitDisabled4(true);
-                                  setUploadedFileName4(asset.filename || f.name);
+                                  setUploadedFileName4(asset.filename || f?.name || uploadedFileName4);
                                   setPreviewURL4(asset.url);
+                                  flashAction('phase2-activity4', hadSavedOutput ? 'updated' : 'saved');
                                 } catch (e) {
                                   console.error('lesson2 phase2 activity4 upload failed', e);
                                   setSubmissionMessage4('Upload failed. Please try again.');
                                 }
-                              }}>{submitDisabled4 ? 'Submitted' : 'Submit Output'}</button>
+                              }}>{getActionLabel('phase2-activity4', submitDisabled4 || !!(previewURL4 && !previewURL4.startsWith('blob:')) ? 'Update Output' : 'Submit Output')}</button>
                             </div>
 
                             {submissionMessage4 && (

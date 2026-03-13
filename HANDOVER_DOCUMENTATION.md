@@ -1,12 +1,13 @@
 # PJBL Climate Statistics - Handover Documentation
 
-## Project root
+## Project Root
 
 - Local repo: `C:\Users\AJHAY\Documents\GitHub\pjbl-climate-statistics`
-- Main app: React + TypeScript + Vite
-- Database: Supabase
+- Stack: React + TypeScript + Vite
+- Backend: Supabase
+- Live site: `https://goldengraphixstudios.github.io/pjbl-climate-statistics/`
 
-## Main roles
+## Active Roles
 
 - Student
 - Teacher
@@ -14,75 +15,121 @@
 
 Teacher and Admin share the same active combined portal.
 
-## Main data tables in Supabase
+## Active Functional Areas
 
-- `users`
-  - app user profiles and roles
-- `classes`
-  - class/section records
-- `class_students`
-  - student enrollment per class
+### Student side
+
+- student login
+- pre-assessment
+- Lesson 1
+- Lesson 2
+- Lesson 3
+- post-assessment
+- performance summary
+- lesson draft resume
+- lesson final submission
+
+### Teacher / Admin side
+
+- shared staff login
+- class creation and enrollment
+- masterlist and class list
+- pre/post result tables
+- lesson output review tabs
+- lesson scoring
+- lesson feedback
+- class record
+- CSV / PDF-style export actions
+
+## Current Source Of Truth
+
+Main live tables:
+
+- `public.users`
+- `public.classes`
+- `public.class_students`
+- `public.responses`
+- `public.feedback`
+- `public.student_state`
+
+Current meaning:
+
 - `responses`
-  - student submissions for:
-    - `pre`
-    - `lesson1`
-    - `lesson2`
-    - `lesson3`
-    - `post`
+  - final submissions for `pre`, `lesson1`, `lesson2`, `lesson3`, `post`
+  - lesson scores via `teacher_score`
 - `feedback`
-  - teacher/admin feedback per student activity
-- `student_progress`
-  - legacy / partial progress support
+  - active lesson feedback records
 - `student_state`
-  - authoritative draft / in-progress lesson state snapshots for lessons 1-3
+  - lesson draft / resume state
 
-## Important implementation notes
+Important clarifications:
 
-The live lesson submission and lesson scoring flow is driven by `responses`, not by `lessons`.
+- `public.lessons` is not the live lesson-output store
+- `student_progress` is legacy
+- browser storage is fallback cache only
 
-- `public.lessons` is not the table that stores lesson outputs
-- lesson outputs and teacher lesson scores are stored in `public.responses`
+## Current Behavior Rules
 
-Draft lesson progress is now intended to be driven by `student_state`, with browser storage used as cache/fallback only.
+These override older documentation where there is a conflict.
 
-## Activity storage model
+### Progression
 
-- Pre-assessment:
-  - `responses.activity_type = 'pre'`
-  - score comes from `answers.part1Score`
-- Lesson 1:
-  - `responses.activity_type = 'lesson1'`
-  - final output payload is stored inside `answers.lesson1State`
-  - teacher score is stored in `teacher_score`
-- Lesson 2:
-  - `responses.activity_type = 'lesson2'`
-  - final output payload is stored inside `answers.phase4_upload`
-  - teacher score is stored in `teacher_score`
-- Lesson 3:
-  - `responses.activity_type = 'lesson3'`
-  - final output payload is stored inside `answers.phase4_reflection`
-  - teacher score is stored in `teacher_score`
-- Post-assessment:
-  - `responses.activity_type = 'post'`
-  - score comes from `answers.part1Score`
+- `Pre-Assessment` completion unlocks `Lesson 1`
+- `Lesson 1` completion unlocks `Lesson 2`
+- `Lesson 2` completion unlocks `Lesson 3`
+- `Lesson 3` completion unlocks `Post-Assessment`
 
-## Feedback flow
+Progression is now completion-based.
 
-- Feedback is stored in `feedback`
-- Student progression is intended to require:
-  - submission exists
-  - feedback exists
-  - feedback is acknowledged
+It does not depend on teacher feedback acknowledgment.
 
-## Active portals
+### Feedback
 
-- Student dashboard:
-  - `src/pages/portals/StudentPortal.tsx`
-- Combined Teacher/Admin portal:
-  - `src/pages/portals/AdminPortal.tsx`
-  - wrapped by `src/pages/portals/CombinedPortal.tsx`
+- lesson feedback remains active
+- assessment feedback is no longer part of the active student/admin UI flow
 
-## Key student pages
+### Student status model
+
+- `Not started`
+- `In progress`
+- `Completed`
+
+Lesson cards can now distinguish draft state from final completion.
+
+## Important Implementation Notes
+
+### Completion derivation
+
+`src/services/lessonCompletion.ts` is now the shared completion/status layer for lesson cards and student progression behavior.
+
+### Resume behavior
+
+- lesson drafts are persisted into `student_state` plus browser fallback storage
+- Lesson 3 and Post-Assessment restore saved draft state on return
+- final completion is only marked after the real final response write succeeds
+
+### Admin lesson output behavior
+
+- admin lesson tabs merge `responses` and `student_state`
+- draft-only lesson work can appear in admin output tabs
+- score save remains tied to real `responses` rows
+
+### Refresh behavior
+
+- the old 7-second admin refresh loop was removed
+- staff class refresh now happens on login and browser focus/visibility recovery
+- `PerformanceSummary.tsx` still has its own timed refresh while open
+
+## Key App Files
+
+### App shell and routing
+
+- `src/App.tsx`
+- `src/pages/portals/CombinedPortal.tsx`
+- `src/pages/portals/StudentPortal.tsx`
+- `src/pages/portals/AdminPortal.tsx`
+
+### Student pages
 
 - `src/pages/student_sections/PreAssessment.tsx`
 - `src/pages/student_sections/Lesson1.tsx`
@@ -91,51 +138,52 @@ Draft lesson progress is now intended to be driven by `student_state`, with brow
 - `src/pages/student_sections/PostAssessment.tsx`
 - `src/pages/student_sections/PerformanceSummary.tsx`
 
-## Key admin/teacher features
+### Important services
 
-- Pre/post analytics
-- Lesson 1/2/3 output review tabs
-- Feedback submission
-- Lesson scoring via `responses.teacher_score`
-- Class record export
-- CSV / printable report support
+- `src/services/authService.ts`
+- `src/services/classService.ts`
+- `src/services/progressService.ts`
+- `src/services/studentStateService.ts`
+- `src/services/responsesService.ts`
+- `src/services/feedbackService.ts`
+- `src/services/fileAssetService.ts`
+- `src/services/lessonCompletion.ts`
 
-## Important repo log files
+## Current UX Notes
 
+- Student portal uses section cards and a learning-sections dashboard.
+- Staff portal is tab-driven and horizontally scrollable on smaller screens.
+- Lesson output tabs distinguish draft saves from final submissions.
+- Review actions are available for lessons and assessments.
+- Assessment UI is completion-oriented rather than feedback-oriented.
+
+## Verification Priority
+
+Before final signoff, manually verify:
+
+1. student can complete the full path from pre-assessment through post-assessment
+2. lesson drafts restore correctly after refresh and return navigation
+3. Lesson 3 final submission retry works after reopening a saved draft
+4. Post-Assessment resumes Part 1 / Part 2 state correctly
+5. staff portal loads data without background refresh thrash
+6. lesson scores appear in both class record and student performance summary
+7. exports generate expected data
+
+## Related Root Docs
+
+- `README.md`
+- `PROJECT_CONTEXT_SNAPSHOT.txt`
 - `PROJECT_WORK_LOG.txt`
-  - chronological work/change log
-- `PROJECT_PHASE_CHECKLIST.txt`
-  - implementation checklist by phase
-- `PROJECT_VERIFICATION_CHECKLIST.txt`
-  - QA / functional verification checklist
 - `BUG_SELF_HEAL_LOG.txt`
-  - error log and self-diagnosis notes
+- `PROJECT_PHASE_CHECKLIST.txt`
+- `PROJECT_VERIFICATION_CHECKLIST.txt`
+- `FINAL_SIGNOFF_QA_CHECKLIST.txt`
 - `DATA_SOURCE_OF_TRUTH.md`
-  - canonical storage/source-of-truth map
-- `SUPABASE_CLEANUP_SQL.sql`
-  - verification/reset SQL helpers for live data
 
-## Recommended final verification before production use
+## Deployment Note
 
-1. Run through the full student path from pre-assessment to post-assessment.
-2. Verify each lesson score appears in:
-   - student performance summary
-   - class record
-3. Verify each unlock happens only after feedback acknowledgment.
-4. Verify CSV/print exports for:
-   - pre-assessment
-   - lesson outputs
-   - post-assessment
-   - class record
-5. Verify Supabase policies still allow:
-   - staff feedback insert/update
-   - student feedback read + acknowledge
-   - teacher lesson score update
-
-## Deployment note
-
-This app uses a Vite base path for GitHub Pages:
+This app is deployed to GitHub Pages and uses a Vite base path:
 
 - `base: '/pjbl-climate-statistics/'`
 
-Static lesson images should therefore use `import.meta.env.BASE_URL` instead of root `/...` paths.
+Static assets should use `import.meta.env.BASE_URL` rather than root-relative `/...` URLs.

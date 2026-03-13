@@ -632,3 +632,78 @@ Self-heal actions applied
 Files touched
 - src/pages/student_sections/Lesson2.tsx
 - src/services/progressService.ts
+
+[2026-03-12 18:24] Lesson 3 and Post-Assessment could look saved in admin but still fail student resume/finalize expectations
+
+Observed issues
+- A student could have visible Lesson 3 draft data on the admin side, but after reopening the lesson the last submit/finalize path could still be blocked or misclassified.
+- Returning to the student dashboard could also show lessons as `Not started` even when meaningful saved draft state existed.
+- Post-Assessment could restore partial answers but still risk false completion state if resume logic treated any saved response as final.
+
+Diagnosis
+- The student dashboard and the Lesson 3 / Post-Assessment pages were not using the same completion boundary.
+- Draft persistence and final response persistence were too close together conceptually, so saved work could be mistaken for final completion.
+- Dashboard cards needed an explicit in-progress state derived from draft and local progress sources, not just final `responses` rows.
+
+Self-heal actions applied
+- Separated Lesson 3 restored-draft state from true final completion so the final submit button remains usable after reopening.
+- Updated Post-Assessment resume logic so saved Part 1 / Part 2 answers restore cleanly and only mark complete after the final response write succeeds.
+- Updated student dashboard lesson cards to show `In progress` when draft or local progress exists without final completion.
+
+Files touched
+- src/pages/student_sections/Lesson3.tsx
+- src/pages/student_sections/PostAssessment.tsx
+- src/pages/portals/StudentPortal.tsx
+- src/services/progressService.ts
+
+[2026-03-12 18:31] Lesson completion status drift across dashboard and student sections
+
+Observed issues
+- Lesson cards, unlock rules, and page-level completion states could drift from each other because completion logic was duplicated in several places.
+- Reopening a lesson with saved work could produce inconsistent status labels or temporary relocking behavior depending on which state source loaded first.
+
+Diagnosis
+- Completion and progress heuristics were spread across portal and lesson files instead of being centralized.
+- Local draft persistence, `student_state`, and final `responses` rows needed a shared interpretation layer.
+
+Self-heal actions applied
+- Added shared lesson completion helpers in `src/services/lessonCompletion.ts`.
+- Updated student dashboard logic to use centralized completion and in-progress derivation.
+- Removed lesson card locking that prevented reopening saved work while tightening the pending/in-progress UI.
+- Added local progress fallback so draft work does not collapse back to `Not started` during restore windows.
+
+Files touched
+- src/services/lessonCompletion.ts
+- src/pages/portals/StudentPortal.tsx
+- src/pages/student_sections/Lesson1.tsx
+- src/pages/student_sections/Lesson2.tsx
+- src/pages/student_sections/Lesson3.tsx
+- src/pages/student_sections/PreAssessment.tsx
+- src/services/classService.ts
+
+[2026-03-13 09:24] Lesson 2 saved uploads could disappear after exit and leave Phase 2 submit buttons unusable
+
+Observed issues
+- In Lesson 2 Phase 2, Activities 2, 3, and 4 could show a selected file and completed text inputs, but `Submit Output` still became unusable after reopening.
+- After exit/reopen, previously selected file previews could disappear while some encoded answers remained.
+- Phase 4 draft upload could also appear lost after exit, leaving the lesson looking unfinished again.
+
+Diagnosis
+- The page treated restored saved uploads as if the activity were fully locked, so reopening the lesson disabled the upload/submit controls.
+- The submit handlers depended on an in-memory `File` object, but that object is lost after exit/reload even if a saved upload URL already exists.
+- Unsaved `blob:` preview URLs are not durable, so any file that never reached a true persisted save naturally vanished on exit.
+- The lesson snapshot was also willing to carry non-durable preview strings, which increased the chance of unstable restore behavior.
+
+Self-heal actions applied
+- Kept restored saved uploads updateable instead of permanently disabling the Phase 2 upload controls.
+- Changed Phase 2 submit actions so they can reuse an already persisted upload URL and filename after reopen, without requiring a fresh `File` object.
+- Added filename restore for Lesson 2 Phase 2 Activity 3.
+- Tightened Phase 2 completion derivation so only persisted uploads count as done, not temporary `blob:` previews.
+- Stopped persisting `blob:` and `data:` preview URLs into the Lesson 2 server snapshot path.
+
+Files touched
+- src/pages/student_sections/Lesson2.tsx
+
+Verification
+- `npm run lint` passed
+- `npm run build` passed

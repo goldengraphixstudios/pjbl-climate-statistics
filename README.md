@@ -1,22 +1,72 @@
 # Statistics Meets Climate Action
 
-React + TypeScript + Vite learning platform for a climate-statistics PJBL workflow with Student, Teacher, and Admin roles, backed by Supabase.
+React + TypeScript + Vite learning platform for a climate-statistics project-based learning workflow with Student, Teacher, and Admin roles, backed by Supabase and deployed to GitHub Pages.
 
-## Current Delivered System
+Live site:
+- `https://goldengraphixstudios.github.io/pjbl-climate-statistics/`
 
-This repo contains the implemented LMS-side work for:
+## System Summary
 
-- student submissions for `pre`, `lesson1`, `lesson2`, `lesson3`, and `post`
+This repository contains the active LMS-style experience for:
+
+- student login and portal navigation
+- pre-assessment and post-assessment
+- Lesson 1, Lesson 2, and Lesson 3 guided activities
+- lesson draft persistence and final submission handling
 - combined Teacher/Admin portal
-- teacher feedback workflow
-- teacher lesson scoring workflow
-- class record and analytics/reporting tabs
-- Supabase-backed submissions, feedback, and lesson draft persistence
-- handover logs, checklists, and cleanup helpers
+- class creation, enrollment, and roster views
+- lesson review, scoring, and feedback
+- analytics, exports, and class record reporting
+
+## Current UX / Workflow
+
+### Student flow
+
+- log in with student username and password
+- complete `Pre-Assessment`
+- continue through `Lesson 1`, `Lesson 2`, and `Lesson 3`
+- save lesson drafts and resume later
+- submit final lesson outputs
+- complete `Post-Assessment`
+- review overall progress in `Performance Summary`
+
+Important current behavior:
+
+- progression is completion-based, not feedback-acknowledgment-based
+- lesson cards can show `Not started`, `In progress`, or `Completed`
+- lesson draft state can exist without a final `responses` row
+- Lesson 3 and Post-Assessment resume from saved draft state and only mark complete after final submit succeeds
+
+### Teacher / Admin flow
+
+- Teacher and Admin share the same combined portal
+- staff can log in with username or email
+- staff can create classes and enroll students
+- lesson output tabs show both final submissions and draft-saved work where available
+- staff can review lesson and assessment submissions
+- staff can save lesson scores and lesson feedback
+- class record and analytics tabs read from live Supabase data
+
+Important current behavior:
+
+- assessment feedback is no longer part of the active UI flow
+- lesson feedback remains active
+- background admin polling was reduced to avoid excessive Supabase reads
+- staff class data now refreshes on login and browser focus/visibility recovery instead of constant interval polling
+
+## Tech Stack
+
+- React 18
+- TypeScript
+- Vite
+- Supabase
+- localforage for browser fallback persistence
+- xlsx for export support
+- Puppeteer for smoke/debug scripts
 
 ## Active Source Of Truth
 
-The current active data model is:
+Primary live tables:
 
 - `public.users`
 - `public.classes`
@@ -25,40 +75,46 @@ The current active data model is:
 - `public.feedback`
 - `public.student_state`
 
-Important:
+Current usage:
 
-- `responses` stores final activity submissions and teacher scores
-- `feedback` stores teacher feedback and acknowledgment state
-- `student_state` stores lesson draft/in-progress state
-- `lessons` and `student_progress` still exist but are not the main live source of truth for final submissions/scoring
+- `responses`
+  - final submissions for `pre`, `lesson1`, `lesson2`, `lesson3`, `post`
+  - lesson teacher scores via `teacher_score`
+- `feedback`
+  - active lesson feedback records
+- `student_state`
+  - lesson draft / in-progress state snapshots
 
-See:
+Important notes:
 
-- [DATA_SOURCE_OF_TRUTH.md](./DATA_SOURCE_OF_TRUTH.md)
-- [CLIENT_SCOPE_AND_RECOMMENDATIONS.txt](./CLIENT_SCOPE_AND_RECOMMENDATIONS.txt)
+- `student_progress` is legacy and not the main live source of truth
+- browser storage still exists as fallback cache, not as the primary live record
+- `lessonCompletion.ts` now centralizes lesson completion and in-progress derivation logic used by the student dashboard
 
 ## Authentication
 
 ### Staff
 
-Teacher and Admin accounts use Supabase Auth sign-in.
-The staff login form accepts either `username` or `email`.
-If username lookup is unavailable, signing in with the staff email is the more reliable path.
+Teacher and Admin accounts use Supabase Auth.
+
+- accepts `username` or `email`
+- verifies staff role after sign-in
+- surfaces backend outages separately from bad credentials
 
 ### Students
 
-Students use custom RPC-based auth through:
+Students use custom RPC/database verification:
 
 - `register_student`
 - `verify_student`
 
 Student passwords are stored as bcrypt hashes in `public.users.hashed_password`.
 
-That means:
+Implications:
 
 - Supabase does not store a recoverable plaintext password
-- the Teacher/Admin class list can only display a plaintext password if it still exists in the local browser credential cache
-- if the visible password is lost, it must be reissued/reset
+- visible student passwords in staff views depend on local credential cache
+- if the visible password is lost, it must be reset or reissued
 
 ## Current Test Credentials
 
@@ -83,19 +139,15 @@ That means:
 
 ## Password Reissue
 
-There are two local browser caches used for compatibility:
+Local compatibility caches:
 
 - `studentPasswordCache`
 - `studentDatabase`
 
-The class list now attempts to recover visible passwords from both.
-
-If a student's password no longer appears in `List of Classes` and no cache exists, use the password reissue flow:
+If a student password no longer appears in `List of Classes` and no local cache remains:
 
 1. run [SUPABASE_PASSWORD_RESET_SQL.sql](./SUPABASE_PASSWORD_RESET_SQL.sql) in Supabase
-2. use the `Reset PW` or `Reissue Password` action in the Teacher/Admin class list
-
-This updates the student's hashed password in Supabase and stores the new plaintext password locally for teacher-side display.
+2. use the `Reset PW` or `Reissue Password` action in the class list
 
 ## Setup
 
@@ -107,7 +159,7 @@ npm install
 
 ### 2. Environment variables
 
-Create `.env` in project root:
+Create `.env` in the project root:
 
 ```dotenv
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
@@ -120,67 +172,74 @@ Run:
 
 - [supabase/schema.sql](./supabase/schema.sql)
 
-If you are using the current custom student auth flow, make sure the RPC functions exist:
+Required RPC/functions for the current auth flow:
 
 - `register_student`
 - `verify_student`
 
-For teacher/admin password reissue support, also run:
+Optional helper SQL already in the repo:
 
 - [SUPABASE_PASSWORD_RESET_SQL.sql](./SUPABASE_PASSWORD_RESET_SQL.sql)
-
-Additional helper docs:
-
-- [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
+- [SUPABASE_FEEDBACK_SCOPE_SQL.sql](./SUPABASE_FEEDBACK_SCOPE_SQL.sql)
 - [SUPABASE_CLEANUP_SQL.sql](./SUPABASE_CLEANUP_SQL.sql)
 
-## Development
+Additional setup notes:
 
-Run the dev server:
+- [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
+- [DATA_SOURCE_OF_TRUTH.md](./DATA_SOURCE_OF_TRUTH.md)
+
+## Commands
 
 ```bash
 npm run dev
-```
-
-Build for production:
-
-```bash
 npm run build
 npm run preview
+npm run lint
+npm run deploy
 ```
 
-## Main User Flows
+Notes:
 
-### Student
+- `npm run deploy` publishes the Vite build to GitHub Pages
+- there is no generic `npm test` script in `package.json`
+- browser/debug automation currently lives in `scripts/` and `tests/e2e/`
 
-- log in with username/password
-- submit pre-assessment
-- view teacher feedback
-- acknowledge feedback
-- unlock next activity
-- submit Lesson 1 / Lesson 2 / Lesson 3
-- receive teacher score and feedback
-- view performance summary
-- complete post-assessment
+## Repository Shape
 
-### Teacher / Admin
+Top-level tree:
 
-- log in through the shared combined portal
-- create classes
-- enroll students
-- view masterlist and class list
-- review pre/post results
-- review lesson output rows
-- save lesson scores
-- send feedback
-- export CSV/report outputs
-- view class record
-- reissue student passwords if needed
+```text
+.
+|-- public/
+|-- scripts/
+|-- src/
+|-- supabase/
+|-- tests/
+|-- README.md
+|-- HANDOVER_DOCUMENTATION.md
+|-- PROJECT_CONTEXT_SNAPSHOT.txt
+|-- PROJECT_WORK_LOG.txt
+|-- BUG_SELF_HEAL_LOG.txt
+|-- PROJECT_PHASE_CHECKLIST.txt
+|-- PROJECT_VERIFICATION_CHECKLIST.txt
+|-- FINAL_SIGNOFF_QA_CHECKLIST.txt
+`-- DATA_SOURCE_OF_TRUTH.md
+```
+
+Important `src/` areas:
+
+- `src/pages/auth`
+- `src/pages/portals`
+- `src/pages/student_sections`
+- `src/components/teacher`
+- `src/services`
+- `src/styles`
 
 ## Key Files
 
-### Active portals
+### App and portals
 
+- [src/App.tsx](./src/App.tsx)
 - [src/pages/portals/CombinedPortal.tsx](./src/pages/portals/CombinedPortal.tsx)
 - [src/pages/portals/StudentPortal.tsx](./src/pages/portals/StudentPortal.tsx)
 - [src/pages/portals/AdminPortal.tsx](./src/pages/portals/AdminPortal.tsx)
@@ -198,14 +257,17 @@ npm run preview
 
 - [src/services/authService.ts](./src/services/authService.ts)
 - [src/services/classService.ts](./src/services/classService.ts)
+- [src/services/progressService.ts](./src/services/progressService.ts)
+- [src/services/studentStateService.ts](./src/services/studentStateService.ts)
 - [src/services/responsesService.ts](./src/services/responsesService.ts)
 - [src/services/feedbackService.ts](./src/services/feedbackService.ts)
-- [src/services/studentStateService.ts](./src/services/studentStateService.ts)
-- [src/services/submissionsService.ts](./src/services/submissionsService.ts)
+- [src/services/fileAssetService.ts](./src/services/fileAssetService.ts)
+- [src/services/lessonCompletion.ts](./src/services/lessonCompletion.ts)
 
-## Handover Files
+## Verification / Handover Files
 
 - [HANDOVER_DOCUMENTATION.md](./HANDOVER_DOCUMENTATION.md)
+- [PROJECT_CONTEXT_SNAPSHOT.txt](./PROJECT_CONTEXT_SNAPSHOT.txt)
 - [PROJECT_WORK_LOG.txt](./PROJECT_WORK_LOG.txt)
 - [BUG_SELF_HEAL_LOG.txt](./BUG_SELF_HEAL_LOG.txt)
 - [PROJECT_PHASE_CHECKLIST.txt](./PROJECT_PHASE_CHECKLIST.txt)
@@ -215,12 +277,14 @@ npm run preview
 
 ## Known Practical Limits
 
-- plaintext student passwords cannot be recovered from Supabase hashes
-- some legacy/inactive localStorage-era code still remains in the repo and should be retired over time
-- final cross-role QA should still be completed before final sign-off
+- plaintext student passwords cannot be recovered from bcrypt hashes
+- some legacy localStorage-era code still exists and should be retired gradually
+- full manual cross-role QA is still the last meaningful release gate
+- `PerformanceSummary.tsx` still uses a timed refresh while open
 
-## Recommended Pre-Handover Step
+## Recommended Verification Before Handover
 
-Run the acceptance pass in:
+Use:
 
+- [PROJECT_VERIFICATION_CHECKLIST.txt](./PROJECT_VERIFICATION_CHECKLIST.txt)
 - [FINAL_SIGNOFF_QA_CHECKLIST.txt](./FINAL_SIGNOFF_QA_CHECKLIST.txt)

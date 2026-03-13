@@ -1,6 +1,6 @@
 PJBL Climate Statistics - Project Context Snapshot
 Date: 2026-03-12
-Purpose: durable context file for future terminal sessions / handoff continuation
+Purpose: durable continuation snapshot for future terminal sessions
 
 ==================================================
 1. Project Identity
@@ -19,8 +19,8 @@ Framework:
 - Supabase backend
 
 Current important git refs:
-- main: 194292f
-- gh-pages: 2b209ed99bd8cce0e3f872c74d01f2adb0091c13
+- main: 5ba85c1
+- gh-pages: 623cfe6f9d0a56cef4c9108996d847d007f2dba0
 
 
 ==================================================
@@ -28,18 +28,12 @@ Current important git refs:
 ==================================================
 
 This is a lightweight LMS / PJBL learning platform for climate statistics with:
-- Student portal
-- Combined Teacher/Admin portal
+- student portal
+- combined Teacher/Admin portal
 - Supabase-backed submissions
-- Teacher scoring + feedback for lessons
-- Analytics / class records / exports
-
-The site is no longer just a static frontend. It is a mixed instructional platform with:
-- lesson activity state
-- final lesson outputs
-- assessments
-- teacher scoring
-- class management
+- lesson draft persistence
+- lesson scoring + lesson feedback
+- analytics, exports, and class records
 
 
 ==================================================
@@ -67,7 +61,7 @@ Authoritative tables:
 
 What each table does now:
 - users
-  - app identities / usernames / roles / hashed student passwords
+  - app identities, usernames, roles, hashed student passwords
 - classes
   - class records / section ownership
 - class_students
@@ -81,16 +75,13 @@ What each table does now:
     - post
   - teacher lesson scores
 - feedback
-  - teacher feedback records
-  - lesson feedback
-  - scoped activity feedback where implemented
+  - lesson feedback records
 - student_state
-  - lesson draft / in-progress / partially completed lesson state snapshots
-  - especially important for lesson1 / lesson2 / lesson3 review in admin
+  - lesson draft / in-progress state snapshots
 
 Important:
-- student_progress is effectively legacy / not the live source of truth
-- lessons table is not the active lesson-output storage
+- student_progress is legacy, not the live source of truth
+- lessons table is not the active lesson-output store
 - browser localStorage / IndexedDB still exist as fallback cache only
 
 
@@ -107,21 +98,25 @@ Student progression:
 - Lesson 3 completion unlocks Post-Assessment
 
 Important:
-- progression is now completion/submission-based
-- it no longer depends on teacher feedback acknowledgment to unlock next sections
+- progression is completion/submission-based
+- progression no longer depends on teacher feedback acknowledgment
 
 Assessment feedback:
 - Pre-Assessment feedback flow was removed from active student/admin UI
 - Post-Assessment feedback flow was removed from active student/admin UI
 - lessons still keep feedback support
 
+Student lesson status:
+- cards can show `Not started`, `In progress`, or `Completed`
+- local progress fallback is used to avoid false `Not started` resets
+
 Lesson 1 Activity 4:
 - student no longer needs teacher feedback to revise/finalize the research question
-- Activity 4 teacher feedback still exists on admin side, but is optional for progression
+- scoped Activity 4 feedback can still exist on the admin side
 
 Performance summary:
 - reflects assessment scores and lesson scores
-- lesson completion now aligns with dashboard completion behavior
+- still uses timed refresh while the page is open
 
 
 ==================================================
@@ -130,22 +125,25 @@ Performance summary:
 
 Students:
 - custom auth via Supabase RPC / DB verification
-- not standard Supabase Auth login sessions
 - important functions:
   - verify_student
   - register_student
 
 Teacher/Admin:
 - Supabase Auth sign-in path
+- staff login accepts username or email
+- username-to-email hints are cached locally when resolved
 
 Current GitHub Pages auth note:
-- session persistence was re-enabled
-- token auto-refresh remains disabled on github.io to avoid the old refresh-token/CORS loop
-- app-level local session restore was added in App.tsx to keep the portal state after refresh
+- session persistence is enabled
+- token auto-refresh remains disabled on github.io
+- app-level session restore exists in App.tsx
 
 Current related files:
 - src/services/supabaseClient.ts
+- src/services/authService.ts
 - src/pages/auth/AdminLogin.tsx
+- src/pages/auth/StudentLogin.tsx
 - src/App.tsx
 
 
@@ -157,9 +155,9 @@ App shell:
 - src/App.tsx
 
 Role routing:
-- Landing page
-- Student login
-- Admin/Teacher login
+- landing page
+- student login
+- admin/teacher login
 - CombinedPortal wrapper
 
 Active portals:
@@ -181,10 +179,10 @@ Main teacher/admin tabs:
 - List of Classes
 - Masterlist
 - Pre-Assessment Results
+- Initial Survey Results
 - Lesson 1 Outputs
 - Lesson 2 Outputs
 - Lesson 3 Outputs
-- Initial Survey Results
 - Post-Assessment Results
 - End-of-Lesson Survey
 - Class Record
@@ -196,24 +194,22 @@ Main teacher/admin tabs:
 
 Top-level folders:
 - public
+- scripts
 - src
 - supabase
 - tests
-- scripts
 
 Important top-level docs/files:
 - README.md
 - HANDOVER_DOCUMENTATION.md
-- DATA_SOURCE_OF_TRUTH.md
+- PROJECT_CONTEXT_SNAPSHOT.txt
 - PROJECT_WORK_LOG.txt
 - BUG_SELF_HEAL_LOG.txt
 - PROJECT_PHASE_CHECKLIST.txt
 - PROJECT_VERIFICATION_CHECKLIST.txt
 - FINAL_SIGNOFF_QA_CHECKLIST.txt
+- DATA_SOURCE_OF_TRUTH.md
 - CLIENT_SCOPE_AND_RECOMMENDATIONS.txt
-- SUPABASE_CLEANUP_SQL.sql
-- SUPABASE_FEEDBACK_SCOPE_SQL.sql
-- SUPABASE_PASSWORD_RESET_SQL.sql
 
 Important src subareas:
 - src/pages/auth
@@ -234,20 +230,18 @@ Implemented:
 - pre-assessment
 - lesson 1 / lesson 2 / lesson 3 navigation
 - post-assessment
-- section locking/unlocking
+- section unlocking
 - lesson draft persistence
-- teacher lesson feedback viewing
-- lesson score reflection
+- lesson final submission
+- lesson feedback viewing
 - performance summary
 
 Current details:
 - assessments save through responses
 - lessons save draft/in-progress state into student_state plus local fallback
-- lesson final outputs also reflect into responses
-
-Known current student-side behavior:
-- refreshing should keep the portal state more reliably than before
-- if stale local lesson cache exists, it may still need manual clearing in rare test cases
+- lesson final outputs reflect into responses
+- Lesson 3 resumes saved final-output draft state correctly
+- Post-Assessment resumes saved Part 1 / Part 2 state correctly
 
 
 ==================================================
@@ -267,20 +261,19 @@ Implemented:
 - review modal for pre/post
 - lesson scoring
 - lesson feedback
-- lesson 1 Activity 4 feedback as separate scoped feedback
 - class record
 - CSV/PDF-style export actions
 
 Important admin-side data behavior:
-- lesson output tabs now merge:
+- lesson output tabs merge:
   - responses
   - student_state
-- this means draft-only lesson work can appear in admin even before final submission
+- draft-only lesson work can appear in admin even before final submission
 
 Current admin-side refresh behavior:
 - class data reloads immediately after login
-- portal polls approximately every 7 seconds
-- focus/visibility change also forces refresh
+- class data refreshes on browser focus/visibility recovery
+- old 7-second background refresh loop was removed
 
 
 ==================================================
@@ -289,23 +282,22 @@ Current admin-side refresh behavior:
 
 Lesson 1:
 - active output uses lesson1 state + response merge
-- admin review now reads:
-  - phase 1 variables / question / revised question
-  - phase 2 answers / interpretation
-  - phase 3 recommendation content
-  - phase 4 reflection / peer review / upload metadata
+- admin review reads the latest merged lesson data
 - Activity 4 no longer blocks on teacher feedback
 
 Lesson 2:
-- early activity buttons were patched repeatedly
-- admin now shows draft rows before final phase 4 upload
+- admin shows draft rows before final phase 4 upload
 - review modal is structured and no longer dumps raw state JSON
-- main save/update buttons now give visible saved/updated confirmation
+- save/update buttons have visible confirmation
 
 Lesson 3:
-- persistence was hardened so important later activities mirror into student_state
+- persistence mirrors important later activities into student_state
 - admin review is structured
-- draft/final distinction is supported better
+- resume and final-submit sync were hardened so saved draft restore does not falsely lock the last submit button
+
+Post-Assessment:
+- saved Part 1 / Part 2 state resumes correctly
+- completion only flips after final response save succeeds
 
 
 ==================================================
@@ -313,17 +305,23 @@ Lesson 3:
 ==================================================
 
 Recent meaningful fixes include:
-- GitHub Pages deploy stabilization
-- lesson output review modal improvements
-- lesson1 activity4 ungated finalization
-- lesson2 save/update behavior fixes
-- lesson2 draft visibility in admin before final submit
-- lesson3 persistence hardening
-- admin mobile overflow containment
-- assessment feedback removal from active UI
-- admin refresh/login persistence fix
-- app-side session restore after refresh
-- currentUserId fallback for score writes
+- GitHub Pages deploy/auth stabilization
+- admin draft/submission review improvements
+- admin background polling reduction
+- lesson completion derivation centralization in lessonCompletion.ts
+- lesson card lock removal and `In progress` state support
+- local progress fallback for lesson completion status
+- Lesson 3 resume completion sync fix
+- Post-Assessment resume completion sync fix
+
+Recent main commits:
+- 75f439c Harden auth login flow
+- 1a8bfb6 Reduce admin portal polling
+- 6ce8149 Improve uploaded submission review flow
+- 716e1eb Fix student resume completion sync
+- 27747f3 Fix lesson completion state and submission gating
+- ad25b19 Remove lesson card locks and tighten pending completion UI
+- 5ba85c1 Use local progress fallback for lesson completion status
 
 
 ==================================================
@@ -331,25 +329,20 @@ Recent meaningful fixes include:
 ==================================================
 
 1. Some older docs are stale
-- HANDOVER_DOCUMENTATION.md and DATA_SOURCE_OF_TRUTH.md contain older assumptions like feedback-ack gating for progression.
-- Use this file as the latest snapshot when there is a conflict.
+- prefer this file plus README, work log, and verification checklist
 
 2. Browser storage still exists
-- lesson state may still be present in localStorage / IndexedDB for tests
-- in edge cases, stale local data can confuse testing if the DB was reset but browser cache was not
+- stale local lesson data can still affect testing in edge cases
 
 3. Student passwords
 - plaintext passwords are not recoverable from Supabase
-- visible student passwords depend on local teacher-side cache or password reset/reissue flow
 
 4. Supabase Auth on GitHub Pages
-- persisted session is enabled again
-- auto-refresh remains disabled
-- if a session expires after long idle time, re-login may still be needed
+- auto-refresh is still disabled there
+- very old/stale staff sessions may still require re-login
 
-5. Legacy code still exists
-- some old localStorage-era codepaths/files remain in the repo
-- active app behavior uses the main portal + active student section files listed above
+5. Worktree may contain generated build artifacts
+- dist/ and tsbuildinfo files can be updated by builds even during doc-only work
 
 
 ==================================================
@@ -366,14 +359,13 @@ Student:
 - lesson3 complete
 - post-assessment complete
 - performance summary updates correctly
+- saved lesson3 draft can still be finally submitted after reopening
+- saved post-assessment draft can still be completed after reopening
 
 Teacher/Admin:
 - login without refresh logout loop
 - data visible immediately after login
-- class list
-- lesson1 outputs
-- lesson2 outputs
-- lesson3 outputs
+- lesson output tabs show draft vs final correctly
 - review modal content
 - score save
 - feedback save
@@ -395,13 +387,6 @@ Useful files already in repo:
 - SUPABASE_FEEDBACK_SCOPE_SQL.sql
 - SUPABASE_PASSWORD_RESET_SQL.sql
 
-Examples:
-- delete old pre/post feedback rows if needed:
-  delete from public.feedback where activity_type in ('pre', 'post');
-
-- password reset workflow depends on:
-  - reset_student_password RPC / SQL helper
-
 
 ==================================================
 16. Existing Project Logs
@@ -413,7 +398,7 @@ Use these next time:
 - BUG_SELF_HEAL_LOG.txt
   - diagnosed bugs + fixes
 - PROJECT_PHASE_CHECKLIST.txt
-  - phase tracking
+  - implementation status checklist
 - PROJECT_VERIFICATION_CHECKLIST.txt
   - verification checklist
 - FINAL_SIGNOFF_QA_CHECKLIST.txt
@@ -431,11 +416,12 @@ If reopening this project in a new terminal:
 
 2. Read in this order:
 - PROJECT_CONTEXT_SNAPSHOT.txt
+- README.md
 - PROJECT_WORK_LOG.txt
 - BUG_SELF_HEAL_LOG.txt
 
 3. If user reports a new bug:
-- identify whether it is student-side, admin-side, or reflection issue
+- identify whether it is student-side, admin-side, or sync/state related
 - check whether source of truth should be:
   - responses
   - feedback
@@ -455,7 +441,5 @@ If reopening this project in a new terminal:
 Overall state:
 - project is in advanced handoff / final-revision stage
 - core LMS functionality is implemented
-- many real integration bugs were already patched
+- latest work focused on resume reliability, completion gating, and reducing unnecessary Supabase load
 - active priority is final polish, live QA, and edge-case cleanup
-
-This file should be treated as the latest whole-project snapshot for continuation.

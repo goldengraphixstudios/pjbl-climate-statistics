@@ -1,27 +1,24 @@
 FINAL SIGNOFF QA CHECKLIST
-Prepared: 2026-03-10
+Prepared: 2026-03-12
 
 Run these before final delivery sign-off.
 
 Student Flow
 - Log in as student
-- Submit pre-assessment
-- Confirm pre-assessment response row exists in public.responses
-- Log in as teacher/admin and send pre-assessment feedback
-- Log back in as student and confirm feedback is visible
-- Acknowledge feedback
-- Confirm Lesson 1 unlocks
-- Submit Lesson 1
-- Confirm Lesson 1 response row exists in public.responses
-- Confirm Lesson 1 draft state exists or updates in public.student_state
-- Log in as teacher/admin and score Lesson 1 + send feedback
-- Log back in as student and confirm Lesson 1 score appears in performance summary
-- Acknowledge Lesson 1 feedback
-- Confirm Lesson 2 unlocks
-- Repeat same flow for Lesson 2
-- Repeat same flow for Lesson 3
-- Complete post-assessment
-- Confirm final feedback and performance summary display correctly
+- Complete Pre-Assessment
+- Confirm the `public.responses` row for `pre` exists
+- Confirm `Lesson 1` unlocks immediately after Pre-Assessment completion
+- Start Lesson 1, save draft work, leave the page, and confirm the card shows `In progress`
+- Reopen Lesson 1 and confirm saved work restores
+- Submit the final Lesson 1 output
+- Confirm the `public.responses` row for `lesson1` exists
+- Confirm Lesson 1 shows as completed after refresh
+- Repeat the same draft-resume-final flow for Lesson 2
+- Repeat the same draft-resume-final flow for Lesson 3
+- Specifically confirm Lesson 3 can still finalize after reopening a saved draft
+- Complete Post-Assessment
+- Specifically confirm saved Part 1 / Part 2 state can resume before final submit
+- Confirm Performance Summary shows assessment and lesson scores
 
 Teacher/Admin Flow
 - Log in as teacher
@@ -31,22 +28,25 @@ Teacher/Admin Flow
 - Confirm class list loads
 - Confirm pre-assessment results load from live responses
 - Confirm post-assessment results load from live responses
-- Confirm lesson output tabs load submitted lesson rows
+- Confirm lesson output tabs show draft and final rows correctly
+- Open review modals for one assessment row and one lesson row
 - Save a score for Lesson 1
 - Save a score for Lesson 2
 - Save a score for Lesson 3
-- Send feedback for assessment and lesson entries
-- Confirm class record reflects saved scores
+- Send feedback for lesson entries
+- Confirm class record reflects saved lesson scores
 - Download CSV/report outputs and inspect contents
 
 Data / Sync Checks
-- Confirm responses.teacher_score updates after teacher scoring
-- Confirm feedback.acknowledged updates after student acknowledgment
+- Confirm `responses.teacher_score` updates after teacher scoring
+- Confirm `student_state` updates during lesson draft saves
 - Confirm no stale browser-only state is required for final submitted records
 - Confirm fresh reload still reflects correct live data
+- Confirm admin portal is not repeatedly refetching class record on a short interval
 
 Deployment / Handover
 - Confirm latest code is pushed to client GitHub
-- Confirm documentation files are present in repo root
-- Confirm Supabase credentials used by deployed site are correct
+- Confirm latest GitHub Pages deploy is live
+- Confirm root documentation files are present and updated
+- Confirm Supabase credentials used by the deployed site are correct
 - Confirm final walkthrough notes are ready for client handover

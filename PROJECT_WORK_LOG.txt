@@ -860,3 +860,77 @@ How To Use Going Forward
   - `src/pages/portals/AdminPortal.tsx`
 - Commit: pending
 - Push: pending
+
+[2026-03-12 18:24] Student resume completion sync fixes
+- Fixed a student-side regression where saved Lesson 3 draft state could restore visible work in admin but still leave the last submit button unusable for the student after returning to the lesson.
+- Fixed Post-Assessment resume behavior so saved Part 1 / Part 2 answers restore without falsely marking the assessment complete before the final response row is written.
+- Updated student dashboard completion labeling so sections with real saved draft state can show `In progress` rather than dropping back to `Not started`.
+- Files:
+  - `src/pages/student_sections/Lesson3.tsx`
+  - `src/pages/student_sections/PostAssessment.tsx`
+  - `src/pages/portals/StudentPortal.tsx`
+  - `src/services/progressService.ts`
+- Commit:
+  - `716e1eb` `Fix student resume completion sync`
+- Push:
+  - pushed to `origin/main`
+
+[2026-03-12 18:31] Lesson completion state and pending-card simplification
+- Added shared lesson completion helpers so dashboard status, progression gates, and lesson state checks use the same derivation logic instead of scattered per-page heuristics.
+- Removed card-lock behavior that blocked reopening lesson cards with draft work and tightened the student dashboard pending/in-progress display.
+- Added local progress fallback on the student dashboard so lesson cards keep accurate completion/in-progress state even when only local persisted progress exists temporarily.
+- Files:
+  - `src/services/lessonCompletion.ts`
+  - `src/pages/portals/StudentPortal.tsx`
+  - `src/pages/student_sections/Lesson1.tsx`
+  - `src/pages/student_sections/Lesson2.tsx`
+  - `src/pages/student_sections/Lesson3.tsx`
+  - `src/pages/student_sections/PreAssessment.tsx`
+  - `src/services/classService.ts`
+- Commits:
+  - `27747f3` `Fix lesson completion state and submission gating`
+  - `ad25b19` `Remove lesson card locks and tighten pending completion UI`
+  - `5ba85c1` `Use local progress fallback for lesson completion status`
+- Push:
+  - pushed to `origin/main`
+
+[2026-03-12 18:45] Documentation refresh for current repo state
+- Re-read the repository structure, active app behavior, and current docs/checklists to align handover text with the actual live code.
+- Updated repo-level documentation to reflect:
+  - completion-based progression
+  - removal of active assessment feedback flow
+  - reduced admin polling
+  - current auth model
+  - current high-level tree and key services
+  - current verification priorities
+- Files:
+  - `README.md`
+  - `HANDOVER_DOCUMENTATION.md`
+  - `PROJECT_CONTEXT_SNAPSHOT.txt`
+  - `PROJECT_PHASE_CHECKLIST.txt`
+  - `PROJECT_VERIFICATION_CHECKLIST.txt`
+  - `FINAL_SIGNOFF_QA_CHECKLIST.txt`
+  - `BUG_SELF_HEAL_LOG.txt`
+  - `PROJECT_WORK_LOG.txt`
+- Commit: not yet committed
+- Push: not yet pushed
+
+[2026-03-13 09:24] Lesson 2 Phase 2 upload resume and submit gating fix
+- Investigated student report that Lesson 2 Phase 2 `Submit Output` buttons for Activities 2, 3, and 4 became unclickable after reopening saved work, and that Phase 2 / Phase 4 uploaded files appeared missing after exit.
+- Root cause identified:
+  - restored saved uploads were being treated as permanently submitted/locked
+  - the submit buttons depended on an in-memory `File` object, which disappears on exit/reopen
+  - blob preview URLs were not durable, so file selections that never reached a real persisted save vanished on exit
+- Fix applied:
+  - restored saved uploads now remain updateable
+  - submit handlers can reuse an already persisted upload URL instead of requiring a fresh `File` object
+  - Activity 3 filename restore was added
+  - Phase 2 progress now counts only persisted uploads, not unsaved blob previews
+  - Lesson 2 snapshot persistence now excludes `blob:` and `data:` preview URLs to reduce bad restore/freeze behavior
+- Files:
+  - `src/pages/student_sections/Lesson2.tsx`
+- Verification:
+  - `npm run lint` passed
+  - `npm run build` passed
+- Commit: not yet committed
+- Push: not yet pushed
