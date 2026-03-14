@@ -787,37 +787,44 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{marginTop:12}}>
                             <div style={{fontWeight:700, marginBottom:6}}>A. Our Research Question:</div>
-                            <input value={recallA} onChange={(e)=>setRecallA(e.target.value)} readOnly={recallLocked} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
+                            <input value={recallA} onChange={(e)=>setRecallA(e.target.value)} readOnly={lesson3Completed} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
                             <div style={{height:8}} />
 
                             <div style={{fontWeight:700, marginBottom:6}}>B. Our Regression Line Equation:</div>
-                            <input value={recallB} onChange={(e)=>setRecallB(e.target.value)} readOnly={recallLocked} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
+                            <input value={recallB} onChange={(e)=>setRecallB(e.target.value)} readOnly={lesson3Completed} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
                             <div style={{height:8}} />
 
                             <div style={{fontWeight:700, marginBottom:6}}>C. Our Interpretation of the Equation:</div>
-                            <input value={recallC} onChange={(e)=>setRecallC(e.target.value)} readOnly={recallLocked} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
+                            <input value={recallC} onChange={(e)=>setRecallC(e.target.value)} readOnly={lesson3Completed} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
                             <div style={{height:16}} />
 
                             <div className="section-actions">
-                              <button className="save-btn" disabled={recallLocked || !(recallA.trim() && recallB.trim() && recallC.trim())} onClick={()=>{
+                              <button className="save-btn" disabled={lesson3Completed || !(recallA.trim() && recallB.trim() && recallC.trim())} onClick={()=>{
                                 if (!(recallA.trim() && recallB.trim() && recallC.trim())) return;
+                                let alreadySaved = false;
+                                try {
+                                  const all = getLesson3Phase1Activity1All();
+                                  if (all && all[user.username]) alreadySaved = true;
+                                } catch (e) { /* ignore */ }
                                 try {
                                   saveLesson3Phase1Activity1(user.username, { researchQuestion: recallA.trim(), regressionEquation: recallB.trim(), interpretation: recallC.trim(), timestamp: new Date().toISOString() });
                                 } catch (e) { console.error('save failed', e); }
                                 setRecallLocked(true);
                                 // award 10% extra progress for finalizing these components
                                 try {
-                                  const current = getUserProgress(user.username) || {1:0,2:0,3:0,4:0,5:0};
-                                  const cur = Number(current[4] || 0) || 0;
-                                  const extra = Math.min(100 - cur, 10);
-                                  if (extra > 0) {
-                                    const newExtra = Math.min(100, lesson3ExtraPct + extra);
-                                    setLesson3ExtraPct(newExtra);
-                                    try { localStorage.setItem('lesson3_extra_progress', String(newExtra)); } catch {}
-                                    setUserProgress(user.username, 4, Math.min(100, cur + extra));
+                                  if (!alreadySaved) {
+                                    const current = getUserProgress(user.username) || {1:0,2:0,3:0,4:0,5:0};
+                                    const cur = Number(current[4] || 0) || 0;
+                                    const extra = Math.min(100 - cur, 10);
+                                    if (extra > 0) {
+                                      const newExtra = Math.min(100, lesson3ExtraPct + extra);
+                                      setLesson3ExtraPct(newExtra);
+                                      try { localStorage.setItem('lesson3_extra_progress', String(newExtra)); } catch {}
+                                      setUserProgress(user.username, 4, Math.min(100, cur + extra));
+                                    }
                                   }
                                 } catch (e) { /* ignore */ }
-                              }}>Finalize Components</button>
+                              }}>{recallLocked ? 'Update Components' : 'Finalize Components'}</button>
                             </div>
                           </div>
                         </div>
@@ -850,18 +857,18 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:12}}>
                             <div style={{fontWeight:700}}>Our Dependent Variable:</div>
-                            <input value={depVar} onChange={(e)=>setDepVar(e.target.value)} readOnly={submitted2} style={{flex:1, padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
+                            <input value={depVar} onChange={(e)=>setDepVar(e.target.value)} readOnly={lesson3Completed} style={{flex:1, padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
                           </div>
 
                           <div style={{fontWeight:700, marginTop:8, marginBottom:8}}>Other factors that we think can also influence our dependent variable:</div>
                           <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10}}>
                             {otherFactors.map((v,i)=> (
-                              <input key={i} value={v} onChange={(e)=>{ const arr=[...otherFactors]; arr[i]=e.target.value; setOtherFactors(arr); }} readOnly={submitted2} placeholder={`Factor ${i+1}`} style={{padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
+                              <input key={i} value={v} onChange={(e)=>{ const arr=[...otherFactors]; arr[i]=e.target.value; setOtherFactors(arr); }} readOnly={lesson3Completed} placeholder={`Factor ${i+1}`} style={{padding:10, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
                             ))}
                           </div>
 
                           <div style={{marginTop:12}}>
-                            <button className="save-btn" disabled={(otherFactors.filter(s=>s.trim()).length<4) || submitted2} onClick={()=>{
+                            <button className="save-btn" disabled={(otherFactors.filter(s=>s.trim()).length<4) || lesson3Completed} onClick={()=>{
                               const filled = otherFactors.filter(s=>s.trim());
                               if (filled.length<4) return;
                               setGenerated({ nodes: filled });
@@ -1044,19 +1051,19 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                             </div>
                           </div>
 
-                          <div style={{height:16}} />
+                            <div style={{height:16}} />
                           <div style={{display:'flex', alignItems:'center', gap:12}}>
                             <div style={{fontWeight:700}}>Upload your concept map here:</div>
-                            <input type="file" accept="image/*" disabled={submitted2} onChange={(e)=>{ const f = e.target.files?.[0] ?? null; setUploadedDiagram(f); if (f) { try { const reader = new FileReader(); reader.onload = (ev) => { setUploadedDiagramPreview(String(ev.target?.result || '')); }; reader.readAsDataURL(f); } catch (err) { setUploadedDiagramPreview(null); } } }} />
+                            <input type="file" accept="image/*" disabled={lesson3Completed} onChange={(e)=>{ const f = e.target.files?.[0] ?? null; setUploadedDiagram(f); if (f) { try { const reader = new FileReader(); reader.onload = (ev) => { setUploadedDiagramPreview(String(ev.target?.result || '')); }; reader.readAsDataURL(f); } catch (err) { setUploadedDiagramPreview(null); } } }} />
                           </div>
 
                           <div style={{height:16}} />
                           <div style={{fontWeight:700}}>What were your considerations for identifying these factors to influence your dependent variable?</div>
-                          <textarea rows={3} value={finalConsiderations} onChange={(e)=>setFinalConsiderations(e.target.value)} readOnly={submitted2} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
+                          <textarea rows={3} value={finalConsiderations} onChange={(e)=>setFinalConsiderations(e.target.value)} readOnly={lesson3Completed} style={{width:'100%', padding:12, border:'1px solid var(--input-border)', borderRadius:8, background:'var(--input-bg)'}} />
                           <div style={{height:20}} />
                           <div className="section-actions">
-                            <button className="save-btn" disabled={submitted2 || (!uploadedDiagram && !uploadedDiagramPreview && !finalConsiderations.trim())} onClick={async ()=>{
-                              if (submitted2) return;
+                            <button className="save-btn" disabled={lesson3Completed || (!uploadedDiagram && !uploadedDiagramPreview && !finalConsiderations.trim())} onClick={async ()=>{
+                              if (lesson3Completed) return;
                               if (!uploadedDiagram && !uploadedDiagramPreview && !finalConsiderations.trim()) return;
                               // avoid double-award if already saved
                               let alreadySaved = false;
@@ -1106,7 +1113,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   }
                                 }
                               } catch (e) { /* ignore */ }
-                            }}>Submit Answer</button>
+                            }}>{submitted2 ? 'Update Answer' : 'Submit Answer'}</button>
                           </div>
                         </div>
                       </div>
@@ -1165,7 +1172,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{height:24}} />
                           <div style={{display:'flex', alignItems:'center', gap:12}}>
-                            <input type="file" accept="application/pdf" disabled={p2a1Submitted} onChange={(e)=>{
+                            <input type="file" accept="application/pdf" disabled={lesson3Completed} onChange={(e)=>{
                               const f = e.target.files?.[0] ?? null; setP2a1File(f);
                               if (f) {
                                 try {
@@ -1192,7 +1199,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{height:40}} />
                           <div className="section-actions" style={{display:'flex', justifyContent:'flex-start'}}>
-                            <button className="save-btn" disabled={p2a1Submitted || !p2a1File} onClick={async ()=>{ if (!p2a1File) return; 
+                            <button className="save-btn" disabled={lesson3Completed || (!p2a1File && !p2a1Preview)} onClick={async ()=>{ if (!p2a1File && !p2a1Preview) return; 
                               // check if already saved to avoid double-award
                               let alreadySaved = false;
                               try {
@@ -1200,12 +1207,12 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                 if (all && all[user.username]) alreadySaved = true;
                               } catch (e) { /* ignore */ }
                               let fileDataUrl: string | undefined = undefined;
-                              let filename = p2a1File.name;
+                              let filename = p2a1File?.name || `Lesson3_Phase2_Activity1_${user.username}.pdf`;
                               try {
-                                const asset = await persistLesson3FileAsset('phase2-activity1', p2a1File, p2a1Preview, p2a1File.name, p2a1File.type);
+                                const asset = await persistLesson3FileAsset('phase2-activity1', p2a1File, p2a1Preview, p2a1File?.name, p2a1File?.type);
                                 if (asset?.url) {
                                   fileDataUrl = asset.url;
-                                  filename = asset.filename || p2a1File.name;
+                                  filename = asset.filename || p2a1File?.name || filename;
                                   setP2a1Preview(asset.url);
                                 }
                               } catch (e) { console.error('lesson3 phase2 activity1 upload failed', e); }
@@ -1225,7 +1232,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   }
                                 }
                               } catch (e) { /* ignore */ }
-                            }}>Submit Output</button>
+                            }}>{p2a1Submitted ? 'Update Output' : 'Submit Output'}</button>
                           </div>
 
                           {p2a1Submitted && (
@@ -1279,7 +1286,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{height:24}} />
                           <div style={{display:'flex', alignItems:'center', gap:12}}>
-                            <input type="file" accept="application/pdf" disabled={p2a2Submitted} onChange={(e)=>{
+                            <input type="file" accept="application/pdf" disabled={lesson3Completed} onChange={(e)=>{
                               const f = e.target.files?.[0] ?? null; setP2a2File(f);
                               if (f) {
                                 try {
@@ -1306,8 +1313,8 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{height:40}} />
                           <div className="section-actions" style={{display:'flex', justifyContent:'flex-start'}}>
-                            <button className="save-btn" disabled={p2a2Submitted || !p2a2File} onClick={async ()=>{
-                              if (!p2a2File) return;
+                            <button className="save-btn" disabled={lesson3Completed || (!p2a2File && !p2a2Preview)} onClick={async ()=>{
+                              if (!p2a2File && !p2a2Preview) return;
                               // avoid double-award if already saved
                               let alreadySaved = false;
                               try {
@@ -1316,12 +1323,12 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                               } catch (e) { /* ignore */ }
 
                               let fileDataUrl: string | undefined = undefined;
-                              let filename = p2a2File.name;
+                              let filename = p2a2File?.name || `Lesson3_Phase2_Activity2_${user.username}.pdf`;
                               try {
-                                const asset = await persistLesson3FileAsset('phase2-activity2', p2a2File, p2a2Preview, p2a2File.name, p2a2File.type);
+                                const asset = await persistLesson3FileAsset('phase2-activity2', p2a2File, p2a2Preview, p2a2File?.name, p2a2File?.type);
                                 if (asset?.url) {
                                   fileDataUrl = asset.url;
-                                  filename = asset.filename || p2a2File.name;
+                                  filename = asset.filename || p2a2File?.name || filename;
                                   setP2a2Preview(asset.url);
                                 }
                               } catch (e) { console.error('lesson3 phase2 activity2 upload failed', e); }
@@ -1346,7 +1353,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   }
                                 }
                               } catch (e) { /* ignore */ }
-                            }}>Submit Output</button>
+                            }}>{p2a2Submitted ? 'Update Output' : 'Submit Output'}</button>
                           </div>
 
                           {p2a2Submitted && (
@@ -1400,7 +1407,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
 
                           <div style={{height:24}} />
                           <div style={{display:'flex', alignItems:'center', gap:12}}>
-                            <input type="file" accept="application/pdf" disabled={p2a3Submitted} onChange={(e)=>{
+                            <input type="file" accept="application/pdf" disabled={lesson3Completed} onChange={(e)=>{
                               const f = e.target.files?.[0] ?? null; setP2a3File(f);
                               if (f) {
                                 try {
@@ -1428,15 +1435,15 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                           <div style={{height:24}} />
                           <div style={{fontWeight:700, textAlign:'left'}}>What does the coefficient determination tell you about the predicting power of your independent variable?</div>
                           <div style={{height:8}} />
-                          <textarea value={p2a3Answer} onChange={(e)=>setP2a3Answer(e.target.value)} readOnly={p2a3Submitted} placeholder="Type your interpretation here..." rows={4} style={{width:'100%', padding:14, border:'2px solid rgba(0,0,0,0.45)', borderRadius:8, background:'var(--input-bg)', marginRight:12, minHeight:120}} />
+                          <textarea value={p2a3Answer} onChange={(e)=>setP2a3Answer(e.target.value)} readOnly={lesson3Completed} placeholder="Type your interpretation here..." rows={4} style={{width:'100%', padding:14, border:'2px solid rgba(0,0,0,0.45)', borderRadius:8, background:'var(--input-bg)', marginRight:12, minHeight:120}} />
                           <div style={{height:8}} />
                           <div style={{fontSize:12, fontStyle:'italic', color:'rgba(0,0,0,0.7)'}}>Template: The coefficient of determination value (r2=0.827) indicates that the independent variable, heat index, explains 82.7% of the variability of the dependent variable, which is heat-related illnesses, leaving 17.3% of the variability of the dependent variable can be explained by variables not covered by the analysis.</div>
 
                           <div style={{height:32}} />
                           <div className="section-actions" style={{display:'flex', justifyContent:'flex-start'}}>
-                            <button className="save-btn" disabled={p2a3Submitted || (!p2a3File && !p2a3Answer.trim())} onClick={async ()=>{
-                              if (p2a3Submitted) return;
-                              if (!p2a3File && !p2a3Answer.trim()) return;
+                            <button className="save-btn" disabled={lesson3Completed || ((!p2a3File && !p2a3Preview) && !p2a3Answer.trim())} onClick={async ()=>{
+                              if (lesson3Completed) return;
+                              if ((!p2a3File && !p2a3Preview) && !p2a3Answer.trim()) return;
 
                               // avoid double-award if already saved
                               let alreadySaved = false;
@@ -1482,7 +1489,7 @@ const Lesson3: React.FC<SectionPageProps> = ({ user, onBack }) => {
                                   }
                                 }
                               } catch (e) { /* ignore */ }
-                            }}>Submit Output</button>
+                            }}>{p2a3Submitted ? 'Update Output' : 'Submit Output'}</button>
                           </div>
 
                           {p2a3Submitted && (
