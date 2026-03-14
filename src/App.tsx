@@ -135,6 +135,10 @@ function App() {
   useEffect(() => {
     (async () => {
       const storedAppSession = getStoredAppSession();
+      const canRestoreStoredSession = (session: StoredAppSession | null) => {
+        if (!session?.authUser) return false;
+        return session.authUser.role === 'student';
+      };
       try {
         const sess = await supabase.auth.getSession();
         const session = sess.data?.session;
@@ -154,16 +158,20 @@ function App() {
           setAuthUser(restoredUser);
           setPortalTab(storedAppSession?.portalTab || 'overview');
           setCurrentPage(storedAppSession?.currentPage || 'portal');
-        } else if (storedAppSession?.authUser) {
+        } else if (canRestoreStoredSession(storedAppSession) && storedAppSession) {
           setAuthUser(storedAppSession.authUser);
           setPortalTab(storedAppSession.portalTab || 'overview');
           setCurrentPage(storedAppSession.currentPage || 'portal');
+        } else {
+          clearAppSession();
         }
       } catch {
-        if (storedAppSession?.authUser) {
+        if (canRestoreStoredSession(storedAppSession) && storedAppSession) {
           setAuthUser(storedAppSession.authUser);
           setPortalTab(storedAppSession.portalTab || 'overview');
           setCurrentPage(storedAppSession.currentPage || 'portal');
+        } else {
+          clearAppSession();
         }
       }
     })();

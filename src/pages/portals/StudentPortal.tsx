@@ -6,6 +6,7 @@ import { getFeedbackForStudent } from '../../services/feedbackService';
 import { getMyProfile } from '../../services/profilesService';
 import { getAssessmentScores, getLesson1State, getLesson3PersistedState, getUserProgress } from '../../services/progressService';
 import { getStudentState } from '../../services/studentStateService';
+import { getAuthFailureReason } from '../../services/supabaseClient';
 import {
   hasLesson1AnyProgress,
   hasLesson2AnyProgress,
@@ -181,7 +182,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ user, onLogout, classes, 
         });
         setActivityStatuses(mapStatus);
       } catch (e) {
-        console.error('failed to load activity statuses', e);
+        if (getAuthFailureReason(e) === 'service_unavailable') {
+          console.warn('student activity statuses unavailable while backend is degraded');
+        } else {
+          console.error('failed to load activity statuses', e);
+        }
       }
     };
 
